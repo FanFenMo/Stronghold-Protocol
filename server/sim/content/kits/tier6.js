@@ -3338,7 +3338,14 @@ function agoat2(bb, chess, def) {
 
 // ------------------------------------------------------------------------------------------------------------------
 
+import sakiko from './sakiko.js';
+import aglna2 from './aglna2.js';
+import wang from './wang.js';
+
 export default {
+  chess_custom_6_oblvns_a: sakiko,
+  chess_custom_6_aglna2_a: aglna2,
+  chess_custom_6_wang_a: wang,
   chess_char_1_15_a: pithst,
   chess_char_6_01_a: lemuen,
   chess_char_6_02_a: sbell2,
