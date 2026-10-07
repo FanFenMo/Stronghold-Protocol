@@ -172,6 +172,32 @@ const num = (v, d) => { const n = typeof v === 'number' ? v : typeof v === 'stri
  * kinds fall back to a keyword guess, then to a generic sparkle (fxSpec).
  */
 export const FX_KINDS = Object.freeze({
+  chenFlameSlash: { a: 'wave', c: 0xff703a, r: 1 },
+  chenSwordWave: { a: 'element', c: 0xffb747, pt: true },
+  chenDash: { a: 'wave', c: 0xff5936, r: 1.4 },
+  chenRecover: { a: 'heal', c: 0xffb747 },
+  aglnaShot: { a: 'strike', c: 0xb28aff },
+  aglnaTakeoff: { a: 'wave', c: 0xc6a0ff, r: 1.2 },
+  aglnaGravity: { a: 'zone', c: 0xa682f0, r: 1.4, dur: 1 },
+  wangShot: { a: 'strike', c: 0xd9eee8 },
+  wangStone: { a: 'zone', c: 0xd9eee8, r: 0.3, dur: 0.6 },
+  wangLine: { a: 'wave', c: 0xbaf4d3, r: 3 },
+  wangBurst: { a: 'blast', c: 0xefffd9, r: 1.2 },
+  ascalonSlash: { a: 'wave', c: 0xb575ff, r: 1.4 },
+  ascalonVenom: { a: 'element', c: 0xb575ff },
+  ascalonSpread: { a: 'blast', c: 0x9960d5, r: 1.3, pt: true, smoke: 0x261638 },
+  ascalonMist: { a: 'zone', c: 0x8050c0, r: 1.5 },
+  ascalonDescent: { a: 'wave', c: 0xe4baff, r: 2 },
+  ascalonRecover: { a: 'heal', c: 0xcfa0ff },
+  sakikoPhysicalNote: { a: 'musicNote', c: 0xffdb7b, pt: true },
+  sakikoArtsNote: { a: 'musicNote', c: 0xff65b2, pt: true },
+  sakikoNoteHit: { a: 'strike', c: 0xffabd6 },
+  sakikoArpeggio: { a: 'wave', c: 0xff85c4, r: 1.2 },
+  sakikoChange: { a: 'buff', c: 0xffd58a },
+  sakikoDuet: { a: 'wave', c: 0xeeb8ff, r: 2 },
+  sakikoFeverReady: { a: 'wave', c: 0xff2b96, r: 1 },
+  sakikoFever: { a: 'zone', c: 0xff2b96, r: 1.6, dur: 20 },
+  sakikoEncore: { a: 'summon', c: 0xff2b96 },
   // blasts
   aoe: { a: 'blast', c: 0xffb35c }, explode: { a: 'blast', c: 0xff7a33 }, explosion: { a: 'blast', c: 0xff7a33 },
   // `pt`: always at the event's (x, y) (its `id` is the shooter); `heavy`: debris + scorch
@@ -1721,6 +1747,14 @@ export class FxSystem {
     const p = chest(at.v);
     const s = p.s;
     switch (spec.a) {
+      case 'musicNote': {
+        const q = this.ctx.cam().project(at.x, at.y, at.z + 0.65, this._q);
+        const sx = q.s / 64;
+        this.particle('glow', q.x, q.y, { tint: col, life: 0.18, s0: sx * 0.22, s1: sx * 0.3, a0: 0.8, a1: 0 });
+        this.particle('dot', q.x, q.y, { tint: col, life: 0.16, s0: sx * 0.11, s1: sx * 0.07, a0: 1, a1: 0 });
+        this.particle('spark', q.x + q.s * 0.04, q.y - q.s * 0.09, { tint: col, life: 0.16, s0: sx * 0.15, s1: sx * 0.12, a0: 1, a1: 0, rot: -Math.PI / 2 });
+        break;
+      }
       case 'blast': {
         if (r >= 12) { this.flashScreen(col, 0.5); break; }
         if (kind === 'bombard') { this._touchLocks(ex.id ?? ex.src ?? null); this._landed(ex.id ?? ex.src ?? null, at.x, at.y, r); }
