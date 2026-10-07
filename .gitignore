@@ -1,5 +1,6 @@
 # --- dependencies & generated client libs -------------------------------------------------------
 node_modules/
+.runtime/
 # copied from node_modules by tools/vendor.mjs (postinstall); never commit third-party builds
 public/vendor/
 
