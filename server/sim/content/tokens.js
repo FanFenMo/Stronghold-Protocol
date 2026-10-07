@@ -77,6 +77,7 @@
 // releaseSkillSummon, SKILL_SUMMON_START_DEPLOY, CAT_SHIELD_KEY, TOKEN_IDS.
 
 import { COLS, ROWS, MOVE_SCALE } from '../constants.js';
+import { stoneKit } from './kits/wang.js';
 import { absoluteRangeKeys, sortEnemyTargets, canTargetEnemy } from '../targeting.js';
 import { bodyInKeys, bodyOnTile } from '../body.js';
 import { hasHp } from '../damage.js';
@@ -1352,6 +1353,7 @@ export function spawnMapChar(battle, playerId, tokenId, { alias = null } = {}) {
 // registry
 
 const RAW_KITS = {
+  token_10064_wang_stone1: stoneKit,
   [TOKEN_IDS.healDrone]: healDrone,
   [TOKEN_IDS.curseDoll]: curseDoll,
   [TOKEN_IDS.obelisk]: obelisk,
