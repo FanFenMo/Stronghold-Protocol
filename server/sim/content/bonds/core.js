@@ -20,7 +20,7 @@
 //                        5: the first max_free_respawn_cnt members knocked out (in knock-out order, the devour's food
 //                        included) each redeploy at once (free) on that first knock-out
 //   叙拉古 siracusaShip  every member deployment: ASPD +(base + per·L) for (base_duration + per·L) s; 6: 隐匿 for the same
-//                        time, and while hidden / end_duration s after, every 普通伤害 hit (siracusaRolls) procs (PRD,
+//                        time, and while hidden / end_duration s after, every 普通伤害 hit (siracusaRolls) procs (linear pity,
 //                        nominal `prob`) base_damage + damage_per_stack·L true damage + fear `fear` s
 //   卡西米尔 kazimierzShip every deployment of one of the player's operators (initial ones included): members ATK
 //                        +atk_when_born, total ≤ base_max_atk_when_born + max_atk_when_born_per_stack·L; 6: blocking
@@ -88,34 +88,6 @@ export function yanyouShare() {
   return v > 0 && v <= 10 ? v : 0.3;
 }
 
-const PRD = new Map();
-/**
- * Pseudo-random-distribution constant C for a nominal probability p: attempt n since the last proc succeeds with
- * min(1, C·n), and the long-run proc rate equals p (3 % → C ≈ 0.00139, research 02 §3.7).
- */
-export function prdConstant(p) {
-  if (!(p > 0)) return 0;
-  if (p >= 1) return 1;
-  if (PRD.has(p)) return PRD.get(p);
-  const rate = (c) => {
-    let exp = 0, notYet = 1;
-    const nMax = Math.ceil(1 / c) + 1;
-    for (let n = 1; n <= nMax && notYet > 0; n++) {
-      const pn = Math.min(1, n * c);
-      exp += n * notYet * pn;
-      notYet *= 1 - pn;
-    }
-    return exp > 0 ? 1 / exp : 1;
-  };
-  let lo = 0, hi = p;
-  for (let i = 0; i < 50; i++) {
-    const mid = (lo + hi) / 2;
-    if (rate(mid) < p) lo = mid; else hi = mid;
-  }
-  const c = (lo + hi) / 2;
-  PRD.set(p, c);
-  return c;
-}
 
 // =====================================================================================================================
 // per-battle plumbing
@@ -528,8 +500,8 @@ function installSiracusa(battle, pid, bb, members) {
     battle.addBuff(unit, { key: 'bond:siracusa:stealth', duration: dur, flags: { stealth: true }, status: 'stealth', onExpire: off, onRemove: off });
   });
   if (!six) return;
-  const c = prdConstant(num(bb.prob, 0));
-  if (!(c > 0)) return;
+  const base = num(bb.prob, 0);
+  if (!(base > 0)) return;
   const st = { n: 0 };
   const onDmg = (ctx) => {
     const u = ctx.source, t = ctx.target, dmg = ctx.dmg;
@@ -537,11 +509,11 @@ function installSiracusa(battle, pid, bb, members) {
     const hidden = u.s.flags.stealth || battle.time <= num(u.mem.siraStealthEnd, -Infinity) + end + 1e-9;
     if (!hidden) return;
     st.n++;
-    if (!(battle.rng() < Math.min(1, c * st.n))) return;
-    st.n = 0;
+    // Player-wide pity: 3%, 6%, 9%, …, capped at 100%; only actual bond damage resets it.
+    if (!(battle.rng() < Math.min(1, base * st.n))) return;
     const amount = num(bb.base_damage, 0) + num(bb.damage_per_stack, 0) * S.bondLayers(battle, pid, 'siracusaShip');
     S.fxOn(battle, 'bondProc', t, 'bond:siracusaShip', 'assassin', { from: u.id, amount });
-    if (amount > 0) battle.dealDamage(u, t, { amount, type: 'true', canDodge: false, tags: ['bond:siracusa'] });
+    if (amount > 0 && battle.dealDamage(u, t, { amount, type: 'true', canDodge: false, tags: ['bond:siracusa'] }) > 0) st.n = 0;
     if (t.alive && num(bb.fear, 0) > 0) battle.applyStatus(t, 'fear', { duration: num(bb.fear, 0), source: u });
   };
   for (const u of members) onUnitDamaged(battle, u, onDmg);
