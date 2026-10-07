@@ -872,7 +872,7 @@ test('干员战斗语音 (DESIGN §21.30): the manifest data, the official prior
   }
   // a battle slot usually carries several lines (选中干员 / 部署 have two), so the battle set alone stays well above 10 each
   assert.ok(lines.length >= charIds.length * 10, `${lines.length} voice lines for ${charIds.length} operators`);
-  for (const u of lines) assert.match(u, /^\/assets\/audio\/voice\/cn\/char_[^/]+\/cn_\d+\.mp3$/);
+  for (const u of lines) assert.match(u, /^\/assets\/audio\/voice\/(cn|jp)\/char_[^/]+\/cn_\d+\.mp3$/);
   // the official scheduling numbers (audio_data.json battleVoice.voiceTypeOptions)
   assert.equal(VOICE_PRIORITY.start, 100);
   assert.equal(VOICE_PRIORITY.faceEnemy, 90);

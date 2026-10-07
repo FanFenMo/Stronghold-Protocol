@@ -74,12 +74,12 @@ test('numbers: every stats/bb/enemyScale object holds only finite numbers (no nu
   assert.deepEqual(bad.slice(0, 10), [], `${bad.length} bad numeric fields`);
 });
 
-test('chess: 266 records, 112 visible non-DIY (16/17/19/22/19/19 per tier)', () => {
-  assert.equal(Object.keys(chess).length, 266);
-  assert.equal(visible.length, 112);
+test('chess: 276 records, 117 visible non-DIY (16/17/19/22/21/22 per tier)', () => {
+  assert.equal(Object.keys(chess).length, 276);
+  assert.equal(visible.length, 117);
   const perTier = {};
   for (const c of visible) perTier[c.tier] = (perTier[c.tier] || 0) + 1;
-  assert.deepEqual(perTier, { 1: 16, 2: 17, 3: 19, 4: 22, 5: 19, 6: 19 });
+  assert.deepEqual(perTier, { 1: 16, 2: 17, 3: 19, 4: 22, 5: 21, 6: 22 });
   assert.equal(normalChess.filter((c) => c.isDiy).length, 4);
   assert.equal(normalChess.filter((c) => c.isHidden).length, 17);
 });
@@ -426,7 +426,7 @@ test('chess/tokens: talent tokens resolve and every token variant says where it 
     assert.equal(t.placeable, t.displayType !== 'HIDDEN' && made, `${t.tokenId} (${t.name}): placeable`);
   }
   assert.deepEqual(Object.values(tokens).filter((t) => t.placeable).map((t) => t.name).sort(),
-    ['医疗探机', '诅咒娃娃', '斯卡蒂的海嗣', '流形', '狼群', '爬行号·防护单元'].sort());
+    ['医疗探机', '诅咒娃娃', '斯卡蒂的海嗣', '流形', '狼群', '爬行号·防护单元', '棋子'].sort());
   assert.equal(tokens.enemy_9012_acloon.stats.deployLimit, tokens.enemy_9012_acloon.deployLimit);
 });
 
@@ -516,7 +516,7 @@ test('chess: golden modules[] (+ statsBase/traitBase/talentsBase) compose back t
   let nMods = 0;
   for (const c of Object.values(chess)) {
     if (c.isDiy) continue;
-    if (!c.isGolden || !(c.status.equipLevel > 0)) {
+    if (!c.isGolden) {
       for (const k of ['modules', 'statsBase', 'traitBase', 'talentsBase']) assert.equal(c[k], undefined, `${c.chessId}: normal chess has no ${k}`);
       continue;
     }
