@@ -321,6 +321,7 @@ test('audit: every selectable attack-range change attacks with the official grid
       const own = !!(s.rangeGrid && !ext);
       const grid = own ? s.rangeGrid : attackRangeGrid(rec);
       const want = keysOf(grid, u, own ? (NO_EXTEND.has(s.skillId) ? 0 : permExt) : ext);
+      for (const k of keysOf(s.extraRangeGrid || [], u)) want.add(k);
       if (permExt) extended++;
       if (s.skillType !== 'PASSIVE' && !/被动效果：攻击范围扩大/.test(s.desc)) {
         assert.ok(u.skill.activate('test', { free: true }), `${tag}: cast`);
