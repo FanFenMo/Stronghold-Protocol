@@ -7,6 +7,7 @@ chcp 65001 >nul
 setlocal EnableExtensions
 title 卫戍协议：盟约 - Stronghold Protocol
 cd /d "%~dp0.."
+if exist ".runtime\node\node.exe" set "PATH=%CD%\.runtime\node;%PATH%"
 
 where node >nul 2>nul
 if errorlevel 1 goto :nonode

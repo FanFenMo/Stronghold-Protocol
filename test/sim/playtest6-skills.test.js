@@ -337,6 +337,7 @@ test('#3 忍冬 with 6 叙拉古: the bond 隐匿 ends at 32 + 0.4 × layers s; 
     units: [{ chessId: id, row: 10, col: 4 }], bonds: { siracusaShip: { count: 6, active: true, tier: 2, layers: L } },
   });
   const u = h.unit(id);
+  h.b.rng = () => 0.9999; // Keep this camouflage test independent of the bond's random fear proc.
   h.step();
   assert.ok(u.s.flags.stealth, '叙拉古 6: 隐匿 after deployment');
   // a kill during 隐狐之艺 ⇒ 迷彩 at its end

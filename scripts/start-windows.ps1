@@ -14,6 +14,8 @@ $ErrorActionPreference = 'Continue'   # native tools report through $LASTEXITCOD
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
+$LocalNode = Join-Path $Root '.runtime\node'
+if (Test-Path (Join-Path $LocalNode 'node.exe')) { $env:Path = "$LocalNode;$env:Path" }
 $Host.UI.RawUI.WindowTitle = '卫戍协议：盟约 - Stronghold Protocol'
 
 function Pause-Exit([int]$code) {

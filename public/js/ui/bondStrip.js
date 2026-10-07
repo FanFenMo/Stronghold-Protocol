@@ -10,9 +10,7 @@
 // beside that panel (`beside`: the panel's side).
 // Research 06 §11.1: round mint discs, stack count over the disc, name below, sorted by stacks; grey =
 // present but inactive; in 联防 / boss rounds the strip is dimmed ("层数叠加已禁用"). A bond the mode never activates
-// that the player has members of (the server's `off` entry — server/match/bondsMeta.js offBondCounts: 标准's 投资人 奇迹
-// 突袭 独行 …) comes last as a grey disc with ✕ and 本局禁用 under it instead of its count (community reports
-// 「投资人等在休整区就能生效的盟约不生效」 / 「…不会触发斯卡蒂与异德的突袭」: the bond just vanished, 0.1.3). The popup's 成员
+// is omitted from the strip. The popup's 成员
 // header counts the hand members too for a bond that counts the hand (投资人 远见 奇迹: gameLogic memberHeadCount), as 在场
 // already did.
 // Watching a teammate (DESIGN §20.15, ui/watchBonds.js) the strip and the popup show THAT player's bonds and layers:
@@ -53,17 +51,6 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
     ${shown.map((b) => {
       const rec = data.lookup('bonds', b.bondId);
       const th = Array.isArray(b.thresholds) && b.thresholds.length ? b.thresholds : rec?.thresholds || [];
-      if (b.off) {
-        // a bond the mode never activates, with members: the briefing's grey ✕ disc, no stack count, 本局禁用 under it
-        const name = rec?.name || b.bondId;
-        return html`<div key=${b.bondId} role="listitem" data-bond=${b.bondId} data-off="1"
-            class=${cx('bslot', 'is-off', openId === b.bondId && 'is-open')}>
-          <${BondDisc} name=${name} icon=${bondIconUrl(m, b.bondId)} tier=${0} maxTier=${Math.max(1, th.length)} active=${false}
-            disabled=${true} size="sm" showName=${true} layersDisabled=${layersDisabled} onClick=${() => onOpen(b.bondId)}
-            title=${`${briefingBondTip(name, 'off')} · ${b.count ?? 0} 名成员`} />
-          <span class="bslot__count bslot__off">本局禁用</span>
-        </div>`;
-      }
       const next = nextThreshold(b.count ?? 0, th);
       return html`<div key=${b.bondId} role="listitem" data-bond=${b.bondId} data-harmony=${b.harmony > 0 ? b.harmony : null}
           class=${cx('bslot', b.active && 'is-active', openId === b.bondId && 'is-open')}>

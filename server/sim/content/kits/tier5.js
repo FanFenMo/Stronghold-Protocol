@@ -37,6 +37,8 @@ import { bodyInKeys, bodyInRadius, bodyKeys } from '../../body.js';
 import { absoluteRangeKeys, sortEnemyTargets } from '../../targeting.js';
 import { frontOf, rotateOffset, toLocal } from '../../dir.js';
 import { mitigate, hasHp, isHpLoss } from '../../damage.js';
+import ascalon from './ascalon.js';
+import chen3 from './chen3.js';
 
 // ---- text-only constants (the official blackboards carry no key for these) --------------------------------------
 /** 华法琳 S1 "只当目标生命值不满一半时才会触发"; 塞雷娅 S1 "血量小于等于一半"; 山 module "生命值高于50%时". */
@@ -288,6 +290,8 @@ function straightRun(battle, r, c) {
 // kits
 
 const KITS = {
+  chess_custom_5_ascln_a: ascalon,
+  chess_custom_5_chen3_a: chen3,
   // ---------------------------------------------------------------------------------------------------------------
   // 圣约送葬人 — S2 近身铳斗 (ammo, attack SP): ATK/DEF +, block +1, melee hits dodged with prob (+ammo refill).
   // T1 受选之人: extra attack chance (+prob_add per ammo spent in the skill). T2 铳弹共感: +ammo per Laterano op.
