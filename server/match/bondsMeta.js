@@ -17,9 +17,7 @@
 //                    in name OR elite state (PRTS 修正).
 //   独行 (soloShip, count_threshold_downward): active iff 1 ≤ count ≤ maxCount (distinct 独行 operators).
 //   Bonds in the mode's static inactive list (FUNNY) never activate and are omitted from computeBonds (the battle
-//                    input never sees them); the views list the ones the player has members of as `off: true`
-//                    (offBondCounts → bondList: count only, never active, after the others) so the strip can say
-//                    本局禁用 (community reports 「投资人…不生效」 / 「…不会触发斯卡蒂与异德的突袭」, 0.1.3).
+//                    input never sees them). They are also omitted from the active bond strip.
 // `tier` = number of thresholds reached (downward: 1 when active); `active = tier ≥ 1`.
 // Layers (`ps.layers[bondId]`) persist the whole match; they are reported for every bond but only matter while active.
 
