@@ -570,7 +570,8 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
     for (const [slot, assets] of Object.entries(slots)) {
       // one leaf per line (部署1 / 部署2 …): an array stays an array so the client can draw one — chaining them as
       // alternatives of a single leaf would keep only the first line that landed on disk.
-      const lines = assets.map((a) => leaf(voiceAlt(a, voiceLang))).filter(Boolean);
+      const lang = assets07.operators?.[charId]?.voiceLanguage ?? voiceLang;
+      const lines = assets.map((a) => leaf(voiceAlt(a, lang))).filter(Boolean);
       if (!lines.length) continue;
       v[slot] = lines.length === 1 ? lines[0] : lines;
     }
