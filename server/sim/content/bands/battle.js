@@ -9,8 +9,7 @@
 //   act1autochess_band28_buff 埃芒加德 命结之秘 the first max_respawn_cnt operator knock-downs of the battle revive at
 //                                               once at full HP (runs after every other death saver, items included;
 //                                               a new deployment for 坚固维式重锤's lock — items revivedInPlace)
-//   act1autochess_band13_buff 克莱门莎 崇高牺牲 records distinct devoured <bond_id> operators for next-round recruits;
-//                                               core.js also restores devour block at the six-member tier
+//   act1autochess_band13_buff 克莱门莎 崇高牺牲 records distinct devoured operators for next-round recruits;
 //   act1autochess_band16_buff 大帝 加急调派     "每次部署后再部署时间减少50%": every deployment of an operator stacks one
 //                                               redeploy ×(1 + respawn_time) for the rest of the battle [ASSUMED cumulative:
 //                                               "每次" — the first redeploy is −50 % under either reading]
@@ -83,7 +82,7 @@ const BY_KEY = {
   act1autochess_band13_buff(battle, ps, p, bandId) {
     const devoured = new Set();
     battle.on('egirDevour', ({ playerId, target }) => {
-      if (playerId === ps.playerId && isOp(target) && unitBonds(target).includes(p.bond_id)) devoured.add(target);
+      if (playerId === ps.playerId && isOp(target)) devoured.add(target);
     });
     battle.on('battleEnd', ({ result }) => {
       if (devoured.size) result.perPlayer[ps.playerId].egirDevoured = devoured.size;

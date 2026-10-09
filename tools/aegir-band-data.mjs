@@ -1,21 +1,16 @@
 export function applyAegirBandData(files) {
   const band = files.bands.band_clementia;
   const effect = files.effects[band.effectId];
-  band.desc = '每吞噬6名【阿戈尔】干员，下回合获得1名不高于调度中心等级的随机【阿戈尔】干员，余数保留。\n在场6名不同【阿戈尔】时，吞噬仍增加阻挡数，并保留真伤灼烧。';
+  band.desc = '每累计吞噬10名干员（不限盟约），下回合获得1名不高于当前调度中心等级的随机【阿戈尔】干员，余数保留。';
   band.descRaw = band.desc;
   band.buffs = [
-    { key: 'env_gbuff_new_with_verify', bb: { restore_devour_block: 1 }, bbStr: { key: 'act1autochess_band13_buff', bond_id: 'egirShip' } },
-    { key: 'band_devour_gain_bond_char_next_round', bb: { devour_count: 6, count: 1 }, bbStr: { bond: 'egirShip' } },
+    { key: 'env_gbuff_new_with_verify', bb: {}, bbStr: { key: 'act1autochess_band13_buff' } },
+    { key: 'band_devour_gain_bond_char_next_round', bb: { devour_count: 10, count: 1 }, bbStr: { bond: 'egirShip' } },
   ];
-  band.params = { restore_devour_block: 1, key: 'act1autochess_band13_buff', bond_id: 'egirShip', devour_count: 6, count: 1, bond: 'egirShip' };
+  band.params = { key: 'act1autochess_band13_buff', devour_count: 10, count: 1, bond: 'egirShip' };
   effect.desc = band.desc;
   effect.descRaw = band.descRaw;
   effect.buffs = structuredClone(band.buffs);
   effect.params = { ...band.params };
-  const bond = files.bonds.egirShip;
-  const note = '选择【克莱门莎】策略时，六阿戈尔的吞噬仍会增加阻挡数，且保留真伤灼烧。';
-  for (const key of ['desc', 'descRaw', 'effectDesc', 'effectDescRaw']) if (!bond[key].includes(note)) bond[key] += '\n' + note;
-  files.effects.bondeffect_egir.desc = bond.effectDesc;
-  files.effects.bondeffect_egir.descRaw = bond.effectDescRaw;
-  bond.spec.layerGain = '吞噬按被吞噬者等阶叠层；斯卡蒂、幽灵鲨普通击杀+2/上限20，精锐+4/上限30；归鲨普通+3/上限30，精锐+6/上限54，均叠加自身所有已激活盟约。灼烧击杀计入，友军吞噬不计入击杀敌人特性。克莱门莎不再通过击倒叠层。';
+  files.bonds.egirShip.spec.layerGain = '吞噬不叠层。斯卡蒂保留自身所有已激活盟约的击杀叠层；幽灵鲨获得时阿戈尔+2，战斗每5次击杀阿戈尔+1，上限10；归溟幽灵鲨获得时阿戈尔+4、不屈+6，切为替身时同排每2名在场干员使已激活阿戈尔+1、不屈+2。幽灵鲨与归溟幽灵鲨的精锐增加层数翻倍，幽灵鲨精锐战斗上限20。灼烧击杀计入，友军吞噬不计入击杀特质。';
 }

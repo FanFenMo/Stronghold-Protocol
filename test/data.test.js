@@ -147,16 +147,16 @@ test('bonds: 23 bonds with valid members, thresholds and effects', () => {
     assert.ok(effects[b.effectId], `${b.bondId}: effect`);
   }
   assert.deepEqual(bonds.yanShip.thresholds, [3, 6, 9]);
-  assert.deepEqual(bonds.egirShip.thresholds, [3, 5, 6]);
+  assert.deepEqual(bonds.egirShip.thresholds, [3, 5]);
   assert.deepEqual(bonds.suntShip.thresholds, [2, 5]);
   assert.equal(bonds.soloShip.maxCount, 1);
   // Every chess bond membership is mirrored in the bond member list.
   for (const c of normalChess) for (const b of c.bonds) assert.ok(bonds[b].members.includes(c.chessId), `${c.chessId} not in ${b}.members`);
 });
 
-test('garrisons: all referenced exist; 43 distinct effect keys', () => {
+test('garrisons: all referenced exist; 44 distinct effect keys', () => {
   const keys = new Set(Object.values(garrisons).map((g) => g.effectKey));
-  assert.equal(keys.size, 43);
+  assert.equal(keys.size, 44);
   for (const g of Object.values(garrisons)) {
     assert.ok(typeof g.eventType === 'string' && typeof g.desc === 'string', g.garrisonId);
     for (const o of g.owners) assert.ok(chess[o], `${g.garrisonId}: owner ${o}`);

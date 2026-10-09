@@ -5,7 +5,7 @@ import { applyAegirBandData } from './aegir-band-data.mjs';
 
 export function applyCustomData(files, custom) {
   applyAegirBurnData(files.bonds.egirShip, files.effects.bondeffect_egir);
-  applyAegirTraitData(files.garrisons);
+  applyAegirTraitData(files);
   applyAegirBandData(files);
   Object.assign(files.chess, custom.chess);
   Object.assign(files.tokens, custom.tokens);

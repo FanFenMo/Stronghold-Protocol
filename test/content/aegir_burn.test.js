@@ -1,126 +1,105 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
-import { DATA } from '../match/harness.js';
-import { fieldScenarios, runBattle } from '../../tools/golden.mjs';
 
 const positions = [[10, 4], [12, 2], [12, 4], [12, 6], [12, 8], [10, 8]];
-function fight({ count = 6, layers = 100, players, units, bandId, garrisonId } = {}) {
+function fight({ count = 5, layers = 100, units, bandId, garrisonId, players } = {}) {
   const chess = Object.fromEntries(positions.map((_, i) => [`g${i}_a`, chessRec({
     id: `g${i}_a`, bonds: ['egirShip'], skill: null, rangeGrid: [],
-    stats: { atk: 1000, maxHp: 1e6, def: 0, blockCnt: 2 },
+    stats: { atk: i === 0 ? 2000 : i === 1 ? 1500 : 1000, maxHp: 1e6, def: 0, blockCnt: 2 },
   })]));
   if (garrisonId) chess.g0_a.garrisonIds = [garrisonId];
   const h = makeBattle({
     defs: { chess, enemies: { dummy: enemyRec({ key: 'dummy', hp: 1e8, speed: 0, def: 99999, res: 100 }) } },
     units: units ?? positions.slice(0, count).map(([row, col], i) => ({ chessId: `g${i}_a`, row, col, dir: 'DOWN' })),
-    players, bandId, bonds: { egirShip: { count, active: count >= 3, tier: count >= 6 ? 3 : count >= 5 ? 2 : 1, layers } },
+    players, bandId, bonds: { egirShip: { count, active: count >= 3, tier: count >= 5 ? 2 : 1, layers } },
     hooks: ['damaged', 'kill'], captureNoisy: true, autoFinish: false, timeLimit: 180,
   });
   h.step();
   return h;
 }
-const burns = (h, u) => h.hooksOf('damaged').filter(c => c.source === u && c.dmg.tags.includes('bond:egir:burn'));
+const burns = (h, u) => h.hooksOf('damaged').filter(c => (!u || c.source === u) && c.dmg.tags.includes('bond:egir:burn'));
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
 
-test('six Aegir: exactly 12 surrounding tiles, every 0.5 s; true damage uses live ATK and layers', () => {
-  const h = fight();
-  const u = h.unit('g0_a');
+test('five Aegir: 12 surrounding tiles every 0.5 s; true damage is 5% of live ATK with no layer term', () => {
+  const h = fight(), u = h.unit('g0_a');
   const offsets = [[1,-1],[1,0],[1,1],[0,-1],[0,1],[-1,-1],[-1,0],[-1,1],[2,0],[-2,0],[0,2],[0,-2]];
   const targets = offsets.map(([dr, dc]) => h.spawn('dummy', { pos: [u.tileR + dr, u.tileC + dc] }));
   const outside = [[0,0],[2,1],[1,2],[0,3]].map(([dr, dc]) => h.spawn('dummy', { pos: [u.tileR + dr, u.tileC + dc] }));
-  h.run(0.4);
-  assert.equal(burns(h, u).length, 0);
-  h.run(0.1);
-  assert.equal(burns(h, u).length, 12);
-  for (const c of burns(h, u)) { assert.equal(c.dmg.type, 'true'); close(c.amount, 175); assert.ok(targets.includes(c.target)); }
+  h.run(0.4); assert.equal(burns(h, u).length, 0);
+  h.run(0.1); assert.equal(burns(h, u).length, 12);
+  for (const c of burns(h, u)) { assert.equal(c.dmg.type, 'true'); close(c.amount, 100); assert.ok(targets.includes(c.target)); }
   assert.ok(burns(h, u).every(c => !outside.includes(c.target)));
   h.b.addBuff(u, { key: 'test:atk', mods: { atkPct: 1 }, persist: true });
-  h.b.addLayers('p1', 'egirShip', 100, 'test');
+  h.b.addLayers('p1', 'egirShip', 400, 'test');
   h.run(0.5);
-  for (const c of burns(h, u).slice(12)) close(c.amount, 1100);
+  for (const c of burns(h, u).slice(12)) close(c.amount, 200);
   assert.equal(burns(h, u).length, 24);
   checkInvariants(h.b);
 });
 
-test('actual covenant burns trigger all six operator kill traits and stop at their per-round caps', () => {
-  for (const [gid, gain, cap] of [['garrison_38_a',2,20],['garrison_38_b',4,30],['garrison_46_a',2,20],['garrison_46_b',4,30],['garrison_40_a',3,30],['garrison_40_b',6,54]]) {
-    const h = fight({ garrisonId: gid });
-    for (let i = 0; i < 20; i++) {
-      const e = h.spawn('dummy', { pos: [9, 3] });
-      e.hp = 1;
-    }
-    h.run(0.5);
-    assert.equal(h.unit('g0_a').stats.kills, 20);
-    assert.equal(h.result().perPlayer.p1.layerGains.egirShip, cap, `${gid}: ${gain}/${cap}`);
-  }
-});
-
-test('five Aegir do not burn; six remove only devour block, retaining ATK and layer gain', () => {
-  const five = fight({ count: 5 });
-  five.spawn('dummy', { pos: [10,5] });
-  five.run(1);
-  assert.equal(burns(five, five.unit('g0_a')).length, 0);
-  for (const count of [5, 6]) {
-    const h = fight({ count, layers: 0, units: [{ chessId: 'g0_a', row: 10, col: 4 }, { chessId: 'g1_a', row: 10, col: 5 }] });
-    close(h.unit('g0_a').s.atk, 2000);
-    assert.equal(h.unit('g0_a').s.blockCnt, count === 6 ? 2 : 4);
-    assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 1);
-  }
-});
-
-test('burn kill is credited to its operator; dead sources stop pulsing', () => {
-  const h = fight();
-  const u = h.unit('g0_a');
-  const e = h.spawn('dummy', { pos: [9, 3] });
-  e.hp = 1;
-  h.run(0.5);
-  assert.equal(h.hooksOf('kill').find(c => c.victim === e)?.killer, u);
-  const n = burns(h, u).length;
-  h.b.retreat(u);
-  h.spawn('dummy', { pos: [9, 3] });
-  h.run(1);
-  assert.equal(burns(h, u).length, n);
-});
-
-test('halved burn: 120 layers clear a 10000 HP mob; 400 clear the 675000 HP pool, 200 need more than 150 s', () => {
-  const hp = DATA.bosses.boss_1.bloodPoint.NORMAL;
-  const times = [];
-  for (const layers of [100, 200, 400]) {
-    const h = fight({ layers });
-    const e = h.spawn('dummy', { pos: [11, 5] }); // three 1000-ATK members overlap this tile
-    e.hp = hp;
-    h.runUntil(() => !e.alive, 150);
-    times.push(e.alive ? Infinity : h.b.time);
+test('four Aegir do not burn; five and six activate, with only the two strongest sources', () => {
+  for (const count of [4, 5, 6]) {
+    const h = fight({ count }); h.spawn('dummy', { pos: [11, 3] }); h.run(0.5);
+    assert.deepEqual(burns(h).map(c => c.source.defId), count >= 5 ? ['g0_a', 'g1_a'] : []);
     checkInvariants(h.b);
   }
-  assert.equal(times[0], Infinity);
-  assert.equal(times[1], Infinity);
-  assert.ok(times[2] > 45 && times[2] < 65 && times[2] < times[1] / 3, String(times));
-  const h = fight({ layers: 120 });
-  const e = h.spawn('dummy', { pos: [9, 3] });
-  e.hp = 10000;
-  assert.ok(h.runUntil(() => !e.alive, 24));
 });
 
-test('real standard boss: six fixed elite Aegir clear mobs at 120 layers, beat the boss at 220, and dominate at 400', () => {
-  const ids = ['chess_char_1_04_b', 'chess_char_2_07_b', 'chess_char_3_05_b', 'chess_char_3_09_b', 'chess_char_4_09_b', 'chess_char_4_12_b'];
-  const template = fieldScenarios().find(s => s.id === 'boss-boss_1-solo');
-  const results = [120, 220, 400].map(layers => {
-    const sc = structuredClone(template), p = sc.players[0];
-    p.units = p.units.filter(u => u.kind !== 'token').slice(0, 6).map((u, i) => ({ ...u,
-      chessId: ids[i], dir: 'UP', items: [], skillIndex: 0, moduleIndex: 0,
-    }));
-    p.bandId = null;
-    p.bonds = { egirShip: { count: 6, tier: 3, active: true, layers } };
-    sc.modeId = 'mode_single_normal';
-    sc.boss = { poolHp: DATA.bosses.boss_1.bloodPoint.NORMAL, poolMax: DATA.bosses.boss_1.bloodPoint.NORMAL };
-    return runBattle(sc, { recordEvents: false });
-  });
-  assert.equal(results[0].players.p1.killed, results[0].players.p1.total);
-  assert.ok(results[0].bossHpLeft > 0);
-  assert.equal(results[1].bossHpLeft, 0);
-  assert.ok(results[1].time > 120 && results[1].time < 200);
-  assert.equal(results[2].bossHpLeft, 0);
-  assert.ok(results[2].time > 35 && results[2].time < 70 && results[2].time < results[1].time / 2);
+test('8 s burn / 6 s rest repeats; 16 pulses per active window, no hits in the rest window', () => {
+  const h = fight(), u = h.unit('g0_a'); h.spawn('dummy', { pos: [9, 3] });
+  const times = [];
+  h.b.on('damaged', c => { if (c.source === u && c.dmg.tags.includes('bond:egir:burn')) times.push(h.b.time); });
+  h.run(8); assert.equal(times.length, 16); close(times[0], 0.5); close(times.at(-1), 8);
+  h.run(5.9); assert.equal(times.length, 16);
+  h.run(0.5); assert.equal(times.length, 16);
+  h.run(0.1); assert.equal(times.length, 17); close(times.at(-1), 14.5);
+  h.run(7.5); assert.equal(times.length, 32); close(times.at(-1), 22);
+  checkInvariants(h.b);
+});
+
+test('top two sources update after ATK changes and exclude dead or retreated operators', () => {
+  const h = fight(); h.spawn('dummy', { pos: [11, 3] }); h.run(0.5);
+  assert.deepEqual(burns(h).map(c => c.source.defId), ['g0_a', 'g1_a']);
+  const boosted = h.unit('g2_a');
+  h.b.addBuff(boosted, { key: 'test:atk', mods: { atkFlat: 5000 }, persist: true }); h.run(0.5);
+  assert.deepEqual(burns(h).slice(2).map(c => c.source.defId), ['g2_a', 'g0_a']);
+  h.b.retreat(boosted); h.run(0.5);
+  assert.deepEqual(burns(h).slice(4).map(c => c.source.defId), ['g0_a', 'g1_a']);
+  h.b.dealDamage(null, h.unit('g0_a'), { amount: 1e9, type: 'true' }); // first knock-out revives at five
+  h.b.dealDamage(null, h.unit('g0_a'), { amount: 1e9, type: 'true' });
+  h.run(0.5);
+  assert.ok(burns(h).slice(6).every(c => c.source.alive && c.source !== boosted && c.source !== h.unit('g0_a')));
+  checkInvariants(h.b);
+});
+
+test('equal-ATK sources have a deterministic left-then-top tie break', () => {
+  const h = fight();
+  for (const u of h.allies()) h.b.addBuff(u, { key: 'test:equal', mods: { atkFlat: 1000 - u.base.atk } });
+  h.spawn('dummy', { pos: [11, 3] }); h.run(0.5);
+  assert.deepEqual(burns(h).map(c => c.source.defId), ['g1_a', 'g2_a']);
+});
+
+test('burn kill is credited to its source and uses updated Skadi/Specter caps', () => {
+  for (const [gid, cap] of [['garrison_38_a',20], ['garrison_38_b',30], ['garrison_46_a',10], ['garrison_46_b',20]]) {
+    const h = fight({ garrisonId: gid });
+    for (let i = 0; i < 50; i++) h.spawn('dummy', { pos: [9, 3] }).hp = 1;
+    h.run(0.5);
+    const u = h.unit('g0_a');
+    assert.equal(u.stats.kills, 50);
+    assert.ok(h.hooksOf('kill').every(c => c.killer === u));
+    assert.equal(h.result().perPlayer.p1.layerGains.egirShip, cap, gid);
+    checkInvariants(h.b);
+  }
+});
+
+test('devour ATK scales 50%, 100%, 200%, 300% and beyond; block is always added, layers never are', () => {
+  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.5],[100,1],[300,2],[500,3],[700,4]]) {
+    const h = fight({ bandId, count, layers, units: [{ chessId: 'g0_a', row: 10, col: 4 }, { chessId: 'g1_a', row: 10, col: 5 }] });
+    close(h.unit('g0_a').s.atk, 2000 + 1500 * scale);
+    assert.equal(h.unit('g0_a').s.blockCnt, 4);
+    assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, layers);
+    assert.deepEqual(h.result().perPlayer.p1.layerGains, {});
+    checkInvariants(h.b);
+  }
 });

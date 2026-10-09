@@ -100,11 +100,22 @@ test('custom roster survives rebuild overlay idempotently and retains exactly th
     files.garrisons[id].bbStr={bond_type:'bond_by_id',bond_id:'egirShip'};
   }
   applyCustomData(files,custom);const first=JSON.stringify(files);applyCustomData(files,custom);assert.equal(JSON.stringify(files),first);
-  for(const [id,per,cap]of [['garrison_38_a',2,20],['garrison_38_b',4,30],['garrison_46_a',2,20],['garrison_46_b',4,30],['garrison_40_a',3,30],['garrison_40_b',6,54]]) {
+  for(const [id,per,cap]of [['garrison_38_a',2,20],['garrison_38_b',4,30]]) {
     const g=files.garrisons[id];
     assert.equal(g.effectKey,'act1autochess_gar_event_selfkillenemy');
     assert.deepEqual(g.bb,{check_cnt:1,bond_add_count:per,max_add_count_per_battle:cap});
     assert.equal(g.bbStr.bond_type,'bond_self');
+  }
+  for(const [suffix,mul]of [['a',1],['b',2]]) {
+    const kill=files.garrisons[`garrison_46_${suffix}`],swap=files.garrisons[`garrison_40_${suffix}`];
+    assert.equal(kill.effectKey,'act1autochess_gar_event_selfkillenemy');
+    assert.deepEqual(kill.bb,{check_cnt:5,bond_add_count:mul,max_add_count_per_battle:10*mul});
+    assert.equal(kill.bbStr.bond_id,'egirShip');
+    assert.equal(swap.effectKey,'act1autochess_gar_event_dollswap');
+    assert.deepEqual(swap.bb,{bond_add_count_multi:mul,bond_add_count_divide:2});
+    assert.equal(swap.bbStr.bond_id,'egirShip');
+    assert.ok(files.chess[`chess_char_2_07_${suffix}`].garrisonIds.includes(`garrison_custom_specter_gain_${suffix}`));
+    assert.ok(files.chess[`chess_char_5_13_${suffix}`].garrisonIds.includes(`garrison_custom_specter2_gain_${suffix}`));
   }
   for(const [base,bond,tier]of [[bases[0],'yanShip',5],[bases[1],'siracusaShip',6],[bases[2],'yanShip',6]])for(const s of ['a','b']){
     const c=files.chess[base+s];assert.deepEqual(c.bonds,[bond]);assert.equal(c.tier,tier);
