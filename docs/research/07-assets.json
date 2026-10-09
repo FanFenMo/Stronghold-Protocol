@@ -18088,6 +18088,93 @@
    },
    "sfx": {},
    "source": "https://prts.wiki/w/%E9%85%92%E7%A5%9E"
+  },
+  "char_4204_mantra": {
+   "name": "真言",
+   "rarity": "TIER_6",
+   "profession": "CASTER",
+   "subProfessionId": "primcaster",
+   "nationId": "rhodes",
+   "chess": [
+    {
+     "chessId": "chess_custom_6_mantra_a",
+     "chessLevel": 6,
+     "chessType": "NORMAL",
+     "defaultSkillIndex": 2,
+     "evolvePhase": "PHASE_2"
+    }
+   ],
+   "avatar": {
+    "e0e1": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_4204_mantra.png"
+    },
+    "e2": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_4204_mantra_2.png"
+    }
+   },
+   "portrait": {
+    "e0e1": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4204_mantra_1.png"
+    },
+    "e2": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4204_mantra_2.png"
+    }
+   },
+   "skills": [
+    {
+     "index": 0,
+     "skillId": "skchr_mantra_1",
+     "iconId": "skchr_mantra_1",
+     "icon": {
+      "url": "https://media.prts.wiki/1/12/%E6%8A%80%E8%83%BD_%E5%85%B1%E9%B8%A3%E6%BA%83%E7%BC%A9.png"
+     },
+     "sfx": {}
+    },
+    {
+     "index": 1,
+     "skillId": "skchr_mantra_2",
+     "iconId": "skchr_mantra_2",
+     "icon": {
+      "url": "https://media.prts.wiki/f/fe/%E6%8A%80%E8%83%BD_%E6%84%8F%E8%AF%86%E8%81%94%E5%8D%8F.png"
+     },
+     "sfx": {}
+    },
+    {
+     "index": 2,
+     "skillId": "skchr_mantra_3",
+     "iconId": "skchr_mantra_3",
+     "icon": {
+      "url": "https://media.prts.wiki/a/a5/%E6%8A%80%E8%83%BD_%E6%97%A0%E8%A8%80%E4%B8%BA%E7%9C%9F.png"
+     },
+     "sfx": {}
+    }
+   ],
+   "battleSpine": {
+    "front": {
+     "skel": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra/Front/char_4204_mantra.skel"
+     },
+     "atlas": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra/Front/char_4204_mantra.atlas"
+     },
+     "png": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra/Front/char_4204_mantra.png"
+     }
+    },
+    "back": {
+     "skel": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra/Back/char_4204_mantra.skel"
+     },
+     "atlas": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra/Back/char_4204_mantra.atlas"
+     },
+     "png": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4204_mantra/char_4204_mantra/Back/char_4204_mantra.png"
+     }
+    }
+   },
+   "sfx": {},
+   "source": "https://prts.wiki/w/%E7%9C%9F%E8%A8%80"
   }
  },
  "tokens": {

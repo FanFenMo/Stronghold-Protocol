@@ -172,6 +172,7 @@ const num = (v, d) => { const n = typeof v === 'number' ? v : typeof v === 'stri
  * kinds fall back to a keyword guess, then to a generic sparkle (fxSpec).
  */
 export const FX_KINDS = Object.freeze({
+  mantraChain: { a: 'strike', c: 0x63e2e9, r: 1 },
   phatm2Dream: { a: 'zone', c: 0xb871b5, r: 1.3, dur: .5 },
   phatm2Cage: { a: 'zone', c: 0xe4a0d5, r: .5, dur: 1 },
   wisdelShock: { a: 'blast', c: 0xffb657, r: .9 },

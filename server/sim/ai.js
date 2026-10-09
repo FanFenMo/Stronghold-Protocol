@@ -673,7 +673,12 @@ function enemyAttack(b, e) {
   // 麻痹 (ba.palsy): each stack interrupts one normal attack
   const palsy = e.buffs.length ? e.findBuff('palsy') : null;
   if (palsy) {
-    if (--palsy.stacks <= 0) b.removeBuff(e, palsy); else e.markDirty();
+    const ctx = { enemy: e, keepProbability: 0 };
+    if (b._hooks.palsyTrigger) b.emit('palsyTrigger', ctx);
+    if (!e.alive) return false;
+    if (!(ctx.keepProbability > 0 && b.rng.chance(ctx.keepProbability))) {
+      if (--palsy.stacks <= 0) b.removeBuff(e, palsy); else e.markDirty();
+    }
     e.atkCd = e.s.interval;
     // the interrupted attack ends its clip: the old short stand after it (PRTS 异常效果 麻痹: 0.5 s 麻痹震颤 — not modelled)
     if (!e.blockedBy && radius > 0 && !(e.profile?.attackMoves ?? def.attackMoves)) e.atkStandUntil = b.time + ATTACK_PAUSE;
