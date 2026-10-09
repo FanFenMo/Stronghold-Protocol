@@ -173,7 +173,7 @@ export function selectSkillSpec(kit, bb, raw, def) {
  */
 export function skillSpecSource(def, kits = KITS) {
   const bare = String(def?.baseId ?? def?.id ?? '').replace(/_[ab]$/, '');
-  const f = kits?.[def?.baseId] ?? kits?.[def?.id] ?? kits?.[bare];
+  const f = kits?.[def?.baseId] ?? kits?.[def?.id] ?? kits?.[def?.raw?.supportKitId] ?? kits?.[bare];
   if (typeof f !== 'function') return 'none';
   let k = null;
   try { k = f(def.skill?.bb ?? {}, def.raw ?? def, def); } catch { return 'generic'; }

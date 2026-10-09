@@ -534,8 +534,12 @@ export function harmonyMembers(priv, getChess = () => null) {
  */
 export function bondMembers(bond, priv, banned = [], getChess = () => null, getItem = () => null) {
   const bannedSet = banned instanceof Set ? banned : new Set(Array.isArray(banned) ? banned : []);
+  // A watched teammate's field has no private selection; deployed external units prove their roster membership.
+  const fieldMembers = new Set((priv?.board || []).filter(p => p?.kind === 'chess')
+    .map(p => getChess(p.id)?.baseId || p.id));
   const members = (Array.isArray(bond?.visibleMembers) && bond.visibleMembers.length ? bond.visibleMembers : (Array.isArray(bond?.members) ? bond.members : []))
-    .filter(id => supportAvailable(getChess(id), priv?.supportOperators));
+    .filter(id => supportAvailable(getChess(id), priv?.supportOperators)
+      || (priv?.supportOperators === undefined && fieldMembers.has(id)));
   const baseOf = (id) => getChess(id)?.baseId || (typeof id === 'string' ? id.replace(/_b$/, '_a') : id);
   const onBoard = new Set();
   const owned = new Set();

@@ -13,7 +13,7 @@
 //            --twice  determinism: compute twice in this process (the second pass in reverse order) and compare
 //
 // Families (all scenarios are generated from data/*.json in a fixed order — no randomness outside the seeds):
-//   roster   49 battles: every visible chess record (normal + elite) with every selectable skill and module (DESIGN
+//   roster   58 battles: every visible chess record (normal + elite) with every selectable skill and module (DESIGN
 //            §16; 575 loadouts), 12 per battle with distinct chess ids, on a real stage (all 11, in turn), against the
 //            round's real wave (server/match/waves.js buildNormalWave: faction picks, enemy scale) three times over plus
 //            every non-leader enemy kind of data/enemies.json twice as extra spawns (half of them bounties); melee

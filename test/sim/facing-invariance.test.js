@@ -28,6 +28,8 @@ const HELP = [[1, 1], [0, -1], [-1, 0]];
 const helpers = Object.fromEntries(HELP.map((_, i) => [`t_help${i}`, chessRec({ id: `t_help${i}`, profession: 'SNIPER', rangeGrid: [[0, 0]], skill: null, stats: { maxHp: 4000 + 500 * i, atk: 0, blockCnt: 0 } })]));
 // 凯瑟琳 hands out her devices front-most operator first by board column — a board position (DESIGN), not a facing
 const BOARD_POSITION_RULES = new Set(['chess_char_4_11_a', 'chess_char_4_11_b']);
+// PRTS 维什戴尔: 魂灵之影 ties use map-bottom row then map-left column, independent of facing.
+for (const tier of [5, 6]) for (const suffix of ['a', 'b']) BOARD_POSITION_RULES.add(`chess_custom_${tier}_wisdel_${suffix}`);
 const walkRoute = (pos) => ({ motion: 'WALK', start: pos, checkpoints: [{ type: 'WAIT', time: 1e4 }], end: pos });
 
 function scenario(chessId, dir, secs) {

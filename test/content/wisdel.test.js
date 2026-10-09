@@ -44,3 +44,19 @@ test('support token variants retain owner level, skill alternatives and deploy c
   assert.equal(t.variants[rec.chessId].level,rec.status.level);
  }
 });
+
+test('Wisdel: equal-distance shadow tiles use map-bottom then map-left for every facing (PRTS)',()=>{
+ const id='chess_custom_6_wisdel_a',raw=getData().chess[id];
+ const stage={id:'open',rows:Array.from({length:19},()=> '#'+ 'r'.repeat(19)+'#'),devices:[]};
+ for(const dir of ['RIGHT','UP','LEFT','DOWN']){
+  const h=makeBattle({stage,rect:{r0:0,r1:18,c0:0,c1:20},autoFinish:false,
+   defs:{chess:{[id]:{...raw,rangeGrid:[[0,0],[1,0],[-1,0],[0,1],[0,-1]]}}},
+   units:[{chessId:id,row:9,col:9,dir,abs:true}]});
+  h.step();const u=h.unit(id);
+  const shadow=h.allies().find(t=>t.ownerUnit===u);
+  assert.deepEqual([shadow.tileR,shadow.tileC],[8,9],dir);
+  cast(u);
+  assert.ok(h.allies().some(t=>t.ownerUnit===u&&t.tileR===9&&t.tileC===8),dir);
+  assert.deepEqual(h.b.errors,[]);
+ }
+});

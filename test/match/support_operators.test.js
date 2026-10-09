@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { makeMatch, DATA } from './harness.js';
 import { GameData } from '../../server/match/gamedata.js';
 import { bondMembers } from '../../public/js/ui/gameLogic.js';
+import { ownerBoard } from '../../public/js/ui/watchBonds.js';
 import { checkSupportOperators, EMPTY_SUPPORT_OPERATORS, supportAvailable } from '../../shared/supportOperators.js';
 
 const id5 = 'chess_custom_5_ascln_a', id6 = 'chess_custom_6_ascln_a';
@@ -37,6 +38,15 @@ test('selected external operators have the requested tier, original kit and norm
       assert.equal(rec.supportKitId, c.supportKitId);
     }
   }
+});
+
+test('watching a teammate keeps their deployed external member visible without revealing unselected candidates', () => {
+  const field = { units: [{ kind: 'op', ownerId: 'p2', defId: lookup(id6).goldenId }] };
+  const rows = bondMembers(DATA.bonds.emptyShip, ownerBoard(field, 'p2'), [], lookup);
+  assert.equal(rows.find(c => c.id === id6)?.onBoard, true);
+  assert.deepEqual(rows.filter(c => lookup(c.id)?.supportOperator).map(c => c.id), [id6]);
+  const mine = { board: [{ kind: 'chess', id: id6 }], supportOperators: EMPTY_SUPPORT_OPERATORS };
+  assert.ok(!bondMembers(DATA.bonds.emptyShip, mine, [], lookup).some(c => lookup(c.id)?.supportOperator));
 });
 
 test('external picks are personal: shop, rewards and direct grants cannot bypass selection', () => {

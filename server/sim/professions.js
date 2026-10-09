@@ -490,6 +490,7 @@ export const SUB = Object.freeze({
   crusher: P({ hitAllBlocked: true }),
   fearless: P({}),
   fighter: P({}),
+  primguard: P({}), // 本源近卫: normal physical melee; erosion is attached by the operator kit.
   hammer: P({ splashRadius: 1.0, splashScale: 0.5, splashOthersOnly: true }),
   instructor: P({ dmgMul: (battle, unit, target) => (target.blockedBy === unit ? 1 : (unit.profile.unblockedScale ?? 1.2)) }),
   librator: P({ noAttackUnlessSkill: true, install: installLibrator }),

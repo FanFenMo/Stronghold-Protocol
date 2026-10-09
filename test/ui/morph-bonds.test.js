@@ -30,7 +30,7 @@ const ISO_B = 'chess_item_6_09_e_b';
 const HAMMER = 'chess_item_1_01_e_a'; // 维式重锤 → 维多利亚
 const SHIELD = 'chess_item_1_02_e_a'; // 坚守盾牌 → 坚守
 const WEARER = 'chess_char_1_01_a'; // 隐现 (拉特兰 / 迅捷), not 维多利亚
-const VIC = Object.values(chess).filter((c) => c.visible && !c.isGolden && c.bonds.includes('victoriaShip')).map((c) => c.chessId).sort();
+const VIC = Object.values(chess).filter((c) => c.visible && !c.isGolden && !c.supportOperator && c.bonds.includes('victoriaShip')).map((c) => c.chessId).sort();
 
 let uid = 0;
 const itemPiece = (id) => ({ uid: ++uid, id });
@@ -77,7 +77,7 @@ describe('变形同构体 — the bond popup\'s member list', () => {
     assert.equal(w.granted, true, 'marked as converted');
     assert.equal(w.owned, true);
     assert.equal(w.name, chess[WEARER].name);
-    assert.equal(rows.length, b.visibleMembers.length + 1, 'the converted operator joins the list');
+    assert.equal(rows.length, VIC.length + 1, 'the converted operator joins the list; unselected external members stay hidden');
     assert.equal(rows.filter((r) => r.granted).length, 1);
     assert.deepEqual(w.items, [ISO, HAMMER], 'the row carries the wearer\'s item ids (its card shows the pair)');
     assert.ok(rows.filter((r) => !r.granted).every((r) => !('items' in r)), 'plain members carry none');
@@ -149,7 +149,7 @@ describe('变形同构体 — what the popup and the card show', () => {
     const entry = { bondId: 'victoriaShip', count: 3, active: true, tier: 1, layers: 0, thresholds: [3, 6], countsHand: false };
     const v = BondPopup({ bondId: 'victoriaShip', entry, priv, onClose() {} });
     const head = [...walk(v)].filter((x) => x.type === 'h4').map(textOf).find((t) => t.startsWith('成员'));
-    assert.equal(head.replace(/\s+/g, ''), `成员3/${bonds.victoriaShip.visibleMembers.length + 1}`);
+    assert.equal(head.replace(/\s+/g, ''), `成员3/${VIC.length + 1}`);
     assert.match(textOf([...walk(v)].find((x) => hasClass(x, 'bpop__facts'))), /在场\s*3/);
     const iso = [...walk(v)].filter((x) => hasClass(x, 'bpop__member') && hasClass(x, 'is-granted'));
     assert.equal(iso.length, 1);
