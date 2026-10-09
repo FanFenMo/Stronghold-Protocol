@@ -295,6 +295,24 @@ describe('8: 特质 right under the detail card\'s header', () => {
     assert.deepEqual(bare.map((b) => b.key), ['head', 'trait', 'stats', 'skill', 'module', 'talents']);
   });
 
+  for (const suffix of ['a', 'b']) test(`玛恩纳 ${suffix}: 原特质和卡西米尔技力回复说明同时显示在属性之前`, async () => {
+    await data.loadAll('chess', 'garrisons', 'assets', 'bonds', 'items');
+    const c = data.lookup('chess', `chess_char_5_19_${suffix}`);
+    const blocks = ChessDetail({ chess: c, piece: null, editable: false, bonds: [], loadout: null });
+    const rendered = blocks.filter((b) => b.props?.garrison);
+    assert.deepEqual(rendered.map((b) => b.props.garrison.garrisonId), c.garrisonIds);
+    assert.equal(rendered.length, 2);
+    const descriptions = rendered.map((b) => {
+      const section = b.type(b.props);
+      assert.ok(hasClass(section, 'dgarrison'));
+      return [...walk(section)].find((n) => n.props?.text != null).props.text;
+    });
+    assert.match(descriptions[0], /部署后100秒/);
+    assert.match(descriptions[1], /每叠加1层.*技力回复速度\+0\.015点\/秒/);
+    assert.equal(new Set(blocks.map((b) => b.key)).size, blocks.length);
+    assert.ok(blocks.indexOf(rendered[1]) < blocks.findIndex((b) => b.key === 'stats'));
+  });
+
   test('the 特质 chip carries the garrison\'s official type icon (eventTypeIcon) — the spoked 特异化 glyph only on 特异化', async () => {
     await data.loadAll('garrisons', 'assets', 'chess');
     const all = data.list('garrisons');
