@@ -2,6 +2,10 @@
 export function applyCustomData(files, custom) {
   Object.assign(files.chess, custom.chess);
   Object.assign(files.tokens, custom.tokens);
+  if (custom.garrisons) Object.assign(files.garrisons, custom.garrisons);
+  for (const [id, additions] of Object.entries(custom.garrisonAdditions || {})) {
+    for (const gid of additions) if (!files.chess[id].garrisonIds.includes(gid)) files.chess[id].garrisonIds.push(gid);
+  }
   const added = { ...custom.chess };
   for (const c of Object.values(custom.chess).filter(c => c.supportOperator)) {
     const kitId = c.baseId;

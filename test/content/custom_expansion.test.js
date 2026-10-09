@@ -93,7 +93,7 @@ test('standard solo bond is enabled for one member, disabled at two, represented
 });
 test('custom roster survives rebuild overlay idempotently and retains exactly the assigned bonds',()=>{
   const custom=JSON.parse(readFileSync(new URL('../../tools/data/custom-operators.json',import.meta.url),'utf8'));
-  const files=structuredClone({chess:DATA.chess,bonds:DATA.bonds,config:DATA.config,tokens:DATA.tokens});
+  const files=structuredClone({chess:DATA.chess,bonds:DATA.bonds,config:DATA.config,tokens:DATA.tokens,garrisons:DATA.garrisons});
   applyCustomData(files,custom);const first=JSON.stringify(files);applyCustomData(files,custom);assert.equal(JSON.stringify(files),first);
   for(const [base,bond,tier]of [[bases[0],'yanShip',5],[bases[1],'siracusaShip',6],[bases[2],'yanShip',6]])for(const s of ['a','b']){
     const c=files.chess[base+s];assert.deepEqual(c.bonds,[bond]);assert.equal(c.tier,tier);
