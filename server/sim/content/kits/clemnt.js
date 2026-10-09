@@ -56,7 +56,7 @@ function capsule(b,u,bb) {
 export default function clemnt(bb,chess,def) {
   const talent=def.talents[0].bb,guard=def.talents[1].bb;
   return {
-    profile:{atkFX:'clemntSlash'},
+    trait:{afterAttack(b,u,targets){for(const e of targets)b.fx('clemntSlash',{id:u.id,x:e.x,y:e.y});}},
     skills:{
       skchr_clemnt_1:{kind:'instant',attack:{atkScale:bb.atk_scale},
         onHit({battle,unit,target,dealt}){erosion(battle,unit,target,dealt*bb.ep_damage_ratio);}},
@@ -69,7 +69,9 @@ export default function clemnt(bb,chess,def) {
         },
         onEnd({battle,unit}){battle.removeBuff(unit,'clemnt:launch');}},
       skchr_clemnt_3:{kind:'ammo',ammo:bb.trigger_time,targeting:{rangeGrid:def.skill.rangeGrid,maxTargets:bb['attack@max_target']},
-        attack:{atkScale:bb['attack@atk_scale']},onAttack(ctx){ctx.noAmmo=true;},
+        attack:{atkScale:bb['attack@atk_scale'],onEachHit({battle,unit,target,dealt}){
+          erosion(battle,unit,target,dealt*bb['attack@ep_damage_ratio']);
+        }},onAttack(ctx){ctx.noAmmo=true;},
         onStart({unit}){unit.mem.clemnt.marks.clear();}},
     },
     talents:[{install(b,u){
@@ -82,10 +84,6 @@ export default function clemnt(bb,chess,def) {
           if((Math.round(source.x)-u.tileC)*dx+(Math.round(source.y)-u.tileR)*dy>=0)
             dmg.mul*=1-(source.def.tags?.includes('seamonster')?guard.damage_resistance_seamonster:guard.damage_resistance_normal);
         }
-      },{owner:u});
-      b.on('damaged',({source,target,dealt,dmg})=>{
-        if(source===u&&dmg.isAttack&&dealt>0&&u.skill.id==='skchr_clemnt_3'&&u.skill.active)
-          erosion(b,u,target,dealt*bb['attack@ep_damage_ratio']);
       },{owner:u});
       b.on('elementBurst',({target,element})=>{
         if(live(u)&&u.skill.active&&u.skill.id==='skchr_clemnt_3'&&element==='erosion'&&target.side==='enemy'&&!target.isFlying)

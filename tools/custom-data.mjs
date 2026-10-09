@@ -14,8 +14,8 @@ export function applyCustomData(files, custom) {
         identifier: c.identifier + (tier === c.tier ? 0 : 1000) };
       files.chess[chessId] = added[chessId] = rec;
       for (const token of Object.values(files.tokens)) {
-        const owner = token.owners?.find(o => o.chessId === c.chessId);
-        if (owner && !token.owners.some(o => o.chessId === chessId)) token.owners.push({ ...structuredClone(owner), chessId });
+        if (token.owners?.includes(c.chessId) && !token.owners.includes(chessId)) token.owners.push(chessId);
+        if (token.variants?.[c.chessId]) token.variants[chessId] = structuredClone(token.variants[c.chessId]);
       }
     }
   }

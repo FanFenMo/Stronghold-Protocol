@@ -26,7 +26,7 @@ test('Clemens S1: erosion uses actual dealt damage',()=>{
  h.b.forceAttack(u,[e]);assert.ok(Math.abs(e.elem.erosion-(u.s.atk*2.05-e.s.def)*.25)<1e-6);
 });
 test('Clemens S3: normal attacks preserve ammo, global erosion spends one and bombards only the ground cross',()=>{
- const {h,u,e}=field();cast(u);h.b.forceAttack(u,[e]);assert.equal(u.skill.ammoLeft,10);
+ const {h,u,e}=field();cast(u);h.b.forceAttack(u,[e]);assert.equal(u.skill.ammoLeft,10);assert.ok(e.elem.erosion>0);
  // A burst can originate from another unit anywhere on the field.
  const far=h.spawn('e',{pos:[11,8]});h.b.dealDamage(null,far,{amount:1000,type:'element',element:'erosion'});
  h.step();assert.equal(u.skill.ammoLeft,9);

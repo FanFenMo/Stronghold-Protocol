@@ -172,6 +172,9 @@ const num = (v, d) => { const n = typeof v === 'number' ? v : typeof v === 'stri
  * kinds fall back to a keyword guess, then to a generic sparkle (fxSpec).
  */
 export const FX_KINDS = Object.freeze({
+  wisdelShock: { a: 'blast', c: 0xffb657, r: .9 },
+  wisdelExplosion: { a: 'blast', c: 0xff7140, r: 1.1, smoke: 0x372e2a },
+  wisdelSpirit: { a: 'strike', c: 0xf49278 },
   clemntSlash: { a: 'wave', c: 0x70ddd7, r: 1 },
   clemntCapsule: { a: 'element', c: 0x95fff2, pt: true },
   clemntWhirlpool: { a: 'zone', c: 0x49b9b7, r: 1.5, dur: 1 },
