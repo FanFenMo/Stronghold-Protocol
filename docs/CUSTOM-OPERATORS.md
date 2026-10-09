@@ -1,6 +1,6 @@
 # 外援干员与服务器部署
 
-`feature/support-operators` 包含火陈剑气边界修复、九名外援、网页配置和玛恩纳的卡西米尔技力特性。火陈修复另有独立分支 `bugfix/chen3-sword-wave-boundaries`。干员沿用项目的内容注册、浏览器／服务器共用战斗引擎、技能调配和素材下载流程；每名干员均有普通和精锐版本，三个技能可选，技能按原项目策略自动释放。
+`main` 是可运行版本的发布分支，包含火陈剑气边界修复、九名外援、网页配置和玛恩纳的卡西米尔技力特性。此次功能开发分支为 `feature/support-operators`，火陈修复另有独立分支 `bugfix/chen3-sword-wave-boundaries`。干员沿用项目的内容注册、浏览器／服务器共用战斗引擎、技能调配和素材下载流程；每名干员均有普通和精锐版本，三个技能可选，技能按原项目策略自动释放。
 
 在大厅或本局信息确认阶段打开「干员调配 → 外援干员」，为五本、六本各添加最多两名外援。同一干员不能重复添加或同时占据两档，九名候选均可放在任一档。配置保存在当前玩家的浏览器中，并随该玩家进入房间。确认本局信息后锁定，本局商店、奖励和盟约人员只纳入自己选中的外援；其他玩家的外援不会进入自己的卡池。未选外援的默认卡池保持原有 112 名干员。
 
@@ -39,7 +39,7 @@
 新服务器按原流程安装，只需取本 fork 的对应分支：
 
 ```bash
-git clone --branch feature/support-operators https://github.com/FanFenMo/Stronghold-Protocol.git
+git clone --branch main https://github.com/FanFenMo/Stronghold-Protocol.git
 cd Stronghold-Protocol
 npm ci
 npm run setup
@@ -50,8 +50,8 @@ npm start
 
 ```bash
 git remote add custom https://github.com/FanFenMo/Stronghold-Protocol.git
-git fetch custom feature/support-operators
-git switch --track custom/feature/support-operators
+git fetch custom main
+git switch --track custom/main
 npm ci
 npm run setup
 ```
