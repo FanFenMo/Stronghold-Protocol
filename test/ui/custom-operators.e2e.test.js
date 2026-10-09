@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Client, hasChrome, startRealServer, problemsOf, sleep } from '../e2e/client.mjs';
+import { getData } from '../../server/data.js';
 
 const IDS = ['chess_custom_5_ascln_a', 'chess_custom_6_oblvns_a', 'chess_custom_5_ascln_b', 'chess_custom_6_oblvns_b'];
 const enabled = process.env.SP_E2E === '1' && hasChrome();
@@ -24,6 +25,19 @@ test(`custom operators ${group}-${suffix}: drag chess onto the map and fight wit
     try {
       await c.open();
       await c.enter('双干员实战验收');
+      const records = getData().chess;
+      const supports = ids.map(id => records[records[id].baseId]).filter(c => c.supportOperator);
+      if (supports.length) {
+        await c.page.click('[data-testid="loadout-open"]');
+        await c.page.waitForSelector('[data-testid="support-open"]');
+        await c.page.click('[data-testid="support-open"]');
+        for (const rec of supports) {
+          const selector = `[data-testid="support-add-${rec.tier}-${rec.charId}"]`;
+          await c.page.waitForSelector(selector);
+          await c.page.click(selector);
+        }
+        await c.page.click('.lo-back');
+      }
       await c.click('.mode-card', '独立模拟');
       await c.click('.diff-card', '标准模拟');
       await c.click('.create-box button', '开始独立模拟');
