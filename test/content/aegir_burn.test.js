@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { DATA } from '../match/harness.js';
+import { fieldScenarios, runBattle } from '../../tools/golden.mjs';
 
 const positions = [[10, 4], [12, 2], [12, 4], [12, 6], [12, 8], [10, 8]];
 function fight({ count = 6, layers = 100, players, units, bandId } = {}) {
@@ -86,4 +87,26 @@ test('calibration: 100+ layers clear a 10000 HP mob; 200 layers beat the normal 
   const e = h.spawn('dummy', { pos: [9, 3] });
   e.hp = 10000;
   assert.ok(h.runUntil(() => !e.alive, 12));
+});
+
+test('real standard boss: six fixed elite Aegir clear mobs at 120 layers, beat the boss at 220, and dominate at 400', () => {
+  const ids = ['chess_char_1_04_b', 'chess_char_2_07_b', 'chess_char_3_05_b', 'chess_char_3_09_b', 'chess_char_4_09_b', 'chess_char_4_12_b'];
+  const template = fieldScenarios().find(s => s.id === 'boss-boss_1-solo');
+  const results = [120, 220, 400].map(layers => {
+    const sc = structuredClone(template), p = sc.players[0];
+    p.units = p.units.filter(u => u.kind !== 'token').slice(0, 6).map((u, i) => ({ ...u,
+      chessId: ids[i], dir: 'UP', items: [], skillIndex: 0, moduleIndex: 0,
+    }));
+    p.bandId = null;
+    p.bonds = { egirShip: { count: 6, tier: 3, active: true, layers } };
+    sc.modeId = 'mode_single_normal';
+    sc.boss = { poolHp: DATA.bosses.boss_1.bloodPoint.NORMAL, poolMax: DATA.bosses.boss_1.bloodPoint.NORMAL };
+    return runBattle(sc, { recordEvents: false });
+  });
+  assert.equal(results[0].players.p1.killed, results[0].players.p1.total);
+  assert.ok(results[0].bossHpLeft > 0);
+  assert.equal(results[1].bossHpLeft, 0);
+  assert.ok(results[1].time > 80 && results[1].time < 120);
+  assert.equal(results[2].bossHpLeft, 0);
+  assert.ok(results[2].time < 35 && results[2].time < results[1].time / 3);
 });
