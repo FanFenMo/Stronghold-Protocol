@@ -65,11 +65,11 @@ function prep() {
   return { h, ps, m, grants, settle, round };
 }
 
-test('3+1 devours across rounds grant exactly one recruit next round, limited by the receiving shop level', () => {
+test('5+1 devours across rounds grant exactly one recruit next round, limited by the receiving shop level', () => {
   const s = prep();
-  s.settle(3); s.round(2);
+  s.settle(5); s.round(2);
   assert.equal(s.grants.length, 0);
-  assert.equal(s.ps.counters['band:clementia:devoured'], 3);
+  assert.equal(s.ps.counters['band:clementia:devoured'], 5);
   s.settle(1);
   s.round(2);
   assert.equal(s.grants.length, 0, 'same round is too early');
@@ -84,7 +84,7 @@ test('3+1 devours across rounds grant exactly one recruit next round, limited by
 
 test('own and 联防 counts combine; multiple rewards, remainder and an exhausted pool are retained correctly', () => {
   const s = prep();
-  s.settle(5, 4);
+  s.settle(5, 8);
   assert.equal(s.ps.counters['band:clementia:pending'], 2);
   assert.equal(s.ps.counters['band:clementia:devoured'], 1);
   const roll = s.m.pool.roll;
