@@ -10,15 +10,16 @@ import { ROOT, PROTOCOL_TIMEOUT_MS, waitForFunctionLong } from './client.mjs';
 
 const timeoutError = (ms) => Object.assign(new Error(`Waiting failed: ${ms}ms exceeded`), { name: 'TimeoutError' });
 
-/** A page whose predicate turns true after `trueAfter` ms; each waitForFunction slice behaves like puppeteer's. */
+/** Advance the fake predicate by requested slices; Windows timer delays must not change the simulated slice count. */
 function fakePage(trueAfter) {
-  const t0 = Date.now();
+  let remaining = trueAfter;
   const calls = [];
   return {
     calls,
     waitForFunction(fn, opts, ...args) {
       calls.push({ fn, opts, args });
-      const left = t0 + trueAfter - Date.now();
+      const left = remaining;
+      remaining -= Math.min(left, opts.timeout);
       return new Promise((resolve, reject) => {
         if (left <= opts.timeout) setTimeout(() => resolve({ handle: 'ok', args }), Math.max(0, left));
         else setTimeout(() => reject(timeoutError(opts.timeout)), opts.timeout);
