@@ -1,8 +1,10 @@
 // Local roster additions and rule changes survive the original build-data command.
 import { applyAegirBurnData } from './aegir-burn-data.mjs';
+import { applyAegirTraitData } from './aegir-trait-data.mjs';
 
 export function applyCustomData(files, custom) {
   applyAegirBurnData(files.bonds.egirShip, files.effects.bondeffect_egir);
+  applyAegirTraitData(files.garrisons);
   Object.assign(files.chess, custom.chess);
   Object.assign(files.tokens, custom.tokens);
   for (const c of Object.values(custom.chess)) {
