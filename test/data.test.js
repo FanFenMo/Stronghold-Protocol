@@ -145,7 +145,7 @@ test('bonds: 23 bonds with valid members, thresholds and effects', () => {
     assert.ok(effects[b.effectId], `${b.bondId}: effect`);
   }
   assert.deepEqual(bonds.yanShip.thresholds, [3, 6, 9]);
-  assert.deepEqual(bonds.egirShip.thresholds, [3, 5]);
+  assert.deepEqual(bonds.egirShip.thresholds, [3, 5, 6]);
   assert.deepEqual(bonds.suntShip.thresholds, [2, 5]);
   assert.equal(bonds.soloShip.maxCount, 1);
   // Every chess bond membership is mirrored in the bond member list.

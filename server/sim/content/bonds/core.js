@@ -18,7 +18,8 @@
 //   阿戈尔 egirShip      members max HP +(base_max_hp + max_hp_per_stack·L) (直接乘算); battle start devour (see devour():
 //                        the marker's gained base ATK is a 最终加算, `atkFinal`, not scaled by its ATK +%);
 //                        5: the first max_free_respawn_cnt members knocked out (in knock-out order, the devour's food
-//                        included) each redeploy at once (free) on that first knock-out
+//                        included) each redeploy at once (free) on that first knock-out;
+//                        6: devour no longer grants block; every member burns the surrounding 12 tiles every 0.5 s
 //   叙拉古 siracusaShip  every member deployment: ASPD +(base + per·L) for (base_duration + per·L) s; 6: 隐匿 for the same
 //                        time, and while hidden / end_duration s after, every 普通伤害 hit (siracusaRolls) procs (linear pity,
 //                        nominal `prob`) base_damage + damage_per_stack·L true damage + fear `fear` s
@@ -350,6 +351,7 @@ function egirDownAtStart(battle, u) {
  * Tokens / devices / empty tiles are never devoured.
  */
 function devour(battle, pid, bb, members) {
+  const grantsBlock = !reached(battle, pid, 'egirShip', bb.burn_bond_char_cnt);
   // 联防: an operator down at the end of its own combat (carryState.down — Battle.start forced it out right before
   // battleStart, FORCED_EXIT) takes part in the devour as if it stood on its tile, then stays out: it marks in its turn,
   // it is "the unit in front" of another (the chain goes on through it when it is a member), its base ATK / block count
@@ -389,7 +391,7 @@ function devour(battle, pid, bb, members) {
     for (const t of mine) { atk += num(t.base.atk, 0); block += num(t.base.blockCnt, 0); marks.push([m, t]); }
     const mods = {};
     if (atk > 0) mods.atkFinal = atk; // 最终加算 (units.js _recalc)
-    if (block > 0) mods.blockCnt = block;
+    if (grantsBlock && block > 0) mods.blockCnt = block;
     if (Object.keys(mods).length) S.passiveBuff(battle, m, 'bond:egir:devour', mods);
   }
   const amount = num(bb.damage_value, 0);
@@ -414,6 +416,32 @@ function devour(battle, pid, bb, members) {
   }
 }
 
+const EGIR_BURN_TILES = [...S.N8, [2, 0], [-2, 0], [0, 2], [0, -2]];
+
+function installEgirBurn(battle, pid, bb, members) {
+  if (!reached(battle, pid, 'egirShip', bb.burn_bond_char_cnt)) return;
+  battle.every(bb.burn_interval, () => {
+    const layers = S.bondLayers(battle, pid, 'egirShip');
+    const scale = bb.burn_base_atk_scale + bb.burn_atk_scale_per_layer_squared * layers * layers;
+    for (const u of members) {
+      if (!S.onField(u)) continue;
+      const keys = new Set();
+      for (const [dr, dc] of EGIR_BURN_TILES) {
+        const r = u.tileR + dr, c = u.tileC + dc;
+        if (battle.grid.inBounds(r, c)) keys.add(r * S.COLS + c);
+      }
+      const amount = u.s.atk * scale;
+      let hits = 0;
+      for (const e of battle.enemies) {
+        if (!e.alive || !S.onKeys(e, keys)) continue;
+        battle.dealDamage(u, e, { amount, type: 'true', canDodge: false, tags: ['bond:egir:burn', 'dot', 'periodic'] });
+        hits++;
+      }
+      if (hits) S.fxOn(battle, 'aoe', u, 'bond:egirShip', 'burn', { radius: 2, dmgType: 'true', n: hits });
+    }
+  });
+}
+
 function installEgir(battle, pid, bb, members) {
   const apply = () => {
     const mods = S.directMods({ hp: num(bb.base_max_hp, 0) + num(bb.max_hp_per_stack, 0) * S.bondLayers(battle, pid, 'egirShip') });
@@ -421,6 +449,7 @@ function installEgir(battle, pid, bb, members) {
   };
   apply();
   onLayers(battle, pid, 'egirShip', apply);
+  installEgirBurn(battle, pid, bb, members);
   // 5: "前3名【阿戈尔】干员首次被击倒时立刻复活" — the 3 (bonds.json max_free_respawn_cnt) slots go to the first 3 members
   // knocked out, in knock-out order: the owner's decision of 2026-10-05, following players' reports (GitHub #105, #140:
   // "没被吃的阿戈尔干员也会占用复活名额" — with 0.1.3's fixed holders by position the uneaten front members held the
