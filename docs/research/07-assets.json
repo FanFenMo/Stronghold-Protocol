@@ -17827,6 +17827,93 @@
    },
    "sfx": {},
    "source": "https://prts.wiki/w/%E6%9C%9B"
+  },
+  "char_4231_clemnt": {
+   "name": "克莱门莎",
+   "rarity": "TIER_6",
+   "profession": "WARRIOR",
+   "subProfessionId": "primguard",
+   "nationId": "egir",
+   "chess": [
+    {
+     "chessId": "chess_custom_6_clemnt_a",
+     "chessLevel": 6,
+     "chessType": "NORMAL",
+     "defaultSkillIndex": 2,
+     "evolvePhase": "PHASE_2"
+    }
+   ],
+   "avatar": {
+    "e0e1": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_4231_clemnt.png"
+    },
+    "e2": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/avatar/char_4231_clemnt_2.png"
+    }
+   },
+   "portrait": {
+    "e0e1": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4231_clemnt_1.png"
+    },
+    "e2": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4231_clemnt_2.png"
+    }
+   },
+   "skills": [
+    {
+     "index": 0,
+     "skillId": "skchr_clemnt_1",
+     "iconId": "skchr_clemnt_1",
+     "icon": {
+      "url": "https://media.prts.wiki/3/34/%E6%8A%80%E8%83%BD_%E5%86%B2%E8%9A%80.png"
+     },
+     "sfx": {}
+    },
+    {
+     "index": 1,
+     "skillId": "skchr_clemnt_2",
+     "iconId": "skchr_clemnt_2",
+     "icon": {
+      "url": "https://media.prts.wiki/7/70/%E6%8A%80%E8%83%BD_%E9%A3%8E%E6%9A%B4%E6%BD%AE.png"
+     },
+     "sfx": {}
+    },
+    {
+     "index": 2,
+     "skillId": "skchr_clemnt_3",
+     "iconId": "skchr_clemnt_3",
+     "icon": {
+      "url": "https://media.prts.wiki/7/7c/%E6%8A%80%E8%83%BD_%E4%B8%8E%E6%B5%B7%E4%B8%BA%E6%95%8C.png"
+     },
+     "sfx": {}
+    }
+   ],
+   "battleSpine": {
+    "front": {
+     "skel": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4231_clemnt/char_4231_clemnt/Front/char_4231_clemnt.skel"
+     },
+     "atlas": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4231_clemnt/char_4231_clemnt/Front/char_4231_clemnt.atlas"
+     },
+     "png": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4231_clemnt/char_4231_clemnt/Front/char_4231_clemnt.png"
+     }
+    },
+    "back": {
+     "skel": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4231_clemnt/char_4231_clemnt/Back/char_4231_clemnt.skel"
+     },
+     "atlas": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4231_clemnt/char_4231_clemnt/Back/char_4231_clemnt.atlas"
+     },
+     "png": {
+      "url": "https://raw.githubusercontent.com/fexli/ArknightsResource/main/spine/char_4231_clemnt/char_4231_clemnt/Back/char_4231_clemnt.png"
+     }
+    }
+   },
+   "sfx": {},
+   "source": "https://prts.wiki/w/%E5%85%8B%E8%8E%B1%E9%97%A8%E8%8E%8E"
   }
  },
  "tokens": {
