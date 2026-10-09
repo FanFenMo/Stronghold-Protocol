@@ -351,7 +351,9 @@ function egirDownAtStart(battle, u) {
  * Tokens / devices / empty tiles are never devoured.
  */
 function devour(battle, pid, bb, members) {
-  const grantsBlock = !reached(battle, pid, 'egirShip', bb.burn_bond_char_cnt);
+  const band = S.bandRecord(S.player(battle, pid).bandId);
+  const restoresBlock = S.buffParams(band, 'act1autochess_band13_buff')?.restore_devour_block;
+  const grantsBlock = !reached(battle, pid, 'egirShip', bb.burn_bond_char_cnt) || restoresBlock > 0;
   // 联防: an operator down at the end of its own combat (carryState.down — Battle.start forced it out right before
   // battleStart, FORCED_EXIT) takes part in the devour as if it stood on its tile, then stays out: it marks in its turn,
   // it is "the unit in front" of another (the chain goes on through it when it is a member), its base ATK / block count
@@ -412,6 +414,7 @@ function devour(battle, pid, bb, members) {
     if (!layered.has(t)) {
       layered.add(t);
       S.gainLayers(battle, { playerId: pid, bonds: 'egirShip', n: S.tierOf(t), source: m, reason: 'bond' });
+      battle.emit('egirDevour', { playerId: pid, source: m, target: t });
     }
   }
 }

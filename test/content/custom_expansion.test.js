@@ -93,7 +93,7 @@ test('standard solo bond is enabled for one member, disabled at two, represented
 });
 test('custom roster survives rebuild overlay idempotently and retains exactly the assigned bonds',()=>{
   const custom=JSON.parse(readFileSync(new URL('../../tools/data/custom-operators.json',import.meta.url),'utf8'));
-  const files=structuredClone({chess:DATA.chess,bonds:DATA.bonds,config:DATA.config,tokens:DATA.tokens,garrisons:DATA.garrisons,effects:DATA.effects});
+  const files=structuredClone({chess:DATA.chess,bonds:DATA.bonds,config:DATA.config,tokens:DATA.tokens,garrisons:DATA.garrisons,effects:DATA.effects,bands:DATA.bands});
   for(const id of ['garrison_38_a','garrison_38_b','garrison_40_a','garrison_40_b','garrison_46_a','garrison_46_b']) {
     files.garrisons[id].effectKey='act1autochess_gar_event_selfdead';
     files.garrisons[id].bb={bond_add_count:99};

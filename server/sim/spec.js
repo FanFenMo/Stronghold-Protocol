@@ -273,7 +273,7 @@ export function resultDigest(result) {
   const players = Object.keys(per).sort().map((pid) => {
     const p = per[pid] || {};
     const lg = p.layerGains && typeof p.layerGains === 'object' ? p.layerGains : {};
-    return [
+    const summary = [
       pid,
       p.killed | 0, p.total | 0, !!p.perfect, r4(p.coins),
       Object.keys(lg).sort().map((k) => [k, r4(lg[k])]),
@@ -282,6 +282,8 @@ export function resultDigest(result) {
       Math.round(Number(p.damageDealt) || 0), Math.round(Number(p.bossDamage) || 0),
       (Array.isArray(p.unitsEnd) ? p.unitsEnd : []).map((u) => [u && u.uid, r4(u && u.hpPct), r4(u && u.sp), !!(u && u.alive)]),
     ];
+    if (p.egirDevoured > 0) summary.push(['egirDevoured', p.egirDevoured]);
+    return summary;
   });
   const json = JSON.stringify([res.reason ?? null, r4(res.time), res.killed | 0, res.total | 0, players]);
   let h = 2166136261;
@@ -345,6 +347,7 @@ export function compactResult(res) {
         taken: Math.max(0, Math.round(fnum(u.taken))), attacks: Math.max(0, Math.trunc(fnum(u.attacks))),
       })),
     };
+    if (p.egirDevoured > 0) perPlayer[pid].egirDevoured = Math.trunc(p.egirDevoured);
   }
   const out = {
     reason: ['cleared', 'timeout', 'forced'].includes(r.reason) ? r.reason : 'forced',
