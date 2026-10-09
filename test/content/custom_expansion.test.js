@@ -100,6 +100,13 @@ test('custom roster survives rebuild overlay idempotently and retains exactly th
     files.garrisons[id].bbStr={bond_type:'bond_by_id',bond_id:'egirShip'};
   }
   applyCustomData(files,custom);const first=JSON.stringify(files);applyCustomData(files,custom);assert.equal(JSON.stringify(files),first);
+  const aegir=files.bonds.egirShip;
+  for(const bb of [aegir.bb,aegir.buffs.find(b=>b.bbStr?.key==='act1autochess_bond_eff_egir').bb,
+    files.effects.bondeffect_egir.params,files.effects.bondeffect_egir.buffs.find(b=>b.bbStr?.key==='act1autochess_bond_eff_egir').bb]) {
+    assert.equal(bb.relay_bond_char_cnt,5);assert.equal(bb.relay_damage_per_hop,.8);
+    assert.ok(!Object.keys(bb).some(key=>key.startsWith('burn_')));
+  }
+  assert.ok(aegir.desc.includes('80%')&&!/[（()）]/.test(aegir.desc)&&!aegir.desc.includes('真伤'));
   for(const [id,per,cap]of [['garrison_38_a',2,20],['garrison_38_b',4,30]]) {
     const g=files.garrisons[id];
     assert.equal(g.effectKey,'act1autochess_gar_event_selfkillenemy');

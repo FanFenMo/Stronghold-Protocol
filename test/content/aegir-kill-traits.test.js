@@ -17,17 +17,17 @@ function field(id, opts = {}) {
   for (const u of h.allies()) { u.profile.noAttack = true; if (u.skill) u.skill.rule = 'NEVER'; }
   return h;
 }
-function burnKill(h, unit = h.unit(1)) {
+function enemyKill(h, unit = h.unit(1)) {
   const victim = h.spawn('target', { pos: [10, 8] });
-  h.b.dealDamage(unit, victim, { amount: 1000, type: 'true', canDodge: false, tags: ['bond:egir:burn'] });
+  h.b.dealDamage(unit, victim, { amount: 1000, type: 'phys', isAttack: true, canDodge: false });
   assert.ok(!victim.alive);
 }
 
 for (const [id, per, cap] of [['chess_char_3_05_a', 2, 20], ['chess_char_3_05_b', 4, 30]]) {
-  test(`Skadi ${id}: enemy burn kills retain gains to own active bonds and round caps`, () => {
+  test(`Skadi ${id}: enemy attack kills retain gains to own active bonds and round caps`, () => {
     const h = field(id), own = DATA.chess[id].bonds;
     for (let n = 1; n <= 20; n++) {
-      burnKill(h);
+      enemyKill(h);
       assert.deepEqual(gains(h), Object.fromEntries(own.map(b => [b, Math.min(n * per, cap)])));
     }
     assert.equal(gains(h).sargonShip, undefined);
@@ -40,7 +40,7 @@ for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
   test(`Specter ${suffix}: every five attributed enemy kills gives Aegir only; cap ${10 * mul}, fresh next round`, () => {
     const h = field(shark);
     for (let n = 1; n <= 60; n++) {
-      burnKill(h);
+      enemyKill(h);
       const expected = Math.min(Math.floor(n / 5) * mul, 10 * mul);
       assert.deepEqual(gains(h), expected ? { egirShip: expected } : {});
     }
@@ -48,10 +48,10 @@ for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
     h.b.kill(h.unit(2), h.unit(1));
     assert.deepEqual(gains(h), { egirShip: 10 * mul }, 'devouring an ally is not an enemy kill');
     const next = field(shark);
-    for (let i = 0; i < 5; i++) burnKill(next);
+    for (let i = 0; i < 5; i++) enemyKill(next);
     assert.deepEqual(gains(next), { egirShip: mul });
     const off = field(shark, { bonds: { egirShip: on(false), steadShip: on() } });
-    for (let i = 0; i < 10; i++) burnKill(off);
+    for (let i = 0; i < 10; i++) enemyKill(off);
     assert.deepEqual(gains(off), {}, 'inactive Aegir cannot gain; other active bonds receive nothing');
     checkInvariants(h.b); checkInvariants(next.b); checkInvariants(off.b);
   });
@@ -76,7 +76,7 @@ for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
       const h = field(doll, { units: [{ uid: 1, chessId: doll, row: 10, col: 2, dir: 'UP' },
         ...Array.from({ length: rowCount - 1 }, (_, i) => ({ uid: i + 2, chessId: 'ally', row: 10, col: 4 + i * 2 }))] });
       const u = h.unit(1);
-      for (let i = 0; i < 5; i++) burnKill(h);
+      for (let i = 0; i < 5; i++) enemyKill(h);
       assert.deepEqual(gains(h), {}, 'kills no longer trigger her trait');
       h.b.emit('dollSwitch', { unit: u, done: false });
       const pairs = Math.floor(rowCount / 2);
@@ -110,7 +110,7 @@ for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
 test('Specter round caps belong to each operator instance', () => {
   const id = 'chess_char_2_07_a';
   const h = field(id, { units: [{ uid: 1, chessId: id, row: 10, col: 4, dir: 'UP' }, { uid: 2, chessId: id, row: 12, col: 4, dir: 'UP' }] });
-  for (const uid of [1, 2]) for (let n = 0; n < 50; n++) burnKill(h, h.unit(uid));
+  for (const uid of [1, 2]) for (let n = 0; n < 50; n++) enemyKill(h, h.unit(uid));
   assert.deepEqual(gains(h), { egirShip: 20 });
   checkInvariants(h.b);
 });

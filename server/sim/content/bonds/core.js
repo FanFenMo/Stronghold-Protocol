@@ -19,7 +19,7 @@
 //                        the marker's gained base ATK is a 最终加算, `atkFinal`, not scaled by its ATK +%);
 //                        5: the first max_free_respawn_cnt members knocked out (in knock-out order, the devour's food
 //                        included) each redeploy at once (free) on that first knock-out;
-//                        5: the two highest-current-ATK members burn 12 tiles every 0.5 s, 8 s on / 6 s off
+//                        5: with no local target, attack enemies blocked by living devoured operators, ×0.8 per hop
 //   叙拉古 siracusaShip  every member deployment: ASPD +(base + per·L) for (base_duration + per·L) s; 6: 隐匿 for the same
 //                        time, and while hidden / end_duration s after, every 普通伤害 hit (siracusaRolls) procs (linear pity,
 //                        nominal `prob`) base_damage + damage_per_stack·L true damage + fear `fear` s
@@ -39,6 +39,7 @@
 // death 10; every `fatal` saver runs before any death hook), layerGain −100 (after 魔王-style modifiers).
 
 import * as S from '../support/index.js';
+import { installAegirRelay, devourChains } from './aegirRelay.js';
 import { mitigate } from '../../damage.js';
 import { spawnYanyou } from '../tokens.js';
 import { kjeragColdWind } from '../devices.js';
@@ -370,22 +371,27 @@ function devour(battle, pid, bb, members) {
     return d && downAtStart(d) ? d : null;
   };
   const markedBy = new Map(); // marker → [targets]
+  const chains = devourChains(battle);
   const marks = [];
   for (const m of order) {
     const mine = [];
     const seen = new Set([m]);
     const queue = [m];
+    const depths = new Map([[m, 0]]);
     for (let guard = 0; queue.length && guard < 64; guard++) {
       const x = queue.shift();
       const t = opAt(x);
       if (!t || seen.has(t)) continue;
       if ((markedBy.get(t) ?? []).includes(m)) continue;
       seen.add(t);
+      depths.set(t, depths.get(x) + 1);
       mine.push(t);
       // through a marked 阿戈尔 (for the player's own operators: exactly its members; a teammate's by its own bonds)
       if (S.isMember(battle, t, 'egirShip')) queue.push(t);
     }
     markedBy.set(m, mine);
+    depths.delete(m);
+    chains.set(m, depths); // original chain survives deaths and later movement; only its living blockers can relay
     if (!mine.length) continue;
     let atk = 0, block = 0;
     for (const t of mine) { atk += num(t.base.atk, 0); block += num(t.base.blockCnt, 0); marks.push([m, t]); }
@@ -416,34 +422,6 @@ function devour(battle, pid, bb, members) {
   }
 }
 
-const EGIR_BURN_TILES = [...S.N8, [2, 0], [-2, 0], [0, 2], [0, -2]];
-
-function installEgirBurn(battle, pid, bb, members) {
-  if (!reached(battle, pid, 'egirShip', bb.burn_bond_char_cnt)) return;
-  const activeTicks = Math.round(bb.burn_duration / bb.burn_interval);
-  const cycleTicks = Math.round((bb.burn_duration + bb.burn_rest_duration) / bb.burn_interval);
-  let pulse = 0;
-  battle.every(bb.burn_interval, () => {
-    if (pulse++ % cycleTicks >= activeTicks) return;
-    const sources = members.filter(S.onField).sort((a, b) => b.s.atk - a.s.atk || egirOrder(a, b)).slice(0, bb.burn_max_sources);
-    for (const u of sources) {
-      const keys = new Set();
-      for (const [dr, dc] of EGIR_BURN_TILES) {
-        const r = u.tileR + dr, c = u.tileC + dc;
-        if (battle.grid.inBounds(r, c)) keys.add(r * S.COLS + c);
-      }
-      const amount = u.s.atk * bb.burn_base_atk_scale;
-      let hits = 0;
-      for (const e of battle.enemies) {
-        if (!e.alive || !S.onKeys(e, keys)) continue;
-        battle.dealDamage(u, e, { amount, type: 'true', canDodge: false, tags: ['bond:egir:burn', 'dot', 'periodic'] });
-        hits++;
-      }
-      if (hits) S.fxOn(battle, 'aoe', u, 'bond:egirShip', 'burn', { radius: 2, dmgType: 'true', n: hits });
-    }
-  });
-}
-
 function installEgir(battle, pid, bb, members) {
   const apply = () => {
     const mods = S.directMods({ hp: num(bb.base_max_hp, 0) + num(bb.max_hp_per_stack, 0) * S.bondLayers(battle, pid, 'egirShip') });
@@ -451,7 +429,7 @@ function installEgir(battle, pid, bb, members) {
   };
   apply();
   onLayers(battle, pid, 'egirShip', apply);
-  installEgirBurn(battle, pid, bb, members);
+  if (reached(battle, pid, 'egirShip', bb.relay_bond_char_cnt)) installAegirRelay(battle, bb, members);
   // 5: "前3名【阿戈尔】干员首次被击倒时立刻复活" — the 3 (bonds.json max_free_respawn_cnt) slots go to the first 3 members
   // knocked out, in knock-out order: the owner's decision of 2026-10-05, following players' reports (GitHub #105, #140:
   // "没被吃的阿戈尔干员也会占用复活名额" — with 0.1.3's fixed holders by position the uneaten front members held the

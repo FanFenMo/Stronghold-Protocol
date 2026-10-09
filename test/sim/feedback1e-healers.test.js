@@ -13,7 +13,7 @@
 // every equipment item, and on the 20 boss / hidden fields, where healers block the roaming 卢西恩 and its 不祥幻影
 // (act2 h07_05) and a patrolling 碎铳之簧 once its shield is down (h08_02); the other leaders and parts cannot be blocked
 // (自缚 / 无法被阻挡, the 剑 / 锤 anchored, 余音 only by block ≥ 2). The only damage a pure healer deals is a bond's own
-// effect by its text (卡西米尔's blocking pulse and six-member 阿戈尔's true-damage burn, members of every class). These tests lock
+// effect by its text (卡西米尔's blocking pulse). 阿戈尔 relay never turns a healing attack into damage. These tests lock
 // that.
 
 import { test } from 'node:test';
@@ -27,9 +27,7 @@ const PURE = new Set(['physician', 'ringhealer', 'healer', 'chainhealer', 'wande
 const pool = (hp) => ({ hp, maxHp: hp, damage(pid, a) { this.hp = Math.max(0, this.hp - a); } });
 const waves = () => JSON.parse(fs.readFileSync(new URL('../../data/waves.json', import.meta.url), 'utf8'));
 /** A bond's own true-damage effect on its members, separate from the unit's healing attacks. */
-const bondEffect = (c) => !c.dmg?.isAttack && c.dmg?.type === 'true'
-  && (c.dmg.tags.includes('bond:kazimierz')
-    || (c.dmg.tags.includes('bond:egir:burn') && c.dmg.tags.includes('dot') && c.dmg.tags.includes('periodic')));
+const bondEffect = (c) => !c.dmg?.isAttack && c.dmg?.type === 'true' && c.dmg.tags.includes('bond:kazimierz');
 /** 卢西恩 and its 不祥幻影 — the boss that roams the field (patrol) and can be blocked. */
 const LUCIEN = /^enemy_201[67]_csph/;
 
@@ -146,8 +144,7 @@ test('E2 audit: every pure healer keeps healing while it blocks under every bond
         assert.ok(r.skillBlocking > 0, `${tag}: the skill is cast / runs while it blocks`);
         assert.ok(r.atks.every((a) => a.targets.every((t) => t.side === 'ally')), `${tag}: attacks heal allies only`);
         const burns = r.dmg.filter((d) => d.dmg?.tags?.includes('bond:egir:burn'));
-        assert.ok(burns.every((d) => member === 'egirShip' && bondEffect(d)), `${tag}: only Aegir members use periodic true-damage burn`);
-        if (member === 'egirShip') assert.ok(burns.length > 0, `${tag}: the healer's covenant burn is live`);
+        assert.equal(burns.length, 0, `${tag}: Aegir v1.3 removes periodic true-damage burn`);
         const hits = r.dmg.filter((d) => !bondEffect(d));
         pulses += r.dmg.length - hits.length;
         assert.equal(hits.length, 0, `${tag}: no damage to the blocked enemy (${hits.map((d) => d.dmg?.tags?.join('/')).join(' ')})`);

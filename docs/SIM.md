@@ -722,7 +722,9 @@ registration order. `battle.off(handle)` / `battle.off(name, fn)` / `battle.offO
 | `deploy` | `{ unit, initial, move? }` | ops/tokens (initial & redeploy), enemies (`initial:false`), devices; `move: true` = a 【移动】 (`moveRedeploy`: 乌尔比安 S3 — no exit before it, the unit keeps its buffs) |
 | `tick` | `{ dt }` | end of every tick |
 | `beforeAttack` | `{ attacker, targets, isSkill, profile }` | allies **and** enemies; replace/filter `ctx.targets` |
-| `attack` | `{ attacker, targets, isSkill }` | an attack/heal was performed (projectiles may still be in flight) |
+| `attackTargets` | `{ unit, profile, targets }` | ally fallback selection when no local enemy can be attacked; append targets |
+| `attackStart` | `{ attacker, targets, isSkill, profile, attackId, damageMultipliers }` | after `beforeAttack`, before hits/projectiles; set target-id → post-mitigation multiplier for all hits of that primary target |
+| `attack` | `{ attacker, targets, isSkill, attackId, damageMultipliers }` | an attack/heal was performed (projectiles may still be in flight); attached damage can inherit the target's multiplier |
 | `hit` | `{ source, target, dmg, credit }` | before mitigation; mutate `dmg` (not fired for gauge fills — see `elementHit`). `source` may be null (terrain; 无来源 `dmg.sourceless` bursts, whose `credit` names the unit credited) |
 | `elementHit` | `{ source, target, dmg }` | before a gauge fill (`dmg.type === 'element'`); mutate `dmg.amount`/`dmg.mul`, set `dmg.cancel` |
 | `damaged` | `{ source, target, amount, type, dmg, credit }` | after application (`amount` may be 0 when shielded); element fills too (with their source); 无来源: `source` null, `credit` set |

@@ -137,6 +137,7 @@ export function acquireTargets(b, u, prof) {
   // (0.7071) reaches past its own tile, so a blocked enemy may stand outside a short range or behind its facing (user
   // playtest #5 item 4); a ranged operator on a melee tile too (user playtest #6: "阻挡了就一定要能打到")
   if (u.blocking.length) for (const e of b.blockedTargets(u, prof)) if (!cands.includes(e)) cands.push(e);
+  if (!cands.length && b.hasHook('attackTargets')) b.emit('attackTargets', { unit: u, profile: prof, targets: cands });
   if (!cands.length) return cands;
   if (prof.allInRange) return cands;
   const n = Math.max(1, Math.floor((prof.maxTargets || 1) + u.s.maxTargets));
@@ -156,6 +157,11 @@ export function performAttack(b, u, prof, targets, opts = null) {
   u.lastAttackAt = b.time;
   u.stats.attacks++;
   const attackId = ++b._attackSeq; // every damage instance of this attack (all targets, splash, chain) carries it
+  let damageMultipliers;
+  if (b.hasHook('attackStart')) {
+    damageMultipliers = new Map();
+    b.emit('attackStart', { attacker: u, targets, isSkill, profile: prof, attackId, damageMultipliers });
+  }
   const isHeal = !!(prof.heal && prof.dmgType === 'heal');
   // 首次接敌 (official voice type ENCOUNTER_ENEMY, ≥ 3 s between two such lines): one event the first time a unit
   // attacks an enemy, whatever the attack is — the client answers with that operator's 行动开始 line (audio.js voice).
@@ -169,7 +175,7 @@ export function performAttack(b, u, prof, targets, opts = null) {
     const t = targets[i];
     b._ev(['atk', u.id, t.id, vis]);
     if (isHeal) { doHeal(b, u, prof, t); continue; }
-    const info = { isSkill, index: i, attackId };
+    const info = { isSkill, index: i, attackId, damageMul: damageMultipliers?.get(t.id) ?? 1 };
     if (ranged && t.side === 'enemy' && prof.projectile === 'boomerang') {
       throwBoomerang(b, u, prof, t, info);
     } else if (ranged && t.side === 'enemy') {
@@ -181,7 +187,7 @@ export function performAttack(b, u, prof, targets, opts = null) {
       resolveHit(b, u, prof, t, info, t.x, t.y);
     }
   }
-  if (b._hooks.attack) b.emit('attack', { attacker: u, targets, isSkill });
+  if (b._hooks.attack) b.emit('attack', { attacker: u, targets, isSkill, attackId, damageMultipliers });
   if (u.skill) u.skill.onAttackPerformed(targets, isSkill, !!(opts && opts.noAmmo));
   if (prof.afterAttack) b._safe(() => prof.afterAttack(b, u, targets), 'profile.afterAttack', u);
 }
@@ -217,10 +223,11 @@ export function resolveHit(b, u, prof, target, info, x, y) {
   const baseType = prof.dmgType === 'heal' || prof.dmgType === 'none' ? 'phys' : prof.dmgType;
   const skillMul = prof.skillDmgMul ?? 1;
   const attackId = info.attackId ?? 0;
+  const damageMul = info.damageMul ?? 1;
   // per-victim callbacks (main target, every splash / chain victim): profile `onEachHit(b, u, victim, hctx)` and
   // SkillSpec `attack.onEachHit(ctx)` — `attack.onHit` stays once per attack with the main target
   const each = prof.onEachHit || prof.skillOnEachHit ? (victim, dealt, kind) => {
-    const hc = { dealt, kind, isSplash: kind === 'splash', isChain: kind === 'chain', main: target, attackId, isSkill: info.isSkill };
+    const hc = { dealt, kind, isSplash: kind === 'splash', isChain: kind === 'chain', main: target, attackId, isSkill: info.isSkill, damageMul };
     if (prof.onEachHit) b._safe(() => prof.onEachHit(b, u, victim, hc), 'profile.onEachHit', u);
     if (prof.skillOnEachHit && u.skill) {
       const fn = prof.skillOnEachHit;
@@ -233,7 +240,7 @@ export function resolveHit(b, u, prof, target, info, x, y) {
     const hits = prof.hitsFn ? prof.hitsFn(b, u) : Math.max(1, prof.hits || 1);
     let dealtMain = 0;
     for (let h = 0; h < hits && target.alive; h++) {
-      dealtMain += b.dealDamage(u, target, { amount: atk * scale * mulT, type: baseType, isAttack: true, isSkill: info.isSkill, tags: prof.tags || [], attackId });
+      dealtMain += b.dealDamage(u, target, { amount: atk * scale * mulT, mul: damageMul, type: baseType, isAttack: true, isSkill: info.isSkill, tags: prof.tags || [], attackId });
     }
     dealtTotal += dealtMain;
     if (prof.onHitStatus && target.alive) b.applyStatus(target, prof.onHitStatus.key, { duration: prof.onHitStatus.duration, source: u, value: prof.onHitStatus.value });
@@ -249,7 +256,7 @@ export function resolveHit(b, u, prof, target, info, x, y) {
       if (prof.groundOnly && e.isFlying) continue;
       if (!prof.canHitFly && e.isFlying && !prof.splashHitsFly) continue;
       if (e.s.flags.untargetable) continue;
-      const d = b.dealDamage(u, e, { amount: atk * scale * sc * skillMul, type: baseType, isAttack: true, isSplash: true, isSkill: info.isSkill, attackId });
+      const d = b.dealDamage(u, e, { amount: atk * scale * sc * skillMul, mul: damageMul, type: baseType, isAttack: true, isSplash: true, isSkill: info.isSkill, attackId });
       dealtTotal += d;
       if (each) each(e, d, 'splash');
     }
@@ -269,7 +276,7 @@ export function resolveHit(b, u, prof, target, info, x, y) {
       if (!best) break;
       hit.add(best.id);
       b._ev(['atk', prev.id, best.id, 'chain']);
-      const d = b.dealDamage(u, best, { amount: atk * scale * skillMul * Math.pow(1 - (prof.chain.falloff ?? 0.15), k), type: baseType, isAttack: true, isSkill: info.isSkill, tags: ['chain'], attackId });
+      const d = b.dealDamage(u, best, { amount: atk * scale * skillMul * Math.pow(1 - (prof.chain.falloff ?? 0.15), k), mul: damageMul, type: baseType, isAttack: true, isSkill: info.isSkill, tags: ['chain'], attackId });
       dealtTotal += d;
       if (prof.chain.sluggish && best.alive) b.applyStatus(best, 'sluggish', { duration: prof.chain.sluggish, source: u });
       if (each) each(best, d, 'chain');
@@ -277,11 +284,11 @@ export function resolveHit(b, u, prof, target, info, x, y) {
     }
     if (prof.chain.sluggish && target.alive) b.applyStatus(target, 'sluggish', { duration: prof.chain.sluggish, source: u });
   }
-  const hctx = { dealt: dealtTotal, x, y, isSkill: info.isSkill };
+  const hctx = { dealt: dealtTotal, x, y, isSkill: info.isSkill, damageMul };
   if (prof.afterHit) b._safe(() => prof.afterHit(b, u, target, hctx), 'profile.afterHit', u);
   if (prof.skillOnHit && u.skill) {
     const fn = prof.skillOnHit;
-    b._safe(() => fn({ battle: b, unit: u, skill: u.skill, bb: u.skill.bb, target, dealt: dealtTotal, x, y }), 'skill.attack.onHit', u);
+    b._safe(() => fn({ battle: b, unit: u, skill: u.skill, bb: u.skill.bb, target, dealt: dealtTotal, x, y, damageMul }), 'skill.attack.onHit', u);
   }
   if (u.skill && u.skill.active && u.skill.spec.onHit) {
     const fn = u.skill.spec.onHit;

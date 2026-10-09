@@ -4,7 +4,7 @@ import { bodyInKeys } from '../../body.js';
 
 const live = u => u.alive && u.deployed;
 const erosion = (b,u,e,n) => b.dealDamage(u,e,{amount:n,type:'element',element:'erosion',canDodge:false});
-const phys = (b,u,e,n,tag) => b.dealDamage(u,e,{amount:n,type:'phys',isSkill:true,canDodge:false,tags:[tag]});
+const phys = (b,u,e,n,tag,mul=1) => b.dealDamage(u,e,{amount:n,mul,type:'phys',isSkill:true,canDodge:false,tags:[tag]});
 
 function capsule(b,u,bb) {
   const [dy,dx]=dirVec(u.dir),p={x:u.x,y:u.y},passengers=[];
@@ -63,9 +63,9 @@ export default function clemnt(bb,chess,def) {
       skchr_clemnt_2:{kind:'duration',mods:{aspd:bb.attack_speed},targeting:{rangeGrid:def.skill.rangeGrid},
         attack:{atkScale:bb['attack@aoe_atk_scale']},
         onStart({battle,unit}){capsule(battle,unit,bb);},
-        onHit({battle,unit,target}){
+        onHit({battle,unit,target,damageMul}){
           for(const e of battle.foesInRadius(target.x,target.y,1.1).filter(e=>e!==target&&!e.isFlying).slice(0,bb['attack@max_target']))
-            phys(battle,unit,e,unit.s.atk*bb['attack@aoe_atk_scale'],'clemnt:splash');
+            phys(battle,unit,e,unit.s.atk*bb['attack@aoe_atk_scale'],'clemnt:splash',damageMul);
         },
         onEnd({battle,unit}){battle.removeBuff(unit,'clemnt:launch');}},
       skchr_clemnt_3:{kind:'ammo',ammo:bb.trigger_time,targeting:{rangeGrid:def.skill.rangeGrid,maxTargets:bb['attack@max_target']},

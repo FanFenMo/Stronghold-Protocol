@@ -1712,10 +1712,10 @@ const KITS = {
           mods: mods({ atkPct: num(bb.atk), hpPct: num(bb.max_hp), batPct: batPct(bb.base_attack_time, chess) }),
           attack: {
             hitAllBlocked: true,
-            onEachHit({ battle, unit, target, kind }) {
+            onEachHit({ battle, unit, target, kind, damageMul }) {
               if (kind !== 'main' || !target || target.side !== 'enemy') return;
               if (unit.mem.ghostHeavy?.get(target)) {
-                if (target.alive) battle.dealDamage(unit, target, { amount: unit.s.atk * num(bb['attack@atk_scale_ex']), type: 'phys', isSkill: true, tags: ['skill', 'ghost2Weight'] });
+                if (target.alive) battle.dealDamage(unit, target, { amount: unit.s.atk * num(bb['attack@atk_scale_ex']), mul: damageMul, type: 'phys', isSkill: true, tags: ['skill', 'ghost2Weight'] });
               } else if (unit.alive) battle.loseHp(unit, unit.s.maxHp * num(bb['attack@hp_ratio']), { source: unit });
             },
           },

@@ -4,7 +4,7 @@ import { Client, hasChrome, startRealServer, problemsOf, sleep } from '../e2e/cl
 
 const enabled = process.env.SP_E2E === '1' && hasChrome();
 for (const suffix of ['a', 'b']) {
-  test(`Aegir v1.2 ${suffix}: updated traits display, five operators deploy and browser combat settles`,
+  test(`Aegir v1.3 ${suffix}: traits and concise relay description display, five operators deploy and browser combat settles`,
     { skip: !enabled && 'SP_E2E=1 + Chrome required', timeout: 180000 }, async () => {
       const ids = ['chess_char_1_04_', 'chess_char_2_07_', 'chess_char_3_05_', 'chess_char_4_12_', 'chess_char_5_13_'].map(id => id + suffix);
       const srv = await startRealServer({ fast: { timerScale: 0.5, combatSpeed: 2, startRound: 1, chess: ids, stage: 'act2autochess_m01' } });
@@ -16,9 +16,9 @@ for (const suffix of ['a', 'b']) {
           ? r.respond({ status: 200, contentType: 'text/css', body: '' }) : r.continue());
         return browser;
       } };
-      const c = new Client(offline, srv.base, 'aegir', { prefix: `aegir-v12-${suffix}` });
+      const c = new Client(offline, srv.base, 'aegir', { prefix: `aegir-v13-${suffix}` });
       try {
-        await c.open(); await c.enter('阿戈尔 v1.2 验收');
+        await c.open(); await c.enter('阿戈尔 v1.3 验收');
         await c.click('.mode-card', '独立模拟'); await c.click('.diff-card', '险境模拟');
         await c.click('.create-box button', '开始独立模拟');
         await c.waitFor(s => !!s.room, 'solo room');
@@ -56,18 +56,21 @@ for (const suffix of ['a', 'b']) {
         }
         const bond = await c.page.evaluate(() => globalThis.__SP__.store.get().match.private.bonds.find(b => b.bondId === 'egirShip'));
         assert.equal(bond.count, 5); assert.equal(bond.active, true); assert.equal(bond.tier, 2);
+        await c.click('.gm__bonds .bslot[data-bond="egirShip"] .bond', null, { any: true });
+        await c.page.waitForSelector('.bpop');
+        const desc = await c.page.$eval('.bpop .bpop__desc', el => el.textContent);
+        for (const text of ['非远程敌人', '80%', '中间干员死亡不切断']) assert.ok(desc.includes(text), desc);
+        assert.ok(!desc.includes('真伤') && !/[（()）]/.test(desc), desc);
+        await c.shot('covenant-relay');
+        await c.page.keyboard.press('Escape');
         await c.click('.readybtn'); await c.waitFor(s => s.phase === 'COMBAT', 'combat');
         await c.page.waitForFunction(() => [...globalThis.__SP_RUNNER__._entries.values()].some(e => e.own && e.battle));
         await c.page.evaluate(() => {
           const entry = [...globalThis.__SP_RUNNER__._entries.values()].find(e => e.own && e.battle);
-          globalThis.__AEGIR_CHECK__ = { authoritative: entry.authoritative, hits: [], errors: entry.battle.errors,
+          globalThis.__AEGIR_CHECK__ = { authoritative: entry.authoritative, burns: 0, errors: entry.battle.errors,
             units: entry.battle.allyUnits.map(u => ({ id: u.defId, stats: u.stats })) };
           entry.battle.on('damaged', c => {
-            if (!c.dmg.tags.includes('bond:egir:burn')) return;
-            const top = entry.battle.allyUnits.filter(u => u.alive && u.deployed && u.def.bonds.includes('egirShip'))
-              .sort((a, b) => b.s.atk - a.s.atk || a.tileC - b.tileC || b.tileR - a.tileR || a.id - b.id).slice(0, 2);
-            globalThis.__AEGIR_CHECK__.hits.push({ time: entry.battle.time, source: c.source.defId,
-              top: top.map(u => u.defId), type: c.dmg.type });
+            if (c.dmg.tags.includes('bond:egir:burn')) globalThis.__AEGIR_CHECK__.burns++;
           });
         });
         await c.page.waitForFunction(() => globalThis.__AEGIR_CHECK__.units.some(u => u.stats.attacks > 0 && u.stats.dmg > 0), { timeout: 45000, polling: 100 });
@@ -75,9 +78,9 @@ for (const suffix of ['a', 'b']) {
         const got = await c.page.evaluate(() => globalThis.__AEGIR_CHECK__);
         assert.equal(got.authoritative, true); assert.deepEqual(got.errors, []);
         assert.ok(got.units.some(u => u.stats.attacks > 0 && u.stats.dmg > 0));
-        for (const hit of got.hits) { assert.equal(hit.type, 'true'); assert.ok(hit.top.includes(hit.source)); }
+        assert.equal(got.burns, 0);
         assert.deepEqual(problemsOf([c]), []);
-        console.log(JSON.stringify({ suffix, hits: got.hits.length, sources: [...new Set(got.hits.map(h => h.source))] }));
+        console.log(JSON.stringify({ suffix, attacks: got.units.reduce((n, u) => n + u.stats.attacks, 0), burns: got.burns }));
       } finally { await c.close(); await srv.stop(); }
     });
 }
