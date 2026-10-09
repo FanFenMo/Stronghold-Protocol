@@ -4,6 +4,35 @@ import { dirVec } from '../../dir.js';
 
 const live = u => u.alive && u.deployed;
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y);
+
+// Rows increase upward. A clockwise turn maps (dx, dy) to (dy, -dx).
+// Check the next tile before crossing its edge, including the simulation rect's
+// bottom edge, which need not have an explicit wall tile in the stage data.
+function advanceWave(grid, wave, remaining) {
+  const legs = [];
+  let turns = 0;
+  while (remaining > 1e-8 && turns < 4) {
+    const r = Math.round(wave.y), c = Math.round(wave.x);
+    const nr = r + wave.dy, nc = c + wave.dx, tile = grid.tile(nr, nc);
+    const blocked = !grid.inRect(nr, nc) || tile.height === 'HIGH' || tile.pass === 'NONE'
+      || tile.special === 'start' || tile.special === 'end' || grid.isObstacle(nr, nc);
+    const edge = wave.dx ? (c + wave.dx * 0.5 - wave.x) * wave.dx
+      : (r + wave.dy * 0.5 - wave.y) * wave.dy;
+    const step = Math.min(remaining, Math.max(0, edge + (blocked ? -0.25 : 1e-6)));
+    const from = { x: wave.x, y: wave.y };
+    wave.x += wave.dx * step;
+    wave.y += wave.dy * step;
+    remaining -= step;
+    const turn = blocked && remaining > 1e-8;
+    legs.push({ from, to: { x: wave.x, y: wave.y }, turn });
+    if (turn) {
+      [wave.dx, wave.dy] = [wave.dy, -wave.dx];
+      turns++;
+    } else turns = 0;
+  }
+  return legs;
+}
+
 export default function chen3(bb, chess, def) {
   const [sight, recovery] = def.talents;
   return {
@@ -46,18 +75,25 @@ export default function chen3(bb, chess, def) {
       },
       skchr_chen3_3: {kind:'duration',targeting:{rangeGrid:def.skill.rangeGrid,maxTargets:3},attack:{hits:3,atkScale:bb['attack@atk_scale'],dmgType:'arts'},
         onStart({battle,unit}){
-          const [dr,dc]=dirVec(unit.dir);let x=unit.x,y=unit.y,age=0;
-          let heading=Math.atan2(dr,dc);const hit=new Set();
+          const [dr,dc]=dirVec(unit.dir);
+          const wave={x:unit.x,y:unit.y,dx:dc,dy:dr},hit=new Set();let age=0;
           const off=battle.on('tick',({dt})=>{
-            if(!live(unit)||age>6){battle.off(off);return;}age+=dt;
-            const targets=battle.foesInRadius(x,y,4).filter(e=>!hit.has(e.id));
-            const t=targets.sort((a,b)=>distance(a,{x,y})-distance(b,{x,y})||a.deploySeq-b.deploySeq)[0];
-            if(t){const a=Math.atan2(t.y-y,t.x-x);const diff=Math.atan2(Math.sin(a-heading),Math.cos(a-heading));heading+=Math.max(-dt*2,Math.min(dt*2,diff));}
-            x+=Math.cos(heading)*dt*3;y+=Math.sin(heading)*dt*3;
-            for(const e of battle.foesInRadius(x,y,0.7+dt*3))if(!hit.has(e.id)){
-              hit.add(e.id);battle.dealDamage(unit,e,{amount:Math.max(e.hp*bb.hp_ratio,unit.s.atk*bb.projectile_min_atk_scale),type:'arts',isSkill:true,canDodge:false,tags:['skill','chen3:wave']});
+            if(!live(unit)||age>=6){battle.off(off);return;}
+            const elapsed=Math.min(dt,6-age);age+=elapsed;
+            for(const leg of advanceWave(battle.grid,wave,elapsed*1.5)){
+              const length=distance(leg.from,leg.to);
+              if(length>1e-8){
+                const x=(leg.from.x+leg.to.x)/2,y=(leg.from.y+leg.to.y)/2;
+                for(const e of battle.foesInRadius(x,y,1.3+length/2))if(!hit.has(e.id)){
+                  const dx=leg.to.x-leg.from.x,dy=leg.to.y-leg.from.y;
+                  const t=Math.max(0,Math.min(1,((e.x-leg.from.x)*dx+(e.y-leg.from.y)*dy)/(length*length)));
+                  if(Math.hypot(e.x-leg.from.x-t*dx,e.y-leg.from.y-t*dy)>1.3)continue;
+                  hit.add(e.id);battle.dealDamage(unit,e,{amount:Math.max(e.hp*bb.hp_ratio,unit.s.atk*bb.projectile_min_atk_scale),type:'arts',isSkill:true,canDodge:false,tags:['skill','chen3:wave']});
+                }
+              }
+              if(leg.turn)hit.clear(); // Once per enemy on each straight leg (PRTS).
             }
-            if(Math.floor(age*10)!==Math.floor((age-dt)*10))battle.fx('chenSwordWave',{id:unit.id,x,y});
+            if(Math.floor(age*10)!==Math.floor((age-elapsed)*10))battle.fx('chenSwordWave',{id:unit.id,x:wave.x,y:wave.y,dx:wave.dx,dy:wave.dy});
           },{owner:unit});
         },
       },
