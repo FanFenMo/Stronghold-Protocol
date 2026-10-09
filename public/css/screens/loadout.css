@@ -1,3 +1,14 @@
+.lo-support__tabs { display: flex; gap: .12rem; padding: .12rem .3rem; }
+.lo-support { flex: 1; min-height: 0; overflow: auto; padding: .2rem .3rem; font-size: max(.15rem, 14px); }
+.lo-support__slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2rem; margin: .2rem 0; }
+.lo-support__slots section { border: 1px solid #64756b; padding: .16rem; }
+.lo-support__slots h2 { font-size: max(.2rem, 17px); }
+.lo-support__picked { display: flex; align-items: center; justify-content: space-between; gap: .1rem; }
+.lo-support__catalog { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .15rem; }
+.lo-support__card { padding: .15rem; border: 1px solid #64756b; display: flex; flex-wrap: wrap; align-items: center; gap: .12rem; }
+.lo-support__actions { width: 100%; display: flex; gap: .1rem; }
+@media (max-width: 600px) { .lo-support__slots { grid-template-columns: 1fr; } }
+
 /* ==========================================================================================
    screens/loadout.css — 干员调配 (Operator loadout, DESIGN §16; js/screens/loadout.js): full-screen overlay with a
    filterable roster of the visible chess (left) and the selected chess's skills, 局内数值 and elite modules (right).

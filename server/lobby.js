@@ -80,6 +80,7 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { checkLoadout } from '../shared/protocol.js';
+import { checkSupportOperators, EMPTY_SUPPORT_OPERATORS } from '../shared/supportOperators.js';
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
@@ -550,21 +551,27 @@ export class Lobby {
    * room.loadout (DESIGN §16): check the operator loadout against the game data, store it on the session and the seat,
    * and — while a match runs — hand it to the match (accepted only during INFO_CHECK, see the header).
    */
-  loadout(session, { entries }) {
+  loadout(session, { entries, supportOperators }) {
     const data = this.safeData();
     const res = checkLoadout(entries, (id) => lookup('chess', id, data));
     if (!res || res.error) return fail(res && isErrCode(res.error) ? res.error : ERR.BAD_MSG, res && res.detail);
+    const supports = checkSupportOperators(supportOperators ?? session.supportOperators ?? EMPTY_SUPPORT_OPERATORS,
+      id => lookup('chess', id, data));
+    if (supports.error) return fail(supports.error, supports.detail);
     const loadout = freezeLoadout(res.loadout);
     session.loadout = loadout;
+    session.supportOperators = supports.selection;
     const room = this.roomOf(session);
     if (!room) return OK;
     const seat = room.seatOf(session.playerId);
-    if (seat) seat.loadout = loadout;
+    if (seat) { seat.loadout = loadout; seat.supportOperators = supports.selection; }
     if (!room.match || !seat) return OK; // a spectator's loadout stays on its session, never reaching the match
     if (typeof room.match.setLoadout !== 'function') return fail(ERR.ROOM_STARTED, 'stored for the next match');
     let r;
     try {
       r = room.match.setLoadout(session.playerId, loadout);
+      if (r?.ok && typeof room.match.setSupportOperators === 'function')
+        r = room.match.setSupportOperators(session.playerId, supports.selection);
     } catch (e) {
       this.log.error(`[lobby] ${room.code} match.setLoadout threw`, e);
       return fail(ERR.INTERNAL);
@@ -587,6 +594,7 @@ export class Lobby {
       seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
       // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
       loadout: s.isBot ? null : s.loadout || null,
+      supportOperators: s.isBot ? null : s.supportOperators || null,
     }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
     const ctx = { live: true, ended: false, disposed: false, match: null, lastPublic: null, sharedResult: null, results: new Map() };
@@ -845,6 +853,7 @@ export class Lobby {
     return {
       seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
       loadout: session.loadout || null,
+      supportOperators: session.supportOperators || null,
     };
   }
 

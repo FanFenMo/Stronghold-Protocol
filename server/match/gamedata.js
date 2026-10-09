@@ -75,7 +75,7 @@ export class GameData {
     /** visible, shop-eligible base (normal) chess ids */
     this.visibleChess = Object.keys(chess).filter((id) => {
       const c = chess[id];
-      return c && c.visible && !c.isGolden && !c.isDiy && !c.isHidden && Number.isInteger(c.tier);
+      return c && c.visible && !c.isGolden && !c.isDiy && !c.isHidden && !c.supportOperator && Number.isInteger(c.tier);
     }).sort();
     /**
      * Shop item ids by tier (sim/simdata.js isShopItem: normal EQUIP, not hidden, not effect-only — the special
@@ -102,6 +102,15 @@ export class GameData {
    * (finalAssault.bossPoolHp); use `bossPoolHp` / `bossPoolShare` for the official pool.
    * @deprecated
    */
+  setSupportOperators(selections) {
+    const selected = new Set(selections.flatMap(s => [...(s?.[5] || []), ...(s?.[6] || [])]));
+    this.visibleChess = Object.keys(this._chess).filter(id => {
+      const c = this._chess[id];
+      return c.visible && !c.isGolden && !c.isDiy && !c.isHidden && Number.isInteger(c.tier)
+        && (!c.supportOperator || selected.has(id));
+    }).sort();
+  }
+
   bossHpMul(bossId) { // eslint-disable-line no-unused-vars
     return 1;
   }

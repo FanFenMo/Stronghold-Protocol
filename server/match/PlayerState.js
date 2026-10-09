@@ -74,6 +74,7 @@ import { ERR, GEO, PHASE, layerGainRoom } from '../../shared/constants.js';
 import { checkLoadout, resolveLoadout } from '../../shared/protocol.js';
 import { FIELD, tileKey, parseKey, inField, canPlace, placeClass, boardOrder, freeSlot, pieceDir, parseDir, mergeTile, ownerRangeKeys } from './board.js';
 import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../shared/loadoutRecord.js';
+import { checkSupportOperators, EMPTY_SUPPORT_OPERATORS, supportAvailable } from '../../shared/supportOperators.js';
 import { offsetTile } from '../sim/dir.js';
 import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains } from './bondsMeta.js';
 import { itemKey } from './gamedata.js';
@@ -111,6 +112,8 @@ export class PlayerState {
     this.lastEmoteAt = -Infinity;
     /** operator loadout (DESIGN §16): frozen { [baseChessId]: { skill, module } }, {} = every chess on its defaults */
     this.loadout = Object.freeze({});
+    this.supportOperators = EMPTY_SUPPORT_OPERATORS;
+    if (!this.isBot && seat.supportOperators) this.setSupportOperators(seat.supportOperators);
     if (!this.isBot && seat.loadout) this.setLoadout(seat.loadout);
     this.shop = { level: 1, upgradePrice: this.gd.upgradeBase(1) ?? 0, slots: [], frozen: false, freeRefreshes: 0 };
     /** reward offers queue (merge rewards, special refreshes): { tier, source, label, slots: [{ kind, id, price, sold }] } */
@@ -453,6 +456,15 @@ export class PlayerState {
   // =================================================================================================
   // acquisition, merges, promotion
 
+  setSupportOperators(selection) {
+    const res = checkSupportOperators(selection, id => this.gd.chess(id));
+    if (res.error) return false;
+    this.supportOperators = res.selection;
+    return true;
+  }
+
+  canUseChess(id) { return supportAvailable(this.gd.chess(id), this.supportOperators); }
+
   /** Normal copies of a base chess currently owned (board/hand/temp). */
   countCopies(baseId) {
     let n = 0;
@@ -481,7 +493,7 @@ export class PlayerState {
    */
   acquireChess(chessId, { source = 'grant', toTemp = false, fromPool = true, silent = false } = {}) {
     const rec = this.gd.chess(chessId);
-    if (!rec) return null;
+    if (!rec || !this.canUseChess(chessId)) return null;
     const base = this.gd.baseIdOf(chessId);
     const need = rec.isGolden ? this.gd.goldenCopies : 1;
     const taken = fromPool ? this.m.pool.take(base, need) : 0;
@@ -654,10 +666,10 @@ export class PlayerState {
     const ro = this.gd.rewardOffer();
     const t = Number.isInteger(tier) ? tier : Math.min(this.shop.level + ro.tierOffset, ro.maxTier);
     // an offer never shows one operator twice, whoever built the list (user playtest #6 item 19)
-    let list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => this.gd.chess(id)) : null;
+    let list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => this.gd.chess(id) && this.canUseChess(id)) : null;
     if (!list) {
       list = [];
-      const fresh = (id) => !list.includes(id);
+      const fresh = (id) => this.canUseChess(id) && !list.includes(id);
       for (let i = 0; i < ro.count; i++) {
         let id = null;
         for (let tt = t; tt >= 1 && !id; tt--) id = this.m.pool.roll(this.m.rngShop, { tier: tt, filter: fresh });
@@ -836,7 +848,7 @@ export class PlayerState {
   }
 
   _rollChessSlot() {
-    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level });
+    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level, filter: id => this.canUseChess(id) });
     return id ? { kind: 'chess', id, basePrice: this.gd.chessPrice(id), frozen: false, sold: false } : null;
   }
 
@@ -1661,6 +1673,7 @@ export class PlayerState {
       nextEnemies: this.m.nextEnemiesFor(this),
       // DESIGN §16: the effective operator loadout ({ [baseChessId]: { skill, module } }; chess not listed use defaults)
       loadout: this.loadout,
+      supportOperators: this.supportOperators,
       stats: {
         dmgDealt: Math.round(this.stats.dmgDealt), kills: this.stats.kills, leaks: this.stats.leaks, gold: this.stats.gold,
         refreshes: this.stats.refreshes, merges: this.stats.merges,

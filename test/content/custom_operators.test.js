@@ -178,7 +178,11 @@ for (const suffix of ['a', 'b']) {
 test('both operators belong only to 协防干员 and acquire / merge in the real preparation engine', () => {
   const ds = getDefaultSource();
   const h = makeMatch({ mode: 'solo', humans: 1, bots: 0, fake: true });
-  h.start().toPrep(1);
+  h.start();
+  const supports = { 5: [], 6: [] };
+  for (const id of [AS + 'a', SA + 'a']) if (ds.getChess(id).raw?.supportOperator) supports[ds.getChess(id).tier].push(id);
+  assert.equal(h.m.setSupportOperators('p_0', supports).ok, true);
+  h.toPrep(1);
   const p = h.m.players.get('p_0');
   for (const [id, tier] of [[AS + 'a', 5], [SA + 'a', 6]]) {
     assert.deepEqual(ds.getChess(id).bonds, ['emptyShip']);

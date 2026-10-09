@@ -307,6 +307,7 @@ export class Match {
     }
     if (!this.players.size) throw new TypeError('Match: seats required');
     this.order = [...this.players.values()].sort((a, b) => a.seat - b.seat);
+    this.gd.setSupportOperators(this.order.map(p => p.supportOperators));
     /**
      * Spectator seats (opts.spectators / addSpectator): playerId → a stand-in every watch path treats like an eliminated
      * human (alive false; no PlayerState, never a field's player or authority).
@@ -445,6 +446,23 @@ export class Match {
       this.markPrivate(ps);
     });
     return res;
+  }
+
+  setSupportOperators(playerId, selection) {
+    const ps = this.players.get(playerId);
+    if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
+    if (this.disposed || this.ended || this.phase !== PHASE.INFO_CHECK) return fail(ERR.WRONG_PHASE, 'support roster locked');
+    if (!ps.setSupportOperators(selection)) return fail(ERR.BAD_TARGET, 'invalid support roster');
+    this.gd.setSupportOperators(this.order.map(p => p.supportOperators));
+    const off = new Set([...this.disabledBonds, ...this.staticInactiveBonds]);
+    this.bannedChess = this.gd.visibleChess.filter(id => {
+      const bonds = this.gd.chess(id).bonds || [];
+      return bonds.length > 0 && bonds.every(b => off.has(b));
+    });
+    this.pool = new SharedPool(this.gd, { banned: this.bannedChess });
+    this.markPrivate(ps);
+    this.markPublic();
+    return OK;
   }
 
   onDisconnect(playerId) {
@@ -1684,7 +1702,7 @@ export class Match {
    * pool filtered by `tier` / `minTier` / `maxTier` (number or 'shopLevel') / `bond`; `golden: true` yields the elite id.
    * @returns {{ kind: 'item'|'chess', id: string, golden?: boolean } | null}
    */
-  rollPool(poolId, { shopLevel = 6 } = {}) {
+  rollPool(poolId, { shopLevel = 6, player = null } = {}) {
     const pools = this.gd.choices.pools && typeof this.gd.choices.pools === 'object' ? this.gd.choices.pools : {};
     const p = typeof poolId === 'string' && Object.hasOwn(pools, poolId) ? pools[poolId] : null;
     if (!p || typeof p !== 'object') return null;
@@ -1697,6 +1715,7 @@ export class Match {
     const rng = this.rngMeta;
     const free = (id) => {
       if (typeof id !== 'string' || !this.gd.chess(id)) return false;
+      if (player && !player.canUseChess(id)) return false;
       const base = this.gd.baseIdOf(id);
       return !this.pool.has(base) || this.pool.left(base) > 0;
     };
@@ -1714,7 +1733,7 @@ export class Match {
       id = this.pool.roll(rng, {
         tier: Number.isInteger(p.tier) ? p.tier : null,
         maxTier,
-        filter: (cid, e) => e.tier >= minTier && (!bond || (Array.isArray(this.gd.chess(cid)?.bonds) && this.gd.chess(cid).bonds.includes(bond))),
+        filter: (cid, e) => (!player || player.canUseChess(cid)) && e.tier >= minTier && (!bond || (Array.isArray(this.gd.chess(cid)?.bonds) && this.gd.chess(cid).bonds.includes(bond))),
       });
     }
     if (!id) return null;

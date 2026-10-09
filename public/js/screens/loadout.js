@@ -30,6 +30,9 @@ import {
 import { loadoutStore, openLoadout, closeLoadout, setEntries, applyLoadoutEntries } from '../ui/loadoutSync.js';
 import { copyText } from '../ui/clipboard.js';
 import { toast } from '../ui/toasts.js';
+import { SupportRoster } from '../ui/supportRoster.js';
+import { setSupportOperators } from '../ui/loadoutSync.js';
+import { supportAvailable } from '../../../shared/supportOperators.js';
 
 export { openLoadout, closeLoadout };
 
@@ -376,6 +379,7 @@ const SYNC_TEXT = {
 
 /** The overlay screen. */
 function LoadoutScreen({ st }) {
+  const [tab, setTab] = useState('operators');
   const ready = useData('chess', 'bonds', 'assets', 'local');
   const phase = useStore((s) => s.match?.public?.phase || null);
   const inMatch = useStore((s) => !!s.room?.inMatch);
@@ -385,7 +389,7 @@ function LoadoutScreen({ st }) {
   const m = data.get('assets');
   const getChess = (id) => data.lookup('chess', id);
   const getBond = (id) => data.lookup('bonds', id);
-  const roster = useMemo(() => rosterOf(data.list('chess')), [ready]);
+  const roster = useMemo(() => rosterOf(data.list('chess')).filter(c => supportAvailable(c, st.supportOperators)), [ready, st.supportOperators]);
   const bonds = useMemo(() => {
     const used = new Set(roster.flatMap((c) => c.bonds || []));
     return (data.list('bonds') || []).filter((b) => b && used.has(b.bondId))
@@ -495,7 +499,13 @@ function LoadoutScreen({ st }) {
       </div>
     </header>
     <p class=${cx('lo-note', locked && 'is-locked')}><${Icon} name="info" />${locked ? '本局的调配已锁定（确认本局信息后无法修改），修改将在下一局生效' : fromText}</p>
-    ${!ready ? html`<div class="lo-loading"><${Spinner} size="sm" />正在载入干员数据（打开页面后仅载入一次）…</div>` : html`<main class=${cx('lo-body', narrowDetail && 'is-detail')}>
+    <nav class="lo-support__tabs" aria-label="调配类别">
+      <${Button} variant=${tab === 'operators' ? 'primary' : 'secondary'} size="sm" onClick=${() => setTab('operators')}>技能与模组<//>
+      <${Button} variant=${tab === 'supports' ? 'primary' : 'secondary'} size="sm" data-testid="support-open" onClick=${() => setTab('supports')}>外援干员<//>
+    </nav>
+    ${!ready ? html`<div class="lo-loading"><${Spinner} size="sm" />正在载入干员数据（打开页面后仅载入一次）…</div>`
+      : tab === 'supports' ? html`<${SupportRoster} records=${data.list('chess')} selection=${st.supportOperators} onChange=${setSupportOperators} locked=${locked} />`
+      : html`<main class=${cx('lo-body', narrowDetail && 'is-detail')}>
       <section class="lo-roster">
         <${Filters} m=${m} filters=${st.filters} bonds=${bonds} onFilters=${(filters) => loadoutStore.set({ filters })} />
         <div class="lo-grid" role="listbox" aria-label="干员列表" ref=${gridRef}>

@@ -15,6 +15,7 @@ import { createStore, loadPref, savePref } from '../store.js';
 import { data } from '../data.js';
 import { LOADOUT_PREF, parseStored, toStored, sanitizeEntries } from './loadoutModel.js';
 import { toast } from './toasts.js';
+import { EMPTY_SUPPORT_OPERATORS, isSupportSelection, sanitizeSupportOperators } from '../../../shared/supportOperators.js';
 
 export const SYNC_DEBOUNCE_MS = 500;
 export const RETRY_MS = 1500;
@@ -26,6 +27,8 @@ function readStored() {
 /** Loadout + screen state (separate from the app store: it must survive room / match resets). */
 export const loadoutStore = createStore({
   entries: readStored(),
+  supportOperators: isSupportSelection(loadPref('supportOperators', null))
+    ? loadPref('supportOperators', null) : EMPTY_SUPPORT_OPERATORS,
   open: false,
   from: null,          // 'lobby' | 'room' | 'briefing'
   sel: null,           // selected base chess id
@@ -38,6 +41,12 @@ export function setEntries(entries) {
   const next = entries && typeof entries === 'object' ? entries : {};
   savePref(LOADOUT_PREF, toStored(next));
   loadoutStore.set({ entries: next });
+}
+
+export function setSupportOperators(selection) {
+  const next = sanitizeSupportOperators(selection, id => data.lookup('chess', id));
+  savePref('supportOperators', next);
+  loadoutStore.set({ supportOperators: next });
 }
 
 /**
@@ -104,13 +113,18 @@ export function installLoadoutSync({ net, getChessReady, lookupChess, timers, ta
       const current = target.get().entries;
       // an empty loadout needs no data (nothing to sanitise): a player who never opened 干员调配 does not download
       // chess.json in the lobby just for this
-      const empty = !current || Object.keys(current).length === 0;
+      const supports = target.get().supportOperators;
+      const empty = (!current || Object.keys(current).length === 0)
+        && !(supports?.[5]?.length || supports?.[6]?.length);
       const loaded = empty ? true : await ready();
       if (disposed) return;
       // never sanitise against missing data: every entry would be dropped and the server's copy cleared
       if (loaded == null) { setState('error'); return; }
       const entries = empty ? {} : sanitizeEntries(target.get().entries, lookup);
-      const json = JSON.stringify(entries);
+      const payload = { entries };
+      if (target.get().supportOperators !== undefined)
+        payload.supportOperators = sanitizeSupportOperators(target.get().supportOperators, lookup);
+      const json = JSON.stringify(payload);
       if (json === pendingJson) return; // the same content is already on its way
       if (json === lastSent && pendingJson == null) { edited = false; setState('synced'); return; }
       const my = ++seq;
@@ -119,7 +133,7 @@ export function installLoadoutSync({ net, getChessReady, lookupChess, timers, ta
       pendingJson = json;
       setState('sending');
       try {
-        await net.request('room.loadout', { entries });
+        await net.request('room.loadout', payload);
         if (my !== seq) return;
         pendingJson = null;
         lastSent = json;
@@ -144,7 +158,7 @@ export function installLoadoutSync({ net, getChessReady, lookupChess, timers, ta
 
   const offWelcome = net.on('welcome', () => { lastSent = null; pendingJson = null; seq++; schedule(50); });
   const offStore = target.subscribe((s, prev) => {
-    if (s.entries !== prev.entries) { edited = true; schedule(); }
+    if (s.entries !== prev.entries || s.supportOperators !== prev.supportOperators) { edited = true; schedule(); }
     // closing the overlay sends a pending edit at once (review fix): the player's next click — 准备就绪 in the solo
     // briefing, 开始模拟 in the room — must not overtake the debounced room.loadout (the match locks its loadout when
     // INFO_CHECK ends, so a late edit would silently only apply to the next match). Same socket ⇒ ordered.
