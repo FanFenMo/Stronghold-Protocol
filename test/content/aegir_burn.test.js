@@ -33,12 +33,12 @@ test('six Aegir: exactly 12 surrounding tiles, every 0.5 s; true damage uses liv
   assert.equal(burns(h, u).length, 0);
   h.run(0.1);
   assert.equal(burns(h, u).length, 12);
-  for (const c of burns(h, u)) { assert.equal(c.dmg.type, 'true'); close(c.amount, 350); assert.ok(targets.includes(c.target)); }
+  for (const c of burns(h, u)) { assert.equal(c.dmg.type, 'true'); close(c.amount, 175); assert.ok(targets.includes(c.target)); }
   assert.ok(burns(h, u).every(c => !outside.includes(c.target)));
   h.b.addBuff(u, { key: 'test:atk', mods: { atkPct: 1 }, persist: true });
   h.b.addLayers('p1', 'egirShip', 100, 'test');
   h.run(0.5);
-  for (const c of burns(h, u).slice(12)) close(c.amount, 2200);
+  for (const c of burns(h, u).slice(12)) close(c.amount, 1100);
   assert.equal(burns(h, u).length, 24);
   checkInvariants(h.b);
 });
@@ -83,7 +83,7 @@ test('burn kill is credited to its operator; dead sources stop pulsing', () => {
   assert.equal(burns(h, u).length, n);
 });
 
-test('calibration: 100+ layers clear a 10000 HP mob; 200 layers beat the normal 675000 HP pool, 400 dominate', () => {
+test('halved burn: 120 layers clear a 10000 HP mob; 400 clear the 675000 HP pool, 200 need more than 150 s', () => {
   const hp = DATA.bosses.boss_1.bloodPoint.NORMAL;
   const times = [];
   for (const layers of [100, 200, 400]) {
@@ -95,12 +95,12 @@ test('calibration: 100+ layers clear a 10000 HP mob; 200 layers beat the normal 
     checkInvariants(h.b);
   }
   assert.equal(times[0], Infinity);
-  assert.ok(times[1] > 80 && times[1] < 120, String(times));
-  assert.ok(times[2] < 35 && times[2] < times[1] / 3, String(times));
+  assert.equal(times[1], Infinity);
+  assert.ok(times[2] > 45 && times[2] < 65 && times[2] < times[1] / 3, String(times));
   const h = fight({ layers: 120 });
   const e = h.spawn('dummy', { pos: [9, 3] });
   e.hp = 10000;
-  assert.ok(h.runUntil(() => !e.alive, 12));
+  assert.ok(h.runUntil(() => !e.alive, 24));
 });
 
 test('real standard boss: six fixed elite Aegir clear mobs at 120 layers, beat the boss at 220, and dominate at 400', () => {
@@ -120,7 +120,7 @@ test('real standard boss: six fixed elite Aegir clear mobs at 120 layers, beat t
   assert.equal(results[0].players.p1.killed, results[0].players.p1.total);
   assert.ok(results[0].bossHpLeft > 0);
   assert.equal(results[1].bossHpLeft, 0);
-  assert.ok(results[1].time > 80 && results[1].time < 120);
+  assert.ok(results[1].time > 120 && results[1].time < 200);
   assert.equal(results[2].bossHpLeft, 0);
-  assert.ok(results[2].time < 35 && results[2].time < results[1].time / 3);
+  assert.ok(results[2].time > 35 && results[2].time < 70 && results[2].time < results[1].time / 2);
 });
