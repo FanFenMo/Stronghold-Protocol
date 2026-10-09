@@ -73,7 +73,7 @@ test('bands.js wires both parts: 28 bands with a prep handler, 10 with a battle 
   assert.equal(ids.length, 40);
   const meta = ids.filter((id) => REG.has(`band:${id}`));
   const battle = ids.filter(hasBattlePart);
-  assert.equal(meta.length, 28);
+  assert.equal(meta.length, 29);
   assert.deepEqual(battle.sort(), ['band_amedic', 'band_amiya', 'band_chen', 'band_clementia', 'band_dusk', 'band_emperor', 'band_ermengard', 'band_humus', 'band_ioleta', 'band_mberry', 'band_qalaisa'].sort());
   assert.ok(REG.has('global:bands_ducklord'));
   const none = ids.filter((id) => !meta.includes(id) && !battle.includes(id));
@@ -549,14 +549,14 @@ test('埃芒加德 命结之秘: the first 3 knock-downs of the battle revive at
   cover('band_ermengard');
 });
 
-test('克莱门莎 崇高牺牲: a <阿戈尔> operator knocked down ⇒ +its tier <阿戈尔> layers (no activation needed; none in 联防/boss)', () => {
+test('克莱门莎 崇高牺牲: being knocked down no longer grants layers', () => {
   const ops = { t_eg: op('t_eg', { bonds: ['egirShip'], tier: 3 }), t_x: op('t_x', { bonds: ['yanShip'], tier: 5 }) };
   const h = fight({ band: 'band_clementia', ops, units: [{ chessId: 't_eg', row: 10, col: 4 }, { chessId: 't_x', row: 11, col: 4 }], foes: [[10, 9]] });
   h.step(1);
   h.b.dealDamage(foe(h), h.unit('t_eg'), { amount: 1e6, type: 'true' });
   h.b.dealDamage(foe(h), h.unit('t_x'), { amount: 1e6, type: 'true' });
   h.b.retreat(h.unit('t_eg')); // not knocked down: nothing (already dead anyway)
-  assert.deepEqual(h.b.result().perPlayer.p1.layerGains, { egirShip: 3 });
+  assert.deepEqual(h.b.result().perPlayer.p1.layerGains, {});
   const u = fight({ band: 'band_clementia', kind: 'unite', ops, units: [{ chessId: 't_eg', row: 10, col: 4 }], foes: [[10, 9]] });
   u.step(1);
   u.b.dealDamage(foe(u), u.unit('t_eg'), { amount: 1e6, type: 'true' });

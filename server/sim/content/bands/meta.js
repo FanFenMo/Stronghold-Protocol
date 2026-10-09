@@ -79,6 +79,32 @@ function rollBond(ctx, bond, { anyTier = false } = {}) {
 
 const K = {};
 
+K.band_devour_gain_bond_char_next_round = (params) => {
+  const p = params[0];
+  const acc = 'band:clementia:devoured', pending = 'band:clementia:pending', due = 'band:clementia:due';
+  return {
+    onBattleResult(ctx, ev) {
+      const n = (ev.result?.egirDevoured || 0) + (ev.unite?.perPlayer?.[ctx.playerId]?.egirDevoured || 0);
+      if (!n) return;
+      const total = ctx.incCounter(acc, n);
+      const earned = Math.floor(total / p.devour_count);
+      ctx.setCounter(acc, total % p.devour_count);
+      if (earned) {
+        if (!ctx.counter(pending)) ctx.setCounter(due, ctx.round + 1);
+        ctx.incCounter(pending, earned * p.count);
+      }
+    },
+    onRoundStart(ctx) {
+      if (ctx.round < ctx.counter(due)) return;
+      while (ctx.counter(pending) > 0) {
+        const id = rollBond(ctx, p.bond);
+        if (!id || !ctx.grantChess(id, { source: 'band' })) break;
+        ctx.incCounter(pending, -1);
+      }
+    },
+  };
+};
+
 K.prep_finish_char_bond_add_layer = (ps) => ({
   onPrepEnd(ctx) {
     const n = int(ps[0].layer, 0);

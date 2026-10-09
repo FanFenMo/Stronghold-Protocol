@@ -13,7 +13,7 @@
 // every equipment item, and on the 20 boss / hidden fields, where healers block the roaming 卢西恩 and its 不祥幻影
 // (act2 h07_05) and a patrolling 碎铳之簧 once its shield is down (h08_02); the other leaders and parts cannot be blocked
 // (自缚 / 无法被阻挡, the 剑 / 锤 anchored, 余音 only by block ≥ 2). The only damage a pure healer deals is a bond's own
-// effect by its text (卡西米尔: "阻挡敌人时每2秒对周围敌人造成120%攻击力真实伤害", members of every class). These tests lock
+// effect by its text (卡西米尔's blocking pulse and six-member 阿戈尔's true-damage burn, members of every class). These tests lock
 // that.
 
 import { test } from 'node:test';
@@ -26,8 +26,10 @@ const REAL = { skip: !hasGeneratedData() };
 const PURE = new Set(['physician', 'ringhealer', 'healer', 'chainhealer', 'wandermedic']);
 const pool = (hp) => ({ hp, maxHp: hp, damage(pid, a) { this.hp = Math.max(0, this.hp - a); } });
 const waves = () => JSON.parse(fs.readFileSync(new URL('../../data/waves.json', import.meta.url), 'utf8'));
-/** A bond's own effect on its members by its text (not the unit's attack): 卡西米尔's pulse while blocking. */
-const bondEffect = (c) => !c.dmg?.isAttack && (c.dmg?.tags || []).includes('bond:kazimierz');
+/** A bond's own true-damage effect on its members, separate from the unit's healing attacks. */
+const bondEffect = (c) => !c.dmg?.isAttack && c.dmg?.type === 'true'
+  && (c.dmg.tags.includes('bond:kazimierz')
+    || (c.dmg.tags.includes('bond:egir:burn') && c.dmg.tags.includes('dot') && c.dmg.tags.includes('periodic')));
 /** 卢西恩 and its 不祥幻影 — the boss that roams the field (patrol) and can be blocked. */
 const LUCIEN = /^enemy_201[67]_csph/;
 
@@ -125,7 +127,7 @@ function blockRun(unit, { member = null, bonds = {}, secs = 20, rec = null, fill
   };
 }
 
-test('E2 audit: every pure healer (医师 / 群愈师 / 疗养师 / 链愈师 / 行医, normal and elite, every skill cast while blocking) keeps healing while it blocks, under every bond as a member, and never hits the enemy', REAL, () => {
+test('E2 audit: every pure healer keeps healing while it blocks under every bond; only covenant effects damage enemies', REAL, () => {
   const ds = getDefaultSource();
   const healers = Object.values(ds.raw.chess).filter((c) => c.stats && c.dmgType === 'heal' && PURE.has(c.subProfessionId));
   assert.ok(healers.length >= 20, `healers ${healers.length}`);
@@ -143,6 +145,9 @@ test('E2 audit: every pure healer (医师 / 群愈师 / 疗养师 / 链愈师 / 
         assert.ok(r.blocking > 8, `${tag}: blocks (${r.blocking.toFixed(1)} s)`);
         assert.ok(r.skillBlocking > 0, `${tag}: the skill is cast / runs while it blocks`);
         assert.ok(r.atks.every((a) => a.targets.every((t) => t.side === 'ally')), `${tag}: attacks heal allies only`);
+        const burns = r.dmg.filter((d) => d.dmg?.tags?.includes('bond:egir:burn'));
+        assert.ok(burns.every((d) => member === 'egirShip' && bondEffect(d)), `${tag}: only Aegir members use periodic true-damage burn`);
+        if (member === 'egirShip') assert.ok(burns.length > 0, `${tag}: the healer's covenant burn is live`);
         const hits = r.dmg.filter((d) => !bondEffect(d));
         pulses += r.dmg.length - hits.length;
         assert.equal(hits.length, 0, `${tag}: no damage to the blocked enemy (${hits.map((d) => d.dmg?.tags?.join('/')).join(' ')})`);

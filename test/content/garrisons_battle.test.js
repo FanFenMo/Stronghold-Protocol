@@ -105,7 +105,7 @@ test('useskill (莎草 42 / 菲莱 43 / 百炼嘉维尔 128 / 塑心 90 / 纯烬
   assert.deepEqual(one('garrison_43_a', 1, { sargonShip: B(0, false) }), {}, 'inactive bond: nothing');
 });
 
-test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 海霓 / 伺夜 / 风笛 / 荒芜拉普兰德): every check_cnt kills, per-id caps', () => {
+test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 幽灵鲨 / 归溟幽灵鲨 / 海霓 / 伺夜 / 风笛 / 荒芜拉普兰德): every check_cnt kills, per-id caps', () => {
   for (const gid of idsOfKey('act1autochess_gar_event_selfkillenemy')) {
     if (!D.garrisons[gid].owners.some((o) => D.chess[o].visible)) continue; // 117_b: granted (ADD_BOND test)
     const g = GR(gid);
@@ -120,12 +120,12 @@ test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 海霓 / 伺夜 / 风�
     cover(gid);
   }
   const run = (gid, kills, bonds, victim = 'enemy') => {
-    const h = battle({ units: [{ id: 'op', g: [gid], row: 10, col: 4 }, { id: 'ally', row: 11, col: 4 }], bonds, enemies: [{ key: 'e_dummy', pos: [9, 9] }] });
+    const h = battle({ units: [{ id: 'op', g: [gid], row: 10, col: 4, bonds: Object.keys(bonds) }, { id: 'ally', row: 11, col: 4 }], bonds, enemies: [{ key: 'e_dummy', pos: [9, 9] }] });
     for (let i = 0; i < kills; i++) h.b.emit('kill', { killer: h.unit('op'), victim: victim === 'ally' ? h.unit('ally') : h.enemies()[0] });
     return gains(h);
   };
-  assert.deepEqual(run('garrison_38_a', 5, { egirShip: B(0), steadShip: B(0), raidShip: B(0) }), { egirShip: 2, steadShip: 2, raidShip: 2 }, '斯卡蒂: every 2 kills +1');
-  assert.deepEqual(run('garrison_38_b', 4, { egirShip: B(0), steadShip: B(0), raidShip: B(0) }), { egirShip: 4, steadShip: 4, raidShip: 4 });
+  assert.deepEqual(run('garrison_38_a', 5, { egirShip: B(0), steadShip: B(0), raidShip: B(0) }), { egirShip: 10, steadShip: 10, raidShip: 10 }, '斯卡蒂: every enemy kill +2');
+  assert.deepEqual(run('garrison_38_b', 4, { egirShip: B(0), steadShip: B(0), raidShip: B(0) }), { egirShip: 16, steadShip: 16, raidShip: 16 });
   assert.deepEqual(run('garrison_50_a', 5, { victoriaShip: B(0), visiShip: B(0), indomShip: B(0) }), { victoriaShip: 6, visiShip: 6, indomShip: 6 }, '风笛: first 3 kills');
   assert.deepEqual(run('garrison_50_b', 5, { victoriaShip: B(0), visiShip: B(0), indomShip: B(0) }), { victoriaShip: 12, visiShip: 12, indomShip: 12 });
   assert.deepEqual(run('garrison_152_a', 5, { siracusaShip: B(0) }), { siracusaShip: 6 }, '伺夜 叙拉古 +2 × 3');
@@ -136,7 +136,7 @@ test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 海霓 / 伺夜 / 风�
   assert.deepEqual(run('garrison_118_a', 60, { siracusaShip: B(0) }), { siracusaShip: 100 }, '荒芜拉普兰德: +2 per kill, cap 100');
 });
 
-test('selfdead (幽灵鲨 46 / 砾 75 / 归溟幽灵鲨 40): per knock-out; 归溟幽灵鲨 also on every substitute ⇄ body swap', () => {
+test('selfdead (砾 75): per knock-out; 阿戈尔三人 no longer gain layers on death or substitute ⇄ body swaps', () => {
   for (const gid of idsOfKey('act1autochess_gar_event_selfdead')) {
     const sc = scenario(gid);
     const h = battle({ units: [{ id: 'op', g: [gid], row: 10, col: 4, bonds: sc.unitBonds }], bonds: sc.bonds });
@@ -156,8 +156,8 @@ test('selfdead (幽灵鲨 46 / 砾 75 / 归溟幽灵鲨 40): per knock-out; 归�
     h.step(1);
     return gains(h);
   };
-  assert.deepEqual(ko('garrison_46_a', { egirShip: B(0) }), { egirShip: 3 });
-  assert.deepEqual(ko('garrison_46_b', { egirShip: B(0) }), { egirShip: 6 });
+  assert.deepEqual(ko('garrison_46_a', { egirShip: B(0) }), {});
+  assert.deepEqual(ko('garrison_46_b', { egirShip: B(0) }), {});
   assert.deepEqual(ko('garrison_75_a', { indomShip: B(0), kazimierzShip: B(0) }), { indomShip: 2 }, '砾 75: 不屈 only (卡西米尔 is garrison_143)');
   assert.deepEqual(ko('garrison_75_b', { indomShip: B(0) }), { indomShip: 4 });
 
@@ -166,10 +166,10 @@ test('selfdead (幽灵鲨 46 / 砾 75 / 归溟幽灵鲨 40): per knock-out; 归�
   h.b.dealDamage(null, g, { amount: 1e9, type: 'true' });
   h.step(1);
   assert.ok(g.alive && g.trait.doll, 'substitute');
-  assert.deepEqual(gains(h), { egirShip: 10, indomShip: 10 }, 'body → substitute');
+  assert.deepEqual(gains(h), {}, 'body → substitute adds no layers');
   h.run(21);
   assert.ok(g.alive && !g.trait.doll, 'swapped back');
-  assert.deepEqual(gains(h), { egirShip: 20, indomShip: 20 }, 'substitute → body');
+  assert.deepEqual(gains(h), {}, 'substitute → body adds no layers');
   checkInvariants(h.b);
 });
 
@@ -481,14 +481,14 @@ test('魔王 59: +1 / +2 on trait gains of the operator in front (not counted to
 });
 
 test('regression: 魔王 also boosts the "被击倒时" gain of the operator that was knocked out in front of it', () => {
-  const h = battle({ units: [{ id: 'mw', g: ['garrison_59_a'], row: 10, col: 4 }, { id: 'ghost', g: ['garrison_46_a'], row: 10, col: 5 }], bonds: { egirShip: B(0) } });
-  h.b.dealDamage(null, h.unit('ghost'), { amount: 1e9, type: 'true' });
+  const h = battle({ units: [{ id: 'mw', g: ['garrison_59_a'], row: 10, col: 4 }, { id: 'gravel', g: ['garrison_75_a'], row: 10, col: 5 }], bonds: { indomShip: B(0) } });
+  h.b.dealDamage(null, h.unit('gravel'), { amount: 1e9, type: 'true' });
   h.step(1);
-  assert.deepEqual(gains(h), { egirShip: 3 + 1 });
-  const far = battle({ units: [{ id: 'mw', g: ['garrison_59_a'], row: 10, col: 4 }, { id: 'ghost', g: ['garrison_46_a'], row: 11, col: 5 }], bonds: { egirShip: B(0) } });
-  far.b.dealDamage(null, far.unit('ghost'), { amount: 1e9, type: 'true' });
+  assert.deepEqual(gains(h), { indomShip: 2 + 1 });
+  const far = battle({ units: [{ id: 'mw', g: ['garrison_59_a'], row: 10, col: 4 }, { id: 'gravel', g: ['garrison_75_a'], row: 11, col: 5 }], bonds: { indomShip: B(0) } });
+  far.b.dealDamage(null, far.unit('gravel'), { amount: 1e9, type: 'true' });
   far.step(1);
-  assert.deepEqual(gains(far), { egirShip: 3 });
+  assert.deepEqual(gains(far), { indomShip: 2 });
 });
 
 test('no IN_BATTLE gains in 联防 / boss fields', () => {
