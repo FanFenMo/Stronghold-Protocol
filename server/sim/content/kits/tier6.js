@@ -3343,6 +3343,7 @@ import aglna2 from './aglna2.js';
 import wang from './wang.js';
 import clemnt from './clemnt.js';
 import wisdel from './wisdel.js';
+import phatm2 from './phatm2.js';
 
 export default {
   chess_custom_6_oblvns_a: sakiko,
@@ -3350,6 +3351,7 @@ export default {
   chess_custom_6_wang_a: wang,
   chess_custom_6_clemnt_a: clemnt,
   chess_custom_6_wisdel_a: wisdel,
+  chess_custom_6_phatm2_a: phatm2,
   chess_char_1_15_a: pithst,
   chess_char_6_01_a: lemuen,
   chess_char_6_02_a: sbell2,

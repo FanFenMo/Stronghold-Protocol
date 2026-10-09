@@ -79,6 +79,7 @@
 import { COLS, ROWS, MOVE_SCALE } from '../constants.js';
 import { stoneKit } from './kits/wang.js';
 import { spirit } from './kits/wisdel.js';
+import { lureKit, cageKit } from './kits/phatm2.js';
 import { absoluteRangeKeys, sortEnemyTargets, canTargetEnemy } from '../targeting.js';
 import { bodyInKeys, bodyOnTile } from '../body.js';
 import { hasHp } from '../damage.js';
@@ -1354,6 +1355,8 @@ export function spawnMapChar(battle, playerId, tokenId, { alias = null } = {}) {
 // registry
 
 const RAW_KITS = {
+  token_10054_phatm2_encdool: lureKit,
+  token_10055_phatm2_mndclv: cageKit,
   token_10035_wisdel_wward: spirit,
   token_10064_wang_stone1: stoneKit,
   [TOKEN_IDS.healDrone]: healDrone,
@@ -1418,7 +1421,7 @@ const SKILL_SUMMON_PER_CAST = Object.freeze({ [TOKEN_IDS.rosmonGear]: 2, [TOKEN_
  * Skill summons the per-owner deploy limit does not apply to: the data `deployLimit` (character_table phase maxDeployCount 1)
  * of 黄金盟誓 is a hand count, while 维娜 S3 summons one on every free deployable tile of her talent-1 area at once.
  */
-const SKILL_SUMMON_UNCAPPED = new Set([TOKEN_IDS.goldenOath]);
+const SKILL_SUMMON_UNCAPPED = new Set([TOKEN_IDS.goldenOath, 'token_10055_phatm2_mndclv']);
 /** Tactician talent tokens that replace the engine's generic 援军. */
 const TACTICIAN_TOKENS = new Set([TOKEN_IDS.wolfPack, TOKEN_IDS.manifold]);
 
