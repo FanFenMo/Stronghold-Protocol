@@ -176,6 +176,8 @@ npm start          # 启动服务器：http://localhost:3000
 | [docs/DATA.md](docs/DATA.md) | 由官方数据表生成的游戏数据（英文） |
 | [docs/ASSETS.md](docs/ASSETS.md) | 素材来源、目录结构与清单（英文） |
 | [docs/BALANCE.md](docs/BALANCE.md) | 难度模型与测量（英文） |
+| [docs/BOND-FORMULAS.md](docs/BOND-FORMULAS.md) | 盟约人数档位、按层加成公式、倍率与层数对照；阿戈尔待当前调整完成后补写 |
+| [docs/BOND-LAYER-SOURCES.md](docs/BOND-LAYER-SOURCES.md) | 叠层来源、普通/精锐特质公式、干员自身按层增益与源码入口 |
 | [docs/research/](docs/research/00-INDEX.md) | 官方规则、数据与界面的调研记录 |
 
 ## 开发与测试
