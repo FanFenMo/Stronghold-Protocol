@@ -4,7 +4,7 @@ import { Client, hasChrome, startRealServer, problemsOf } from '../e2e/client.mj
 
 const enabled = process.env.SP_E2E === '1' && hasChrome();
 
-test('Clementia strategy: the real draft displays devour recruits and six-member block restoration',
+test('Clementia strategy: the real draft displays ten-operator recruits without obsolete block restoration',
   { skip: !enabled && 'SP_E2E=1 + Chrome required', timeout: 120000 }, async () => {
     const srv = await startRealServer();
     const P = (await import('puppeteer-core')).default;
@@ -35,10 +35,11 @@ test('Clementia strategy: the real draft displays devour recruits and six-member
       await c.page.waitForFunction(() => document.querySelector('.draft-detail__name')?.textContent === '克莱门莎');
       assert.equal(await c.exists('.draft-detail__off'), false, 'Aegir is available in this mode');
       const desc = await c.page.$eval('.draft-detail__desc', el => el.textContent);
-      for (const text of ['每吞噬6名', '下回合获得1名', '不高于调度中心等级', '余数保留', '在场6名不同', '吞噬仍增加阻挡数', '保留真伤灼烧']) {
+      for (const text of ['每累计吞噬10名', '不限盟约', '下回合获得1名', '不高于当前调度中心等级', '余数保留']) {
         assert.ok(desc.includes(text), `${text}: ${desc}`);
       }
       assert.ok(!desc.includes('被击倒时'), desc);
+      assert.ok(!desc.includes('在场6名') && !desc.includes('吞噬仍增加阻挡数'), desc);
       assert.ok(!desc.includes('崇高牺牲') && !desc.includes('体验可能不完整'), 'no repeated title or missing-operator footnote');
       assert.deepEqual(problemsOf([c]), []);
       await c.shot('draft');
@@ -49,7 +50,7 @@ test('Clementia strategy: the real draft displays devour recruits and six-member
         return { bandId: p.bandId, effect: p.effects.find(e => e.id === 'aceffect_band_33') };
       });
       assert.equal(selected.bandId, 'band_clementia');
-      assert.ok(selected.effect.desc.includes('每吞噬6名') && !selected.effect.desc.includes('被击倒时'));
+      assert.ok(selected.effect.desc.includes('每累计吞噬10名') && !selected.effect.desc.includes('被击倒时'));
       console.log(desc);
     } finally {
       await c.close();

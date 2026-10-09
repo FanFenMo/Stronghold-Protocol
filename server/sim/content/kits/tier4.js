@@ -839,7 +839,7 @@ const kits = {
             const mul = S1 && c.isSkill ? num(bb.talent_scale, 2) : 1;
             const list = c.targets.filter((e) => e.alive && e.side === 'enemy').sort((a, b) => a.hp - b.hp || a.id - b.id).slice(0, n);
             for (const e of list) {
-              battle.dealDamage(unit, e, { amount: unit.s.atk * num(t0['attack@mizuki_t_1.atk_scale'], 0.5) * mul, type: 'arts', tags: ['talent'] });
+              battle.dealDamage(unit, e, { amount: unit.s.atk * num(t0['attack@mizuki_t_1.atk_scale'], 0.5) * mul, mul: c.damageMultipliers?.get(e.id) ?? 1, type: 'arts', tags: ['talent'] });
               if (!act || !e.alive) continue;
               if (S2) battle.applyStatus(e, 'bind', { duration: num(bb['attack@unmovable'], 0.8), source: unit });
               else battle.applyStatus(e, 'stun', { duration: num(bb['attack@stun'], 0.7), source: unit });
@@ -973,26 +973,26 @@ const kits = {
     const force = num(bb.force, num(bb['attack@force'], 0));
     const iv = Math.max(0.1, num(bb.interval, 1.5));
     const g = grid(def.skill?.rangeGrid);
-    const dragDmg = (battle, unit, e, moved) => { // module: dragged enemies take arts damage ∝ distance
+    const dragDmg = (battle, unit, e, moved, damageMul = 1) => { // module: dragged enemies take arts damage ∝ distance
       if (!(moved > 0) || !(num(tb.value, 0) > 0) || !e.alive) return;
-      battle.dealDamage(unit, e, { amount: num(tb.value) * moved / Math.max(1e-6, num(tb.dist, 1)), type: 'arts', isSkill: true, tags: ['drag'] });
+      battle.dealDamage(unit, e, { amount: num(tb.value) * moved / Math.max(1e-6, num(tb.dist, 1)), mul: damageMul, type: 'arts', isSkill: true, tags: ['drag'] });
     };
     // module HOK-Y: "向自身拖拽较远的敌人时力度提升一个等级"
     const farR = num(mb['skill@range_radius'], num(mb['attack@range_radius'], 0)), farF = num(mb['skill@delta_force'], num(mb['attack@delta_force'], 0));
     const selfForce = (unit, e, f) => (farR > 0 && farF > 0 && Math.hypot(e.x - unit.x, e.y - unit.y) > farR + 1e-9 ? f + farF : f);
-    const pullSelf = (battle, unit, e, f) => { if (e && e.alive) dragDmg(battle, unit, e, pullToFront(battle, unit, e, selfForce(unit, e, f))); };
+    const pullSelf = (battle, unit, e, f, damageMul = 1) => { if (e && e.alive) dragDmg(battle, unit, e, pullToFront(battle, unit, e, selfForce(unit, e, f)), damageMul); };
     return {
       skills: alt(def, {
         skchr_glady_1: () => ({
           kind: instantKind(def),
-          attack: { atkScale: num(bb.atk_scale, 1.5), onHit({ battle, unit, target }) { pullSelf(battle, unit, target, num(bb.force, 1)); } },
+          attack: { atkScale: num(bb.atk_scale, 1.5), onHit({ battle, unit, target, damageMul }) { pullSelf(battle, unit, target, num(bb.force, 1), damageMul); } },
         }),
         skchr_glady_2: () => ({
           kind: 'duration',
           mods: { batPct: batFlat(def, bb.base_attack_time) },
           // (target sorting already puts the enemies she blocks first)
           targeting: { ...(g ? { rangeGrid: g } : {}), maxTargets: Math.max(1, Math.floor(num(bb['attack@max_target'], 2))) },
-          attack: { atkScale: num(bb['attack@atk_scale'], 1.35), onEachHit({ battle, unit, target }) { pullSelf(battle, unit, target, num(bb['attack@force'], 1)); } },
+          attack: { atkScale: num(bb['attack@atk_scale'], 1.35), onEachHit({ battle, unit, target, damageMul }) { pullSelf(battle, unit, target, num(bb['attack@force'], 1), damageMul); } },
           onStart({ battle, unit }) { battle.fx('wake', { x: unit.x, y: unit.y, id: unit.id }); },
         }),
       }),

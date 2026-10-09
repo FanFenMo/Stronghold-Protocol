@@ -9,7 +9,8 @@
 //                       (garrison_95) is capped 12 / 24 per battle instead of the data's 7 / 14 (research 02 Addendum 1).
 //   layer events        act1autochess_gar_event_useskill (skillStart) · _selfkillenemy (kill, every check_cnt) ·
 //                       _selfdead (death 'killed'; texts with 替身 also on every substitute ⇄ body swap, read from the
-//                       dollkeeper flag unit.trait.doll) · _consume_ammo (ammoUsed; range_id 0-1 self, 1-1 front tile,
+//                       dollkeeper flag unit.trait.doll) · _dollswap (dollSwap, requested form only) ·
+//                       _consume_ammo (ammoUsed; range_id 0-1 self, 1-1 front tile,
 //                       x-5 self + 4 adjacent, pooled counter) · _enemy_abflag_inrange (an enemy in range ENTERS
 //                       'freeze', × prob) · act2autochess_gar_event_onstart (every deploy) ·
 //                       act2autochess_gar_event_allyenemy_sleepstun_inrange (an enemy or operator in range ENTERS
@@ -168,7 +169,8 @@ function targetBonds(battle, it) {
 function amountOf(battle, it) {
   const bb = it.bb;
   switch (it.bbStr.bond_add_type) {
-    case 'by_charcount_samerow': return S.rowMates(battle, it.unit).length * S.num(bb.bond_add_count_multi, S.num(bb.bond_add_count, 1));
+    case 'by_charcount_samerow': return Math.floor(S.rowMates(battle, it.unit).length / S.num(bb.bond_add_count_divide, 1))
+      * S.num(bb.bond_add_count_multi, S.num(bb.bond_add_count, 1));
     case 'by_charlevel': return S.tierOf(it.unit) * S.num(bb.bond_add_count, 1);
     default: return S.num(bb.bond_add_count, 0);
   }
@@ -252,6 +254,14 @@ const INSTALLERS = {
         it.cnt++;
         if (it.cnt % Math.max(1, S.num(it.bb.check_cnt, 1)) === 0) fireGain(battle, it);
       }
+    });
+  },
+
+  act1autochess_gar_event_dollswap(battle, list) {
+    const m = byUnit(list);
+    battle.on('dollSwap', ({ unit, form }) => {
+      const arr = m.get(unit);
+      if (arr) for (const it of arr) if (form === it.bbStr.form) fireGain(battle, it);
     });
   },
 

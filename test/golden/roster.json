@@ -925,7 +925,7 @@
           "bossDmg": 0,
           "heal": 97977,
           "deaths": 17,
-          "layerGains": {"indomShip":24}
+          "layerGains": {"indomShip":36}
         }
       },
       "units": [
@@ -2985,9 +2985,9 @@
         "enemy_1509_mousek": [1,1,0,13145,36495],
         "enemy_9016_acstmr": [1,1,0,0,8]
       },
-      "hooks": [1,81,5700,741,741,2546,2518,2321,65,68,22,19,30,28969,1003,51,61,0,1,99,4,7,158],
-      "events": {"atk":934,"bounty":4,"deploy":20,"die":68,"dmg":2517,"engage":9,"fx":228,"heal":77,"layer":4,"skill":41,"spawn":73,"status":555},
-      "fx": {"aoe":10,"burst":7,"dodge":158,"ember":3,"garrison":4,"meltdown":7,"overload":3,"phase":1,"revive":5,"shieldBreak":1,"sp":10,"substitute":2,"swap":2,"telegraph":4,"zone":11},
+      "hooks": [1,81,5700,741,741,2546,2518,2321,65,68,22,19,30,28969,1003,51,61,0,1,99,2,7,158],
+      "events": {"atk":934,"bounty":4,"deploy":20,"die":68,"dmg":2517,"engage":9,"fx":226,"heal":77,"layer":2,"skill":41,"spawn":73,"status":555},
+      "fx": {"aoe":10,"burst":7,"dodge":158,"ember":3,"garrison":2,"meltdown":7,"overload":3,"phase":1,"revive":5,"shieldBreak":1,"sp":10,"substitute":2,"swap":2,"telegraph":4,"zone":11},
       "snaps": "1546b497 d383b743 a2ffdb4f 8e320abe 288e95e2 6d2e4f12 3c4e7a8b e7f556b5 58f6c8aa 3ef387e2 de6836ba d9d7190b 38543b7d 4fbe6dcd ed31a9de 4d13f107 a8d77bb5 962dd5da e90ac3b3"
     },
     "roster-050": {

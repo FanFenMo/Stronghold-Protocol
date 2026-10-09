@@ -21,18 +21,21 @@ function chain({ count = 6, band = 'band_clementia', kind = 'normal', foreignLas
   return h;
 }
 
-test('Clementia counts each real devoured Aegir once, even if it survives several marks; excludes other bonds', () => {
+test('Clementia counts each real devoured operator once, even across several marks and other bonds', () => {
   const h = chain();
   assert.ok(h.allies().every(u => u.alive));
-  assert.equal(h.unit('g0_a').s.blockCnt, 12, 'six-member band restores all five devoured block counts');
+  assert.equal(h.unit('g0_a').s.blockCnt, 12, 'devour always grants all five block counts');
   h.b.forceEnd();
   assert.equal(h.result().perPlayer.p1.egirDevoured, 5);
-  assert.equal(h.result().perPlayer.p1.layerGains.egirShip, 5, 'only the original devour gains; no downed band layers');
+  assert.deepEqual(h.result().perPlayer.p1.layerGains, {}, 'neither devour nor the band grants layers');
   const other = chain({ foreignLast: true });
   other.b.forceEnd();
-  assert.equal(other.result().perPlayer.p1.egirDevoured, 4);
+  assert.equal(other.result().perPlayer.p1.egirDevoured, 5, 'the other-bond operator also counts');
+  const uploaded = compactResult(other.result());
+  const otherSpec = buildBattleSpec({ ...other.b.opts, players: other.b.players.map(p => p.input), timeLimit: 60 });
+  assert.ok(validateClientResult(otherSpec, uploaded).ok, 'non-Aegir food remains valid in browser uploads');
   const plain = chain({ band: null });
-  assert.equal(plain.unit('g0_a').s.blockCnt, 2);
+  assert.equal(plain.unit('g0_a').s.blockCnt, 12, 'block no longer depends on choosing Clementia');
   plain.b.forceEnd();
   assert.equal(plain.result().perPlayer.p1.egirDevoured, undefined);
 });
@@ -65,11 +68,11 @@ function prep() {
   return { h, ps, m, grants, settle, round };
 }
 
-test('5+1 devours across rounds grant exactly one recruit next round, limited by the receiving shop level', () => {
+test('9+1 devours across rounds grant exactly one recruit next round, limited by the receiving shop level', () => {
   const s = prep();
-  s.settle(5); s.round(2);
+  s.settle(9); s.round(2);
   assert.equal(s.grants.length, 0);
-  assert.equal(s.ps.counters['band:clementia:devoured'], 5);
+  assert.equal(s.ps.counters['band:clementia:devoured'], 9);
   s.settle(1);
   s.round(2);
   assert.equal(s.grants.length, 0, 'same round is too early');
@@ -84,7 +87,7 @@ test('5+1 devours across rounds grant exactly one recruit next round, limited by
 
 test('own and 联防 counts combine; multiple rewards, remainder and an exhausted pool are retained correctly', () => {
   const s = prep();
-  s.settle(5, 8);
+  s.settle(9, 12);
   assert.equal(s.ps.counters['band:clementia:pending'], 2);
   assert.equal(s.ps.counters['band:clementia:devoured'], 1);
   const roll = s.m.pool.roll;

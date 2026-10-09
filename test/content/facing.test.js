@@ -37,8 +37,8 @@ test('阿戈尔 devour: "身前一格" is one step along each member\'s directio
   h.step(1);
   const dv = tagged(h, 'bond:egir:devour').map((c) => [c.source.defId, c.target.defId]);
   assert.deepEqual(dv, [['g1_a', 'up_a']], 'the operator above, not the one to the right');
-  close(h.unit('g1_a').s.atk, 1000 + 1000, 'base ATK of the devoured');
-  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 3, 'layers = the devoured tier');
+  close(h.unit('g1_a').s.atk, 1000 + 1000 * 0.5, 'zero layers: half the base ATK of the devoured');
+  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);
 });
 

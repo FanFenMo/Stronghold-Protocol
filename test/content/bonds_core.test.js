@@ -305,7 +305,7 @@ test('拉特兰: ammo ×(1.05+0.015L) floored; 6: every ammo used → all member
 // ---------------------------------------------------------------------------------------------------------------------
 // 阿戈尔
 
-test('阿戈尔: HP ×(1.35+0.01L); devour chain (left first): 5000 物理流失 less the target\'s DEF, base ATK + block, layers = devoured tiers', () => {
+test('阿戈尔: HP ×(1.35+0.01L); devour chain: 5000 physical HP loss, scaled base ATK + block, no layers', () => {
   const list = [
     ['g1_a', ['egirShip']], ['g2_a', ['egirShip']], ['g3_a', ['egirShip']],
     ['fod_a', ['preciShip'], { tier: 4, stats: { atk: 700, blockCnt: 3, maxHp: 20000, def: 900 } }],
@@ -321,21 +321,21 @@ test('阿戈尔: HP ×(1.35+0.01L); devour chain (left first): 5000 物理流失
   assert.deepEqual(devours.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a'], ['g2_a', 'fod_a']]);
   // PRTS 盟约记录 "造成5000点物理流失"; PRTS 作战机制: a 物理流失 is reduced by the target's DEF
   for (const c of devours) close(c.amount, Math.max(5000 - c.target.s.def, 5000 * 0.05));
-  close(g1.s.atk, 1000 + 1000 + 700, 1e-6, 'g1 gains g2 + fodder base ATK');
-  close(g2.s.atk, 1000 + 700);
+  close(g1.s.atk, 1000 + (1000 + 700) * 0.55, 1e-6, '10 layers: gain 55% of g2 + fodder base ATK');
+  close(g2.s.atk, 1000 + 700 * 0.55);
   close(g3.s.atk, 1000);
   assert.equal(g1.s.blockCnt, 2 + 2 + 3);
   assert.equal(g2.s.blockCnt, 2 + 3);
   close(f.hp, 20000 - 2 * (5000 - 900), 1e-6, '物理流失: less DEF 900 (DEF-free until 0.1.1)');
-  const Lnow = L + 1 + 4;                                   // g2 tier 1 + fodder tier 4, once each
+  const Lnow = L; // devour no longer grants layers
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, Lnow);
   h.step(2);
-  close(g3.s.maxHp, 10000 * (1 + 0.35 + 0.01 * Lnow), 1e-6, 'HP multiplier follows the devour layers');
+  close(g3.s.maxHp, 10000 * (1 + 0.35 + 0.01 * Lnow), 1e-6, 'devour leaves the HP layer multiplier unchanged');
   close(f.s.maxHp, 20000, 1e-9, 'non-member HP unchanged');
   checkInvariants(h.b);
 });
 
-test('阿戈尔 devour ATK is a 最终加算 (GitHub #165 point 2, PR #176): 1000 base ATK, +100 % skill ATK, +2000 devoured → 4000, not 6000', () => {
+test('阿戈尔 devour ATK remains a final addition: zero layers transfer 50% of food ATK after skill percentages', () => {
   // PRTS 盟约记录 "该付与来源获得所有标记单位的基础攻击力（最终加算）"; PRTS 游戏数据基础 A_f = F_t[(A + D_p)(1 + D_t) + F_p]
   const list = [
     ['g1_a', ['egirShip']], ['g2_a', ['egirShip']], ['g3_a', ['egirShip']],
@@ -346,14 +346,14 @@ test('阿戈尔 devour ATK is a 最终加算 (GitHub #165 point 2, PR #176): 100
   const h = makeBattle({ defs: defsOf(list), units, bonds: { egirShip: bondOn(3, 0, null, [3, 5]) } });
   h.step(1);
   const g1 = h.unit('g1_a');
-  assert.deepEqual(buffOf(g1, 'bond:egir:devour')?.mods, { atkFinal: 2000, blockCnt: 1 }, 'the fodder\'s base ATK as a 最终加算, its block count');
-  close(g1.s.atk, 1000 + 2000, 1e-6, 'no percentage: as before');
+  assert.deepEqual(buffOf(g1, 'bond:egir:devour')?.mods, { atkFinal: 1000, blockCnt: 1 }, '50% of food base ATK as a final addition, full block count');
+  close(g1.s.atk, 2000);
   h.b.addBuff(g1, { key: 'test:skill', mods: { atkPct: 1 } });
-  close(g1.s.atk, 1000 * 2 + 2000, 1e-6, '+100 %: 4000 (0.1.3: (1000 + 2000) × 2 = 6000)');
+  close(g1.s.atk, 1000 * 2 + 1000, 1e-6, 'skill percentages do not scale devoured ATK');
   h.b.addBuff(g1, { key: 'test:flat', mods: { atkFlat: 100 } });
-  close(g1.s.atk, (1000 + 100) * 2 + 2000, 1e-6, 'a 直接加算 is still scaled by the percentages');
+  close(g1.s.atk, (1000 + 100) * 2 + 1000, 1e-6, 'a 直接加算 is still scaled by the percentages');
   h.b.addBuff(g1, { key: 'test:weaken', mods: { atkMul: 0.5 } });
-  close(g1.s.atk, ((1000 + 100) * 2 + 2000) * 0.5, 1e-6, 'the 最终乘算 (Πmul) scales the whole, the 最终加算 included');
+  close(g1.s.atk, ((1000 + 100) * 2 + 1000) * 0.5, 1e-6, 'the 最终乘算 (Πmul) scales the whole, the 最终加算 included');
   checkInvariants(h.b);
 });
 
@@ -380,8 +380,8 @@ test('阿戈尔 devour: 物理流失 ignores the marker’s damage bonuses and t
   assert.deepEqual(dv.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a'], ['g2_a', 'fod_a']], 'g2’s own mark on the fodder resolves');
   close(f.hp, 20000 - 2 * (5000 - 500), 1e-6, '5000 less its DEF 500, twice: no ×1.25, shield untouched');
   assert.equal(f.buffs.find((b) => b.key === 'test:shield')?.shield, 3000);
-  close(g1.s.atk, 1000 + 1000 + 1000, 1e-6, 'the base ATK of everything it marked stays');
-  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 1 + 2, 'layers = tiers of the devoured units');
+  close(g1.s.atk, 1000 + (1000 + 1000) * 0.5, 1e-6, 'half the base ATK of everything it marked stays');
+  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);
 });
 
@@ -400,8 +400,8 @@ test('阿戈尔 devour, A → B → C with B devoured first (GitHub #165 point 3
   assert.ok(!B.alive && !C.alive, 'B falls to A\'s mark, C to B\'s (until 0.1.3 B\'s mark was dropped: C stood at 4000 HP)');
   // PRTS 盟约记录 "单位被【吞噬】击杀时，击杀来源始终为对应标记的付与来源"
   assert.deepEqual(h.hooksOf('kill').map((c) => [c.victim.defId, c.killer?.defId]), [['B_a', 'A_a'], ['C_a', 'B_a']], 'the kill credit is the mark\'s marker, down or not');
-  close(A.s.atk, 1000 + 1000 + 1000, 1e-6, 'A: the base ATK of B and C');
-  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 1 + 2, 'each devoured unit adds its tier once');
+  close(A.s.atk, 1000 + (1000 + 1000) * 0.5, 1e-6, 'A: half the base ATK of B and C');
+  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);
 });
 
@@ -648,8 +648,8 @@ test('阿戈尔 devour, a unit back during the pass: a marker revived by the 5-t
   assert.deepEqual(tagged(h, 'bond:egir:devour').map((c) => [c.source.defId, c.target.defId]),
     [['g1_a', 'g2_a'], ['g1_a', 'g3_a'], ['g1_a', 'fod_a'], ['g2_a', 'g3_a'], ['g2_a', 'fod_a'], ['g3_a', 'fod_a']]);
   close(f.hp, 20000 - 3 * 5000, 1e-6, 'the fodder: g1, g2 and g3');
-  close(g2.s.atk, 1000 + 1000 + 1000, 1e-6, 'g2 keeps the base ATK it gained at marking (a persistent buff) [ASSUMED]');
-  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 1 + 1 + 2, 'each devoured unit adds its tier once');
+  close(g2.s.atk, 1000 + (1000 + 1000) * 0.5, 1e-6, 'g2 keeps the scaled ATK gained at marking');
+  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);
   // 3 members, g1 → g2 → fodder (3000 HP): g1's mark knocks the fodder out, it is back at once, g2's mark on it is cancelled
   const list2 = [

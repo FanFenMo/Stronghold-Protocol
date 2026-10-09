@@ -105,7 +105,7 @@ test('useskill (莎草 42 / 菲莱 43 / 百炼嘉维尔 128 / 塑心 90 / 纯烬
   assert.deepEqual(one('garrison_43_a', 1, { sargonShip: B(0, false) }), {}, 'inactive bond: nothing');
 });
 
-test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 幽灵鲨 / 归溟幽灵鲨 / 海霓 / 伺夜 / 风笛 / 荒芜拉普兰德): every check_cnt kills, per-id caps', () => {
+test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 幽灵鲨 / 海霓 / 伺夜 / 风笛 / 荒芜拉普兰德): every check_cnt kills, per-id caps', () => {
   for (const gid of idsOfKey('act1autochess_gar_event_selfkillenemy')) {
     if (!D.garrisons[gid].owners.some((o) => D.chess[o].visible)) continue; // 117_b: granted (ADD_BOND test)
     const g = GR(gid);
@@ -136,7 +136,22 @@ test('selfkillenemy (送葬人 / 休谟斯 / 斯卡蒂 / 幽灵鲨 / 归溟幽�
   assert.deepEqual(run('garrison_118_a', 60, { siracusaShip: B(0) }), { siracusaShip: 100 }, '荒芜拉普兰德: +2 per kill, cap 100');
 });
 
-test('selfdead (砾 75): per knock-out; 阿戈尔三人 no longer gain layers on death or substitute ⇄ body swaps', () => {
+test('dollswap: same-row pairs add configured layers only when entering the substitute', () => {
+  for (const gid of idsOfKey('act1autochess_gar_event_dollswap')) {
+    const g = GR(gid), target = g.bbStr.bond_id;
+    const h = battle({ units: [
+      { id: 'op', g: [gid], row: 10, col: 4, o: { profession: 'SPECIAL', subProfessionId: 'dollkeeper' } },
+      { id: 'ally', row: 10, col: 6 },
+    ], bonds: { [target]: B(0) } });
+    h.b.emit('dollSwitch', { unit: h.unit('op'), done: false });
+    assert.deepEqual(gains(h), { [target]: g.bb.bond_add_count_multi });
+    h.run(21);
+    assert.deepEqual(gains(h), { [target]: g.bb.bond_add_count_multi });
+    cover(gid); checkInvariants(h.b);
+  }
+});
+
+test('selfdead (砾 75): per knock-out; unpaired Aegir operators gain nothing on death or substitute swaps', () => {
   for (const gid of idsOfKey('act1autochess_gar_event_selfdead')) {
     const sc = scenario(gid);
     const h = battle({ units: [{ id: 'op', g: [gid], row: 10, col: 4, bonds: sc.unitBonds }], bonds: sc.bonds });

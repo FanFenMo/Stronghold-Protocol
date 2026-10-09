@@ -826,14 +826,7 @@ export function validateClientResult(spec, raw, { gd = null } = {}) {
       const egirDevoured = p.egirDevoured ?? 0;
       const holder = spec.players.find(player => player.playerId === pid);
       const canDevour = holder.bandId === 'band_clementia' && holder.bonds?.egirShip?.active;
-      const maxDevoured = canDevour ? spec.players.reduce((n, player) => n + (player.units || []).filter(u => {
-        if (u.kind === 'token') return false;
-        if (!gd) return true;
-        const rec = gd.chess(u.chessId);
-        if (rec?.bonds.includes('egirShip')) return true;
-        const items = (u.items || []).map(id => gd.item(id)).filter(Boolean);
-        return items.length >= 2 && items.some(it => it.canGiveBond) && items.some(it => !it.canGiveBond && it.giveBondId === 'egirShip');
-      }).length, 0) : 0;
+      const maxDevoured = canDevour ? spec.players.reduce((n, player) => n + (player.units || []).filter(u => u.kind !== 'token').length, 0) : 0;
       if (!Number.isInteger(egirDevoured) || egirDevoured < 0 || egirDevoured > maxDevoured) return bad('devour bound');
       if (!finiteIn(coins, 0, B.bountyCoins + 1e-6)) return bad('coins');
       coinsSum += coins;
