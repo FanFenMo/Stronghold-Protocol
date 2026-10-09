@@ -103,11 +103,14 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
       杜遥夜: ['yanShip'], 佩佩: ['sargonShip'], 哈洛德: ['victoriaShip'], 休露丝: ['kjeragShip'], 潘格尼尼: ['lateranoShip'],
       克莱门莎: ['egirShip'], 玛恩纳: ['kazimierzShip'], 贾维: ['siracusaShip'], 娜仁图亚: ['sargonShip'],
     });
-    // every tied band carries the official note "在<X>部分干员缺席时体验可能不完整" naming that bond
+    // every tied band mentions its bond; custom strategy copy may omit the official missing-operator note
     for (const id of funny.bandIds()) {
       const b = DATA.bands[id];
-      const note = /在<([^<>]+)>部分干员缺席时体验可能不完整/.exec(b.desc);
-      if (funny.bandBondIds(id).length) assert.ok(note && funny.bandBondIds(id).some((x) => DATA.bonds[x].name === note[1]), b.name);
+      const ties = funny.bandBondIds(id);
+      if (ties.length) assert.ok(ties.some(x => {
+        const name = DATA.bonds[x].name;
+        return b.desc.includes(`<${name}>`) || b.desc.includes(`【${name}】`);
+      }), b.name);
     }
     // the three 标准 switches off; a bracketed item (<寻呼模块>, <画卷>) is no bond; unknown bands: []
     assert.deepEqual(funny.bandIds().filter((id) => funny.bandBondIds(id).some((b) => funny.modeInactiveBonds.has(b))), ['band_paganini', 'band_clementia', 'band_mlynar']);

@@ -35,10 +35,11 @@ test('Clementia strategy: the real draft displays devour recruits and six-member
       await c.page.waitForFunction(() => document.querySelector('.draft-detail__name')?.textContent === '克莱门莎');
       assert.equal(await c.exists('.draft-detail__off'), false, 'Aegir is available in this mode');
       const desc = await c.page.$eval('.draft-detail__desc', el => el.textContent);
-      for (const text of ['每吞噬4名', '下一回合获得1名', '不高于届时调度中心等级', '进度跨回合保留', '吞噬获得阻挡数的效果仍然生效', '保留盟约真伤灼烧']) {
+      for (const text of ['每吞噬4名', '下回合获得1名', '不高于调度中心等级', '余数保留', '在场6名不同', '吞噬仍增加阻挡数', '保留真伤灼烧']) {
         assert.ok(desc.includes(text), `${text}: ${desc}`);
       }
       assert.ok(!desc.includes('被击倒时'), desc);
+      assert.ok(!desc.includes('崇高牺牲') && !desc.includes('体验可能不完整'), 'no repeated title or missing-operator footnote');
       assert.deepEqual(problemsOf([c]), []);
       await c.shot('draft');
       await c.click('.draft-detail__btns .btn--primary', '确认选择');
