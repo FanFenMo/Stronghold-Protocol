@@ -50,7 +50,7 @@ export function install(battle) {
         if (!onField(u) || u.hidden || !(u.mem.prosperityHealing > 0)) continue;
         const target = battle.enemiesInKeys(u.rangeKeys, u, { canHitFly: true })[0];
         if (!target) continue;
-        const damage = Math.min(u.mem.prosperityHealing / 5, 5000);
+        const damage = Math.min(u.mem.prosperityHealing / 10, 5000);
         u.mem.prosperityHealing = 0;
         const r = Math.round(target.y), c = Math.round(target.x);
         const tiles = prosperityBlastGrid(bondLayers(battle, pid, ID)).map(([dr, dc]) => [r + dr, c + dc])
@@ -61,7 +61,6 @@ export function install(battle) {
         }
         for (const e of battle.enemiesInKeys(keys, u, { canHitFly: true })) {
           battle.dealDamage(u, e, { amount: damage, type: 'true', sourceless: true, canDodge: false, tags: [PROSPERITY_ORB_TAG] });
-          battle.applyStatus(e, 'stun', { duration: 0.5, source: u });
         }
         battle.fx('lifeOrb', { src: u.id, x: c, y: r, tiles, damage });
       }

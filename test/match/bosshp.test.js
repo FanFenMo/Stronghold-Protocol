@@ -119,21 +119,14 @@ test('绝境 Final Assault: both pair fields drain the one pool, every hit exact
 test('终极 Final Assault vs 假想敌：胄 (seeded bot match): both players\' 奥术 never multiply on the leader; a drone costs it 2 % of the pool', () => {
   // DESIGN §20.10: one 奥术 instance per target (the strongest — PRTS 作战机制 同名buff, 巴哈姆特 12316 "共享型buff會跟對面搶");
   // 死亡集群's "最大生命值2%" = the leader's shown max HP, the pool (DRONE_LINK_BASE 'pool' [ASSUMED]): 72 000 at 终极
-  // the bots' boards follow every draw of the match (the elite-to-board merge, DESIGN §20.11, moved seed 7 to 12; the
-  // 战术决策 drawn with replacement moved 12 on): the first of these seeds whose bots pair two 奥术 players
+  // Seed 4 pairs two 奥术 players with different layer counts, so either player's debuff is valid but their product is not.
   const pairOf = (m) => m.fields.filter((f) => f.battle).find((f) => f.players.length === 2 && f.players.every((pid) => f.battle.getPlayer(pid).bonds.arcaneShip?.active));
-  let h = null;
-  for (const seed of [13, 7, 11, 21, 23]) {
-    h = toFinalAssault({ difficulty: 'ABYSS', seed, bossId: 'boss_1' });
-    if (pairOf(h.m)) break;
-    h.m.dispose();
-    h = null;
-  }
-  assert.ok(h, 'precondition: a pair field where both players run 奥术 (bot lineups of one of the seeds)');
+  const h = toFinalAssault({ difficulty: 'ABYSS', seed: 4, bossId: 'boss_1' });
   const m = h.m;
   const fields = m.fields.filter((f) => f.battle);
   const bb = bondBb('arcaneShip');
   const both = pairOf(m);
+  assert.ok(both, 'precondition: a pair field where both players run 奥术');
   const allowed = [];
   for (const pid of both.players) {
     const b = both.battle.getPlayer(pid).bonds.arcaneShip;

@@ -70,39 +70,39 @@ test('治疗计数使用实际回复量，排除溢出、自疗、非干员和�
   h.run(2); approx(u.mem.prosperityHealing, 50); clean(h);
 });
 
-for (const layers of [39, 40]) test(`生命球${layers}层：${layers < 40 ? '十字五格' : '九宫格'}，群体真伤、精确半量治疗、0.5秒晕眩`, () => {
+for (const layers of [39, 40]) test(`生命球${layers}层：${layers < 40 ? '十字五格' : '九宫格'}，治疗量十分之一群体真伤、精确半量治疗，无晕眩`, () => {
   const h = field(layers), u = h.unit(1), p = h.unit(3), diagonal = h.unit(4);
   p.hp -= 20000; diagonal.hp -= 20000;
   const cross = h.spawn('target', { pos: [10, 5] }), diag = h.spawn('target', { pos: [11, 6] }), far = h.spawn('target', { pos: [10, 7] });
-  // 计入6000实际治疗后释放1200真伤，每名范围内友军600治疗。
+  // 计入6000实际治疗后释放600真伤，每名范围内友军300治疗。
   approx(h.b.heal(u, p, 5000), 6000);
   const beforeP = p.hp, beforeDiag = diagonal.hp;
   h.run(1);
-  approx(cross.s.maxHp - cross.hp, 1200);
-  approx(diag.s.maxHp - diag.hp, layers < 40 ? 0 : 1200);
+  approx(cross.s.maxHp - cross.hp, 600);
+  approx(diag.s.maxHp - diag.hp, layers < 40 ? 0 : 600);
   approx(far.s.maxHp - far.hp, 0);
-  approx(p.hp - beforeP, 600);
-  approx(diagonal.hp - beforeDiag, layers < 40 ? 0 : 600);
-  assert.ok(h.hooksOf('statusApplied').some(c => c.target === cross && c.status === 'stun' && c.duration === 0.5));
+  approx(p.hp - beforeP, 300);
+  approx(diagonal.hp - beforeDiag, layers < 40 ? 0 : 300);
+  assert.ok(!h.hooksOf('statusApplied').some(c => c.status === 'stun'));
   assert.equal(u.mem.prosperityHealing, 0); clean(h);
 });
 
 test('生命球上限5000/2500，每次清空全部计数，超过上限的积累不保留，空计数不再发射', () => {
   const h = field(200), u = h.unit(1), p = h.unit(3); p.hp -= 80000;
   const e = h.spawn('target', { pos: [10, 5] });
-  approx(h.b.heal(u, p, 30000), 48000);
+  approx(h.b.heal(u, p, 35000), 56000);
   const before = p.hp; h.run(1);
   approx(e.s.maxHp - e.hp, 5000); approx(p.hp - before, 2500);
   assert.equal(u.mem.prosperityHealing, 0); h.run(2);
   approx(e.s.maxHp - e.hp, 5000); assert.equal(h.eventsOf('fx').filter(e => e[1] === 'lifeOrb').length, 1); clean(h);
 });
 
-test('成员独立储存计数；范围外敌人不会释放；晕眩免疫按引擎生效', () => {
+test('成员独立储存计数；范围外敌人不会释放；生命球不施加晕眩', () => {
   const h = field(), u = h.unit(1), other = h.unit(2), p = h.unit(3); p.hp -= 10000;
   h.b.heal(u, p, 1000); h.b.heal(other, p, 500);
   const e = h.spawn('target', { pos: [12, 9] }); h.run(1); approx(u.mem.prosperityHealing, 1200);
-  e.x = 5; e.y = 10; e.def.immune.add('stun'); h.b._buildEnemyIndex(); h.run(1);
-  approx(e.s.maxHp - e.hp, 240); assert.equal(e.findBuff('stun'), null);
+  e.x = 5; e.y = 10; h.b._buildEnemyIndex(); h.run(1);
+  approx(e.s.maxHp - e.hp, 120); assert.equal(e.findBuff('stun'), null);
   assert.equal(u.mem.prosperityHealing, 0); approx(other.mem.prosperityHealing, 600); clean(h);
 });
 
@@ -117,7 +117,7 @@ test('生命球无来源真伤不触发咒愈治疗，自身治疗也不再次�
   h.b.dealDamage(u, e, { amount: 1000, type: 'true' });
   assert.ok(u.mem.prosperityHealing > 0, '普通咒愈会累计治疗');
   const count = u.mem.prosperityHealing, before = p.hp; h.run(1);
-  approx(p.hp - before, count / 10); assert.equal(u.mem.prosperityHealing, 0); clean(h);
+  approx(p.hp - before, count / 20); assert.equal(u.mem.prosperityHealing, 0); clean(h);
 });
 
 test('共享战场按玩家区分繁盛加成，生命球可治疗范围内队友，其他玩家治疗不替成员充能', () => {
@@ -129,7 +129,7 @@ test('共享战场按玩家区分繁盛加成，生命球可治疗范围内队�
   approx(h.b.heal(p, u, 100), 100); assert.equal(u.mem.prosperityHealing, undefined);
   approx(h.b.heal(u, p, 1000), 1200);
   h.spawn('target', { pos: [10, 5] }); const before = p.hp; h.run(1);
-  approx(p.hp - before, 120); assert.equal(u.mem.prosperityHealing, 0); clean(h);
+  approx(p.hp - before, 60); assert.equal(u.mem.prosperityHealing, 0); clean(h);
 });
 
 test('铃兰技能回复速度享受繁盛并按实际恢复归属，其他自然回复不计数', () => {
