@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
-import { bondBb, deps, reached, yanyouShare, registerMeta as coreRegisterMeta } from '../../server/sim/content/bonds/core.js';
+import { bondBb, deps, prdConstant, reached, yanyouShare, registerMeta as coreRegisterMeta } from '../../server/sim/content/bonds/core.js';
 import * as items from '../../server/sim/content/items.js';
 import { TOKEN_IDS } from '../../server/sim/content/tokens.js';
 import { createRegistry } from '../../server/match/effectsMeta.js';
@@ -572,7 +572,7 @@ test('阿戈尔 5: an operator\'s own save uses no slot (斯卡蒂\'s DRE-Y, M3�
   const hi = makeBattle({ defs: defsOf(list), autoFinish: false, timeLimit: 60, hooks: ['death', 'deploy'], units: units({ 0: ['chess_item_4_12_e_a'] }), bonds: { egirShip: bondOn(5, 0, null, [3, 5]) } });
   hi.step(1);
   const g0 = killed(hi, 'g0_a');
-  assert.ok(g0.alive && hi.hooksOf('death').filter((c) => c.unit === g0).length === 0, 'item: saved in place (no knock-out)');
+  assert.ok(g0.alive && hi.hooksOf('death').filter(c => c.unit === g0 && !c.revivedBy).length === 0, 'item: saved in place (no knock-out)');
   assert.deepEqual(['g1_a', 'g2_a', 'g3_a', 'g4_a'].map((id) => killed(hi, id).alive), [true, true, true, false], 'item: three slots left after the save');
   checkInvariants(hi.b);
   // 埃芒加德 (命结之秘: the battle's first 3 knock-downs revive in place — its own count, unchanged): g0, g1, g2 saved by it;
@@ -581,7 +581,7 @@ test('阿戈尔 5: an operator\'s own save uses no slot (斯卡蒂\'s DRE-Y, M3�
   hb.step(1);
   for (const id of ['g0_a', 'g1_a', 'g2_a']) {
     const u = killed(hb, id);
-    assert.ok(u.alive && hb.hooksOf('death').filter((c) => c.unit === u).length === 0, `band: ${id} saved in place`);
+    assert.ok(u.alive && hb.hooksOf('death').filter(c => c.unit === u && !c.revivedBy).length === 0, `band: ${id} saved in place`);
   }
   assert.deepEqual(hb.eventsOf('fx').filter((x) => x[1] === 'revive' && x[4] && x[4].left != null).map((x) => x[4].left), [2, 1, 0], '埃芒加德 spent its 3');
   assert.deepEqual(['g3_a', 'g4_a', 'g0_a', 'g1_a'].map((id) => killed(hb, id).alive), [true, true, true, false], 'band: the 阿戈尔 slots are untouched');
@@ -704,7 +704,8 @@ test('叙拉古: after each deployment ASPD +(25+0.8L) for 32+0.4L s; 3 members:
   checkInvariants(h.b);
 });
 
-test('叙拉古 6: 隐匿 for the same time; attacks while hidden / ≤ 10 s after proc (3-point pity) 5000+50L true damage + fear 3 s', () => {
+test('叙拉古 6: 隐匿 for the same time; attacks while hidden / ≤ 10 s after proc (PRD) 5000+50L true damage + fear 3 s', () => {
+  close(prdConstant(0.03), 0.00139, 2e-5);
   const list = [];
   for (let i = 0; i < 6; i++) list.push([`r${i}_a`, ['siracusaShip']]);
   const L = 20;
@@ -717,21 +718,20 @@ test('叙拉古 6: 隐匿 for the same time; attacks while hidden / ≤ 10 s aft
   const e = h.enemies()[0];
   assert.ok(a.s.flags.stealth, 'stealthed after deploy');
   const attackN = (n) => { for (let i = 0; i < n; i++) h.b.dealDamage(a, e, { amount: 1, type: 'phys', isAttack: true }); };
-  h.b.rng = Object.assign(() => 0.9999, h.b.rng);
-  attackN(34); // even the worst possible rolls guarantee the 34th hit
+  attackN(750);                                              // PRD guarantees a proc within ⌈1/C⌉ attempts
   const procs = tagged(h, 'bond:siracusa');
-  assert.equal(procs.length, 1);
+  assert.ok(procs.length >= 1 && procs.length < 60, `procs ${procs.length}`);
   for (const p of procs) close(p.amount, 5000 + 50 * L);
   assert.ok(h.hooksOf('statusApplied').some((c) => c.status === 'fear' && c.target === e && Math.abs(c.duration - 3) < 1e-9));
   const dur = 32 + 0.4 * L;
   h.run(dur + 5 - h.b.time);
   assert.ok(!a.s.flags.stealth, 'stealth over');
   const before = tagged(h, 'bond:siracusa').length;
-  attackN(34);
+  attackN(750);
   assert.ok(tagged(h, 'bond:siracusa').length > before, 'still procs within 10 s after stealth');
   h.run(6);
   const after = tagged(h, 'bond:siracusa').length;
-  attackN(34);
+  attackN(750);
   assert.equal(tagged(h, 'bond:siracusa').length, after, 'no proc after the 10 s window');
   checkInvariants(h.b);
 });

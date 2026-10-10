@@ -8,7 +8,7 @@ import { makeMatch, give, giveItem, DATA } from '../match/harness.js';
 import { createRegistry } from '../../server/match/effectsMeta.js';
 import { hasBattlePart, amedicCharsFor, PRIO_BAND_REVIVE } from '../../server/sim/content/bands/battle.js';
 import { bandMetaHandler, duckReplace } from '../../server/sim/content/bands/meta.js';
-import { PRIO_REVIVE } from '../../server/sim/content/items/battle.js';
+import { PRIO_REVIVE, PRIO_RESPAWN } from '../../server/sim/content/items/battle.js';
 import * as bands from '../../server/sim/content/bands.js';
 
 const QUIET = { warn() {}, error() {}, info() {} };
@@ -545,7 +545,7 @@ test('埃芒加德 命结之秘: the first 3 knock-downs of the battle revive at
   close(b.hp, 2000, 'full HP');
   kill(a);
   assert.equal(a.alive, false, '4th knock-down of the band: dies');
-  assert.ok(PRIO_BAND_REVIVE < PRIO_REVIVE);
+  assert.ok(PRIO_BAND_REVIVE < PRIO_RESPAWN);
   cover('band_ermengard');
 });
 

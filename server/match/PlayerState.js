@@ -74,6 +74,8 @@ import { ERR, GEO, PHASE, layerGainRoom } from '../../shared/constants.js';
 import { checkLoadout, resolveLoadout } from '../../shared/protocol.js';
 import { FIELD, tileKey, parseKey, inField, canPlace, placeClass, boardOrder, freeSlot, pieceDir, parseDir, mergeTile, ownerRangeKeys } from './board.js';
 import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../shared/loadoutRecord.js';
+import { checkLoadoutOps, cultivationCharIds } from '../../shared/protocol.js';
+import { cultivationOf } from '../../shared/potential.js';
 import { checkSupportOperators, EMPTY_SUPPORT_OPERATORS, supportAvailable } from '../../shared/supportOperators.js';
 import { offsetTile } from '../sim/dir.js';
 import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains } from './bondsMeta.js';
@@ -112,9 +114,10 @@ export class PlayerState {
     this.lastEmoteAt = -Infinity;
     /** operator loadout (DESIGN §16): frozen { [baseChessId]: { skill, module } }, {} = every chess on its defaults */
     this.loadout = Object.freeze({});
+    this.ops = Object.freeze({});
     this.supportOperators = EMPTY_SUPPORT_OPERATORS;
     if (!this.isBot && seat.supportOperators) this.setSupportOperators(seat.supportOperators);
-    if (!this.isBot && seat.loadout) this.setLoadout(seat.loadout);
+    if (!this.isBot && (seat.loadout || seat.ops)) this.setLoadout(seat.loadout, seat.ops);
     this.shop = { level: 1, upgradePrice: this.gd.upgradeBase(1) ?? 0, slots: [], frozen: false, freeRefreshes: 0 };
     /** reward offers queue (merge rewards, special refreshes): { tier, source, label, slots: [{ kind, id, price, sold }] } */
     this.offers = [];
@@ -211,8 +214,11 @@ export class PlayerState {
    * @param {any} loadout
    * @returns {boolean}
    */
-  setLoadout(loadout) {
+  setLoadout(loadout, ops = undefined) {
     if (this.isBot) return false;
+    const ids = cultivationCharIds(this.gd.raw.chess, this.gd.raw.backups);
+    const opResult = ops === undefined ? null : checkLoadoutOps(ops, id => ids.has(id));
+    if (opResult?.error) return false;
     const entries = {};
     if (loadout && typeof loadout === 'object' && !Array.isArray(loadout)) {
       for (const [id, e] of Object.entries(loadout)) {
@@ -231,12 +237,13 @@ export class PlayerState {
     const out = {};
     for (const [id, e] of Object.entries(res.loadout)) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
     this.loadout = Object.freeze(out);
+    if (opResult) this.ops = Object.freeze(Object.fromEntries(Object.entries(opResult.ops).map(([id, e]) => [id, Object.freeze(e)])));
     return true;
   }
 
   /** The skill index / module a chess record fights with under this player's loadout (DESIGN §16). */
   loadoutFor(chessRecord) {
-    return resolveLoadout(this.loadout, chessRecord, (id) => this.gd.chess(id));
+    return { ...resolveLoadout(this.loadout, chessRecord, (id) => this.gd.chess(id)), ...cultivationOf(chessRecord, this.ops) };
   }
 
   /**
@@ -1569,6 +1576,8 @@ export class PlayerState {
         const lo = this.loadoutFor(this.gd.chess(piece.id));
         u.skillIndex = lo.skillIndex;
         u.moduleId = lo.moduleId;
+        u.potential = lo.potential;
+        u.cultivate = lo.cultivate;
         if (carry && carry.has(piece.uid)) u.carryState = carry.get(piece.uid);
         units.push(u);
       } else if (piece.kind === 'token') {
@@ -1673,6 +1682,7 @@ export class PlayerState {
       nextEnemies: this.m.nextEnemiesFor(this),
       // DESIGN §16: the effective operator loadout ({ [baseChessId]: { skill, module } }; chess not listed use defaults)
       loadout: this.loadout,
+      ops: this.ops,
       supportOperators: this.supportOperators,
       stats: {
         dmgDealt: Math.round(this.stats.dmgDealt), kills: this.stats.kills, leaks: this.stats.leaks, gold: this.stats.gold,

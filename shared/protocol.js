@@ -2,6 +2,7 @@
 // Every client→server message is `{ t, rid?, ...fields }`. Unknown `t` or invalid fields ⇒ ERR.BAD_MSG.
 
 import { DIFFICULTIES, NAME_MAX_LEN, ROOM_CODE_LEN, MAX_SEATS, EMOTES, GEO } from './constants.js';
+import { cultivatedStats, isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from './potential.js';
 import { isSupportSelection } from './supportOperators.js';
 
 // ---- tiny validators -------------------------------------------------------
@@ -39,7 +40,8 @@ const isUnitEnd = (u) => isPlain(u) && nullable(isUid)(u.uid) && isNum(u.hpPct, 
   && optional(isBool)(u.skillActive) && nullable(isId)(u.defId);
 const isUnitStat = (u) => isPlain(u) && nullable(isUid)(u.uid) && nullable(isId)(u.defId) && optional((v) => isStr(v, 16))(u.kind)
   && isStat(u.dmg) && isStat(u.kills) && isStat(u.heal) && isStat(u.taken) && isStat(u.attacks);
-const isPerPlayer = (p) => isPlain(p) && isInt(p.killed, 0, 1e5) && isInt(p.total, 0, 1e5) && p.killed <= p.total
+const isPerPlayer = (p) => isPlain(p) && isInt(p.killed, 0, 1e5) && isInt(p.total, 0, 1e5)
+  && optional(x => isInt(x,0,1e5))(p.resolved)
   && isList(p.leaked, RESULT_LIMITS.leaked, isLeak) && isBool(p.perfect)
   && isMap(p.layerGains, RESULT_LIMITS.layerGains, isId, (v) => isNum(v, 0, 1e4))
   && isStat(p.coins) && isStat(p.damageDealt) && isStat(p.bossDamage) && isStat(p.healingDone) && isStat(p.deaths)
@@ -69,7 +71,7 @@ export function isBattleResult(v) {
  * (known visible chess, legal skill index for the normal AND the elite status, legal module of the elite) is
  * `checkLoadout` — used by the server (lobby, match) and by the client to sanitise a stored loadout before sending.
  */
-export const LOADOUT_LIMITS = Object.freeze({ entries: 160, skillIndex: 9 });
+export const LOADOUT_LIMITS = Object.freeze({ entries: 320, skillIndex: 9, ops: 256 });
 /** The "no module" choice of an elite (模组: 不装备). */
 export const MODULE_NONE = 'none';
 const isLoadoutEntry = (e) => isPlain(e) && Object.keys(e).length > 0 && Object.keys(e).every((k) => k === 'skill' || k === 'module')
@@ -207,7 +209,8 @@ const statView = (x) => ({
  *   range?: Array<[number, number]> }}
  */
 export function unitStatsEntry(u, s = null) {
-  const base = u && u.base && typeof u.base === 'object' ? u.base : {};
+  const own = u && u.base && typeof u.base === 'object' ? u.base : {};
+  const base = u && u.cultMul ? cultivatedStats(own, u.cultMul) : own;
   const cur = s && typeof s === 'object' ? s : base;
   const range = u?.side !== 'enemy' && Array.isArray(u?.liveRangeGrid)
     ? u.liveRangeGrid.filter((p) => Array.isArray(p) && Number.isInteger(p[0]) && Number.isInteger(p[1])).map((p) => [p[0], p[1]])
@@ -221,6 +224,7 @@ export function unitStatsEntry(u, s = null) {
     ...statView(cur),
     base: statView(base),
     ...(range ? { range } : {}),
+    ...(isDir(u?.dir) ? { dir: u.dir } : {}),
     // the enemy card greys a SILENCE-format line (折射) from this; absent flags ⇒ not silenced
     silenced: !!(cur.flags && cur.flags.silence),
   };
@@ -238,6 +242,53 @@ const target = (v) => {
 };
 
 /** @type {Record<string, Record<string, (v:any)=>boolean> & { $optional?: string[] }>} */
+/** One `room.loadout.ops` entry: `{ potential?: 1–6, cultivate?: 0–3 }`, at least one of them. */
+const isOpsEntry = (e) => isPlain(e) && Object.keys(e).length > 0 && Object.keys(e).every((k) => k === 'potential' || k === 'cultivate')
+  && optional(isPotential)(e.potential) && optional(isCultivate)(e.cultivate);
+/** Structural check of `room.loadout.ops` (0.2.2): a map of ≤ 256 charIds → `{ potential?, cultivate? }`. */
+export const isLoadoutOps = (v) => isMap(v, LOADOUT_LIMITS.ops, isId, isOpsEntry);
+
+/**
+ * The operators a player sets a potential / 练度 for (0.2.2): the charIds of the 干员调配 roster — the visible normal chess
+ * (checkLoadout's targets; a hidden chess shares its visible twin's charId: 锡人, 耶拉 …) — and the owned 6★ 自选 picks
+ * (data/backups.json `diy.ownedPool`). A PRESET (特许) operator the player does not own is set by hand (潜能 1, 未精英化:
+ * the official 「未持有的特许按1潜」 and +0 %); a 补位 stand-in or a prototype pick takes neither.
+ * @param {Record<string, any>|null|undefined} chess data/chess.json
+ * @param {any} [backups] data/backups.json
+ * @returns {Set<string>}
+ */
+export function cultivationCharIds(chess, backups = null) {
+  const out = new Set();
+  for (const c of Object.values(chess && typeof chess === 'object' ? chess : {})) {
+    if (c && !c.isGolden && !c.isDiy && c.visible !== false && !c.isHidden && (!c.baseId || c.baseId === c.chessId) && isId(c.charId)) out.add(c.charId);
+  }
+  for (const id of Array.isArray(backups?.diy?.ownedPool) ? backups.diy.ownedPool : []) if (isId(id)) out.add(id);
+  return out;
+}
+
+/**
+ * Semantic check + normalisation of `room.loadout.ops` (0.2.2) — strict like checkLoadout: an operator `isOperator` does
+ * not know (cultivationCharIds) rejects the whole message. Entries equal to the defaults (潜能 6, 练度 3) are dropped, the
+ * rest stored complete `{ potential, cultivate }`. `undefined` / `null` = no settings (`{}`).
+ * @param {any} ops
+ * @param {(charId: string) => boolean} isOperator
+ * @returns {{ ok: true, ops: Record<string, { potential: number, cultivate: number }> } | { error: 'BAD_MSG'|'BAD_TARGET', detail: string }}
+ */
+export function checkLoadoutOps(ops, isOperator) {
+  if (ops == null) return { ok: true, ops: {} };
+  if (!isLoadoutOps(ops)) return { error: 'BAD_MSG', detail: 'bad operator settings' };
+  const out = {};
+  for (const id of Object.keys(ops)) {
+    if (typeof isOperator !== 'function' || !isOperator(id)) return { error: 'BAD_TARGET', detail: `unknown operator ${id}` };
+    const potential = ops[id].potential ?? POTENTIAL_DEFAULT;
+    const cultivate = ops[id].cultivate ?? CULTIVATE_DEFAULT;
+    if (potential === POTENTIAL_DEFAULT && cultivate === CULTIVATE_DEFAULT) continue;
+    out[id] = { potential, cultivate };
+  }
+  return { ok: true, ops: out };
+}
+
+
 export const C2S = {
   // session & lobby
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6), $optional: ['token', 'version'] },
@@ -254,7 +305,7 @@ export const C2S = {
   'room.kick': { seat: (v) => isInt(v, 0, MAX_SEATS - 1), playerId: isId },
   'room.start': {},
   // operator loadout (DESIGN §16): stored per session/seat; accepted until the match leaves INFO_CHECK
-  'room.loadout': { entries: isLoadoutEntries, supportOperators: optional(isSupportSelection) },
+  'room.loadout': { entries: isLoadoutEntries, ops: optional(isLoadoutOps), supportOperators: optional(isSupportSelection) },
   // spectator seats (remake feature, community report #26; MAX_SPECTATORS): take one of a co-op room's spectator seats —
   // in its lobby or while its match runs — never a player seat; the host frees one by playerId (the spectator gets
   // room.closed { reason: 'kicked' }). room.leave / g.leave leave a spectator seat like a player seat.
@@ -262,7 +313,10 @@ export const C2S = {
   'room.removeSpectator': { playerId: isId },
 
   // match
-  'g.infoReady': {},
+  'room.rerollSetup': { setupRevision: v => isInt(v, 0, 2 ** 31) },
+  'room.cancelReroll': { voteId: v => isInt(v, 1, 2 ** 31) },
+  'g.infoReady': { setupRevision: optional(v => isInt(v, 0, 2 ** 31)) },
+  'g.rerollVote': { voteId: v => isInt(v, 1, 2 ** 31), agree: isBool },
   'g.band': { bandId: isId },
   'g.bandSkip': {},
   // the strategy highlighted in the draft screen (user playtest #4 item 4): a turn that runs out takes it while it is

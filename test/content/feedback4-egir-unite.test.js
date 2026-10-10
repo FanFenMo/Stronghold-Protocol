@@ -52,7 +52,7 @@ test('联防: an 阿戈尔 devours a teammate\'s living operator in front — th
   const ref = buffOf(solo.unit(1), 'bond:egir:devour');
   const fodderBase = solo.unit(100).base;
   assert.ok(ref, 'solo: 乌尔比安 devours the operator in front');
-  close(ref.mods.atkFinal, fodderBase.atk * 0.55, 1e-9, '10 layers: 55% of its base ATK');
+  close(ref.mods.atkFinal, fodderBase.atk * .55, 1e-9, 'its base ATK');
   assert.equal(ref.mods.blockCnt, fodderBase.blockCnt, 'its block count');
   for (const [tag, h] of [['own', own], ['teammate\'s', mate]]) {
     const ulpia = h.unit(1), t = h.unit(100);
@@ -67,7 +67,7 @@ test('联防: an 阿戈尔 devours a teammate\'s living operator in front — th
     assert.equal(h.hooksOf('layerGain').length, 0, `${tag}: no layer gain at all`);
     checkInvariants(h.b);
   }
-  assert.equal(solo.b.getPlayer('p1').bonds.egirShip.layers, 10, 'solo devour also grants no layers');
+  assert.equal(solo.b.getPlayer('p1').bonds.egirShip.layers, 10, 'devour no longer grants layers');
   assert.equal(mate.unit(100).ownerId, 'p2');
 });
 
@@ -92,7 +92,7 @@ test('联防: the chain goes on through a teammate\'s 阿戈尔 — the gains eq
   const p2Units = [HN, MIZUKI, GLADY, DEEP].map((chessId, i) => ({ uid: 200 + i, kind: 'chess', chessId, row: 12, col: 3 + 2 * i, dir: 'RIGHT' }));
   const mate = field({ owner: 'mate', front: [GHOST, FODDER], p2Units, p2Bonds: { egirShip: bondOn(5) } });
   const ref = buffOf(own.unit(1), 'bond:egir:devour');
-  close(ref.mods.atkFinal, (own.unit(100).base.atk + own.unit(101).base.atk) * 0.55, 1e-9, 'own chain: 55% of 幽灵鲨 and the fodder');
+  close(ref.mods.atkFinal, (own.unit(100).base.atk + own.unit(101).base.atk) * .55, 1e-9, 'own chain: 幽灵鲨 and, through her, the fodder');
   assert.deepEqual(buffOf(mate.unit(1), 'bond:egir:devour')?.mods, ref.mods, 'the teammate\'s chain gives the same');
   assert.deepEqual(devours(mate).map((c) => [c.source.uid, c.target.uid]), devours(own).map((c) => [c.source.uid, c.target.uid]));
   const ghost = mate.unit(100);
@@ -101,6 +101,31 @@ test('联防: the chain goes on through a teammate\'s 阿戈尔 — the gains eq
   assert.ok(!own.unit(100).alive, 'p1 has no 5-tier: its own 幽灵鲨 stays down');
   assert.equal(mate.b.getPlayer('p1').bonds.egirShip.layers, 10, 'no layers');
   checkInvariants(mate.b);
+});
+
+test('联防: a member a teammate\'s devour knocks out waits for every devour pass, then takes its owner\'s slot by position (community report, 2026-10-07; DESIGN §25.22.5)', () => {
+  // p1's 乌尔比安 → p2's 幽灵鲨 (field 10,10) → p2's fodder (10,11); on p2's board 海霓 (12,3) → 水月 (12,4); p2 holds 5
+  // 阿戈尔. p1's pass runs first (players' order): it knocks 幽灵鲨 out; p2's pass knocks 水月 out; then p2's revives —
+  // 幽灵鲨 (field col 10) before 水月 (col 12). Until 0.2.0 she stood again right after p1's mark, before p2's pass.
+  const seq = [];
+  const p2Units = [
+    { uid: 200, kind: 'chess', chessId: HN, row: 12, col: 3, dir: 'RIGHT' }, { uid: 201, kind: 'chess', chessId: MIZUKI, row: 12, col: 4, dir: 'RIGHT' },
+    { uid: 202, kind: 'chess', chessId: GLADY, row: 12, col: 7, dir: 'RIGHT' }, { uid: 203, kind: 'chess', chessId: DEEP, row: 12, col: 9, dir: 'RIGHT' },
+  ];
+  const lane = [GHOST, FODDER].map((chessId, i) => ({ uid: 100 + i, kind: 'chess', chessId, row: 10, col: 2 + i, dir: 'RIGHT' }));
+  const h = makeBattle({
+    kind: 'unite', autoFinish: false, timeLimit: 60, hooks: ['death', 'deploy'],
+    players: [player('p1', 0, 0, p1Units(), { egirShip: bondOn(3, 10) }), player('p2', 1, 8, [...lane, ...p2Units], { egirShip: bondOn(5) })],
+    setup: (b) => {
+      b.on('damaged', (c) => { if (c.dmg?.tags?.includes('bond:egir:devour')) seq.push(`mark ${c.source.uid}→${c.target.uid}`); }, { priority: -1000 });
+      b.on('deploy', (c) => { if (!c.initial) seq.push(`revive ${c.unit.uid}`); }, { priority: -1000 });
+    },
+  });
+  h.step();
+  assert.deepEqual(seq, ['mark 1→100', 'mark 1→101', 'mark 200→201', 'revive 100', 'revive 201']);
+  assert.ok(h.unit(100).alive && h.unit(201).alive, 'both stand again, on p2\'s slots');
+  assert.equal(h.eventsOf('fx').filter((x) => x[1] === 'revive' && x[4]?.src === 'bond:egirShip').length, 2);
+  checkInvariants(h.b);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -134,7 +159,7 @@ test('联防 through unite.js: food knocked out by the own combat\'s devour ente
   u.step();
   const ulpia = u.unit(1);
   assert.deepEqual(buffOf(ulpia, 'bond:egir:devour')?.mods, gain, 'the own combat\'s gains');
-  close(gain.atkFinal, [2, 3, 4].reduce((s, uid) => s + u.unit(uid).base.atk, 0) * 0.55, 1e-9, '55% of 幽灵鲨 + 歌蕾蒂娅 + fodder base ATK');
+  close(gain.atkFinal, [2, 3, 4].reduce((s, uid) => s + u.unit(uid).base.atk, 0) * .55, 1e-9, '幽灵鲨 + 歌蕾蒂娅 + fodder base ATK');
   assert.equal(gain.blockCnt, [2, 3, 4].reduce((s, uid) => s + u.unit(uid).base.blockCnt, 0));
   for (const uid of [2, 3, 4]) assert.ok(!u.unit(uid).alive && u.unit(uid).removeReason === FORCED_EXIT, `${uid} forced out`);
   assert.equal(u.b.getPlayer('p1').bonds.egirShip.layers, 10, 'no layers in 联防');

@@ -1,3 +1,4 @@
+import { powi } from '../../detmath.js';
 // 阿戈尔 v1.3：保存开战吞噬链，死亡的中间节点不切断或缩短传递距离。
 import * as S from '../support/index.js';
 import { canTargetEnemy } from '../../targeting.js';
@@ -29,7 +30,7 @@ export function installAegirRelay(battle, bb, members) {
     const remote = blockedThroughChain(battle, attacker, profile);
     for (const e of targets) {
       const depth = remote.get(e);
-      if (depth !== undefined) damageMultipliers.set(e.id, Math.pow(bb.relay_damage_per_hop, depth));
+      if (depth !== undefined) damageMultipliers.set(e.id, powi(bb.relay_damage_per_hop, depth));
     }
   });
 }

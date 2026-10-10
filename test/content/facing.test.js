@@ -37,8 +37,8 @@ test('阿戈尔 devour: "身前一格" is one step along each member\'s directio
   h.step(1);
   const dv = tagged(h, 'bond:egir:devour').map((c) => [c.source.defId, c.target.defId]);
   assert.deepEqual(dv, [['g1_a', 'up_a']], 'the operator above, not the one to the right');
-  close(h.unit('g1_a').s.atk, 1000 + 1000 * 0.5, 'zero layers: half the base ATK of the devoured');
-  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
+  close(h.unit('g1_a').s.atk, 1000 + 1000 * .5, 'half base ATK at zero layers');
+  assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour no longer grants layers');
   checkInvariants(h.b);
 });
 
@@ -195,6 +195,8 @@ test('薄绿 (3_08) 聚能涡旋 pushes the target towards her centre whatever h
     fill(u);
     assert.ok(h.runUntil(() => u.skill.active, 5));
     h.run(3);
+    assert.ok(h.eventsOf('fx').some((f) => f[1] === 'displace' && f[4]?.keepFacing === true),
+      `${dir}: Mint S2's inward push inherits the common facing metadata`);
     return h.enemy('enemy_d');
   };
   for (const dir of ['UP', 'RIGHT']) {

@@ -33,7 +33,7 @@ function place(m, ps, chessId, row, col) {
 // ---- shared checks -------------------------------------------------------------------------------------------------
 
 test('data carries the §16 choices every visible chess needs (skills at both statuses, elite modules + none)', () => {
-  assert.equal(visible.filter(c => !c.chessId.startsWith('chess_custom_')).length, 112);
+  assert.equal(visible.filter(c => !c.supportOperator).length, 112);
   for (const c of visible) {
     const g = chess(c.goldenId);
     const o = loadoutOptions(c, g);

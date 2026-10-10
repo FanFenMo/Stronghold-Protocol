@@ -136,7 +136,7 @@ test('#3 bots never put a piece into the water (layout planner and full bot prep
 test('#9 data: 狼群 and 流形 are owner-range summons (token text "只能部署在召唤者攻击范围内"), no other hand summon is', () => {
   assert.equal(DATA.tokens[WOLF].ownerRange, true);
   assert.equal(DATA.tokens[MANIFOLD].ownerRange, true);
-  for (const t of Object.values(DATA.tokens)) if (t.placeable && t.tokenId !== WOLF && t.tokenId !== MANIFOLD) assert.ok(!t.ownerRange, t.name);
+  for (const t of Object.values(DATA.tokens)) if (t.placeable && t.owners.some(id => !DATA.chess[id]?.supportOperator) && t.tokenId !== WOLF && t.tokenId !== MANIFOLD) assert.ok(!t.ownerRange, t.name);
 });
 
 test('#9 g.move: 伺夜\'s 狼群 only on a tile of her attack range (rotated grid of her tile + facing); outside → BAD_TILE', () => {
@@ -333,7 +333,7 @@ const loadoutsOf = (id) => (DATA.chess[DATA.chess[id].baseId].isHidden ? [null]
 test('高台 data: no chess stores placement; 「可以放置于远程位」 is the trait of exactly the six 钩索师 / 推击手 records, and every module keeps it', () => {
   assert.equal(Object.values(DATA.chess).some((c) => c.placement !== undefined), false);
   for (const t of Object.values(DATA.tokens)) assert.equal(t.placement, undefined, t.tokenId);
-  const widened = Object.values(DATA.chess).filter((c) => meleeOnHighGround(c)).map((c) => c.chessId).sort();
+  const widened = Object.values(DATA.chess).filter((c) => !c.supportOperator && meleeOnHighGround(c)).map((c) => c.chessId).sort();
   assert.deepEqual(widened, HOLDERS.slice().sort());
   for (const id of HOLDERS) {
     const c = DATA.chess[id];
@@ -343,7 +343,7 @@ test('高台 data: no chess stores placement; 「可以放置于远程位」 is 
   }
   // the module text never adds the line to anybody else (教官 Y "可以额外部署在远程位" is a talent, not the trait)
   for (const c of Object.values(DATA.chess)) {
-    if (HOLDERS.includes(c.chessId)) continue;
+    if (c.supportOperator || HOLDERS.includes(c.chessId)) continue;
     for (const x of c.modules || []) assert.ok(!(x.traitOverride?.desc || '').includes(PLACE_ON_RANGED), `${c.chessId} ${x.typeName}`);
   }
   assert.equal(DATA.chess[GLAD_E].modules.find((x) => x.uniEquipId === HOK_Y).typeName, 'HOK-Y');

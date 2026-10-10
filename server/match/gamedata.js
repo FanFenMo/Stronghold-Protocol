@@ -13,6 +13,7 @@
 
 import { getConfig, getMode } from '../data.js';
 import { isShopItem } from '../sim/simdata.js';
+import { atPotential } from '../../shared/potential.js';
 
 const own = (map, id) => (map && typeof map === 'object' && typeof id === 'string' && Object.hasOwn(map, id) && map[id] && typeof map[id] === 'object' ? map[id] : null);
 const numOr = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
@@ -503,10 +504,14 @@ export class GameData {
       const t = this.token(tid);
       if (!t || t.kind !== 'summon' || t.placeable !== true) continue;
       const vs = t.variants && typeof t.variants === 'object' ? t.variants : {};
-      const v = vs[chessId] ?? vs[String(chessId).replace(/_b$/, '_a')] ?? null;
+      let v = vs[chessId] ?? vs[String(chessId).replace(/_b$/, '_a')] ?? null;
+      if (v && loadout?.potential != null) v = atPotential(v, loadout.potential);
       if (v) {
         const alt = loadout && Number.isInteger(loadout.skillIndex) && v.bySkill ? v.bySkill[loadout.skillIndex] : null;
-        const src = Array.isArray(alt?.sources) ? alt.sources : Array.isArray(v.sources) ? v.sources : [];
+        if (alt) v = { ...v, ...alt };
+        const mid = loadout?.moduleId ?? (c.module?.active ? c.module.id : null);
+        if (mid && v.byModule?.[mid]) v = { ...v, ...v.byModule[mid] };
+        const src = Array.isArray(v.sources) ? v.sources : [];
         if (!src.includes('talent') && !src.includes('skill')) continue;
       }
       const count = posIntOr(v?.stats?.deployLimit, posIntOr(t.deployLimit, 1));

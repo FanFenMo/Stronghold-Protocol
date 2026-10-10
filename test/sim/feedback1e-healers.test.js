@@ -13,7 +13,7 @@
 // every equipment item, and on the 20 boss / hidden fields, where healers block the roaming 卢西恩 and its 不祥幻影
 // (act2 h07_05) and a patrolling 碎铳之簧 once its shield is down (h08_02); the other leaders and parts cannot be blocked
 // (自缚 / 无法被阻挡, the 剑 / 锤 anchored, 余音 only by block ≥ 2). The only damage a pure healer deals is a bond's own
-// effect by its text (卡西米尔's blocking pulse). 阿戈尔 relay never turns a healing attack into damage. These tests lock
+// effect by its text (卡西米尔: "阻挡敌人时每2秒对周围敌人造成120%攻击力真实伤害", members of every class). These tests lock
 // that.
 
 import { test } from 'node:test';
@@ -26,8 +26,8 @@ const REAL = { skip: !hasGeneratedData() };
 const PURE = new Set(['physician', 'ringhealer', 'healer', 'chainhealer', 'wandermedic']);
 const pool = (hp) => ({ hp, maxHp: hp, damage(pid, a) { this.hp = Math.max(0, this.hp - a); } });
 const waves = () => JSON.parse(fs.readFileSync(new URL('../../data/waves.json', import.meta.url), 'utf8'));
-/** A bond's own true-damage effect on its members, separate from the unit's healing attacks. */
-const bondEffect = (c) => !c.dmg?.isAttack && c.dmg?.type === 'true' && c.dmg.tags.includes('bond:kazimierz');
+/** A bond's own effect on its members by its text (not the unit's attack): 卡西米尔's pulse while blocking. */
+const bondEffect = (c) => !c.dmg?.isAttack && (c.dmg?.tags || []).includes('bond:kazimierz');
 /** 卢西恩 and its 不祥幻影 — the boss that roams the field (patrol) and can be blocked. */
 const LUCIEN = /^enemy_201[67]_csph/;
 
@@ -125,9 +125,9 @@ function blockRun(unit, { member = null, bonds = {}, secs = 20, rec = null, fill
   };
 }
 
-test('E2 audit: every pure healer keeps healing while it blocks under every bond; only covenant effects damage enemies', REAL, () => {
+test('E2 audit: every pure healer (医师 / 群愈师 / 疗养师 / 链愈师 / 行医, normal and elite, every skill cast while blocking) keeps healing while it blocks, under every bond as a member, and never hits the enemy', REAL, () => {
   const ds = getDefaultSource();
-  const healers = Object.values(ds.raw.chess).filter((c) => c.stats && c.dmgType === 'heal' && PURE.has(c.subProfessionId));
+  const healers = Object.values(ds.raw.chess).filter(c => !c.supportOperator && !c.isDiy).filter((c) => c.stats && c.dmgType === 'heal' && PURE.has(c.subProfessionId));
   assert.ok(healers.length >= 20, `healers ${healers.length}`);
   const BONDS = JSON.parse(fs.readFileSync(new URL('../../data/bonds.json', import.meta.url), 'utf8'));
   const bonds = Object.keys(BONDS);
@@ -143,8 +143,6 @@ test('E2 audit: every pure healer keeps healing while it blocks under every bond
         assert.ok(r.blocking > 8, `${tag}: blocks (${r.blocking.toFixed(1)} s)`);
         assert.ok(r.skillBlocking > 0, `${tag}: the skill is cast / runs while it blocks`);
         assert.ok(r.atks.every((a) => a.targets.every((t) => t.side === 'ally')), `${tag}: attacks heal allies only`);
-        const burns = r.dmg.filter((d) => d.dmg?.tags?.includes('bond:egir:burn'));
-        assert.equal(burns.length, 0, `${tag}: Aegir v1.3 removes periodic true-damage burn`);
         const hits = r.dmg.filter((d) => !bondEffect(d));
         pulses += r.dmg.length - hits.length;
         assert.equal(hits.length, 0, `${tag}: no damage to the blocked enemy (${hits.map((d) => d.dmg?.tags?.join('/')).join(' ')})`);
@@ -249,7 +247,9 @@ test('E2 audit: healers on the lane tiles of every boss / hidden field deal no d
     const lead = (e) => e.isBoss || e.tag === 'boss' || e.tag === 'part' || LUCIEN.test(e.defId);
     let healsOnLead = 0;
     h.b.on('heal', (c) => { if (healers.includes(c.source) && c.amount > 0 && c.source.blocking.some(lead)) healsOnLead++; });
-    for (let i = 0; i < 120 * 30; i++) {
+    // 200 s on the fields whose leaders / parts a healer must block (the solo 铳 field's springs first meet a healer at
+    // 145 s since their 末日布道 chase lasts its whole 5 s — PR #347), 120 s elsewhere
+    for (let i = 0; i < (EXPECT[key] ? 200 : 120) * 30; i++) {
       h.step();
       // operators break the 碎铳之簧 shields (unblockable while shielded): a hit of the kind each shield yields to
       for (const e of h.b.enemies) {

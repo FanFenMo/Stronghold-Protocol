@@ -12,7 +12,7 @@ function wave({ dir = 'RIGHT', row = 10, col = 4, ...opts } = {}) {
   u.skill.rule = 'NEVER';
   u.skill.addCharge(1);
   assert.equal(u.skill.activate('test'), true);
-  return { h, u, points: () => h.eventsOf('fx').filter(e => e[1] === 'chenSwordWave') };
+  return { h, u, points: () => h.eventsOf('fx').filter(e => e[1] === 'chen3Wave') };
 }
 
 for (const [dir, row, col, axis, sign] of [

@@ -1,3 +1,4 @@
+import { MatchSetupVote } from './match/setupVote.js';
 // server/match/Match.js — the match & meta engine: state machine, timers, round loop, co-op orchestration,
 // broadcasting views (DESIGN §6, §8). Rules are documented in the module headers of ./PlayerState.js, ./pool.js,
 // ./board.js, ./bondsMeta.js, ./effectsMeta.js, ./choices.js, ./waves.js, ./unite.js, ./finalAssault.js,
@@ -347,6 +348,11 @@ export class Match {
     /** @type {Set<any>} */
     this._timers = new Set();
     this._phaseTimer = null;
+    this.setupRevision = 0;
+    this.setupVote = null;
+    this._setupVoteSeq = 0;
+    this._lastSetupVoteAt = -Infinity;
+    this._infoAdvanceTimer = null;
     this._turnTimer = null;
     this._pubDirty = false;
     this._pubTimer = null;
@@ -436,13 +442,13 @@ export class Match {
    * @param {Record<string, { skill: number, module: string|null }> | null} loadout
    * @returns {{ ok: true } | { error: string, detail?: string }}
    */
-  setLoadout(playerId, loadout) {
+  setLoadout(playerId, loadout, ops = undefined) {
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
     if (this.disposed || this.ended || this.phase !== PHASE.INFO_CHECK) return fail(ERR.WRONG_PHASE, 'loadout locked for this match');
     let res = OK;
     this.guard(() => {
-      if (!ps.setLoadout(loadout)) { res = fail(ERR.BAD_TARGET, 'loadout does not match the game data'); return; }
+      if (!ps.setLoadout(loadout, ops)) { res = fail(ERR.BAD_TARGET, 'loadout does not match the game data'); return; }
       this.markPrivate(ps);
     });
     return res;
@@ -466,6 +472,7 @@ export class Match {
   }
 
   onDisconnect(playerId) {
+    if (this.setupVote) this.cancelSetupVote();
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || this.disposed) return;
     this.guard(() => {
@@ -545,6 +552,7 @@ export class Match {
   }
 
   onLeave(playerId) {
+    if (this.setupVote) this.cancelSetupVote();
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || ps.left || this.disposed) return;
     this.guard(() => {
@@ -872,6 +880,8 @@ export class Match {
   publicView() {
     const v = {
       t: 'm.public',
+      setupRevision: this.setupRevision,
+      rerollVote: this.setupVote ? { id: this.setupVote.id, proposerId: this.setupVote.proposerId, voters: [...this.setupVote.voters], agreed: [...this.setupVote.agreed] } : null,
       phase: this.phase,
       round: this.round,
       lastRound: this.gd.lastRound,
@@ -974,8 +984,9 @@ export class Match {
         id: piece.uid, uid: piece.uid, kind: piece.kind === 'token' ? 'token' : 'op', side: 'ally', ownerId: ps.playerId, defId: piece.id,
         name: rec ? rec.name : piece.id, tier: rec && Number.isInteger(rec.tier) ? rec.tier : 1, golden: !!(rec && rec.isGolden),
         spine: assets.spine || (rec && rec.charId) || piece.id, avatar: assets.avatar || (rec && rec.charId) || piece.id,
-        x: c, y: r, dir: pieceDir(piece), facing: pieceDir(piece) === 'LEFT' ? -1 : 1, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
+        area: "board", x: c, y: r, dir: pieceDir(piece), facing: pieceDir(piece) === 'LEFT' ? -1 : 1, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
         skillIndex: lo && Number.isInteger(lo.skillIndex) ? lo.skillIndex : undefined,
+        potential: lo?.potential, cultivate: lo?.cultivate,
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
         // the equipped items (like the sim's UnitInfo): a 变形同构体 wearer shows as a member of the bond it grants
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
@@ -995,8 +1006,9 @@ export class Match {
         side: 'ally', ownerId: ps.playerId, defId: piece.id,
         name: rec ? rec.name : piece.id, tier: rec && Number.isInteger(rec.tier) ? rec.tier : 1, golden: !!(rec && rec.isGolden),
         spine: assets.spine || (rec && rec.charId) || piece.id, avatar: assets.avatar || (rec && rec.charId) || piece.id,
-        x: i, y, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
+        area: y === 7 ? "hand" : "temp", x: i, y, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
         skillIndex: lo && Number.isInteger(lo.skillIndex) ? lo.skillIndex : undefined,
+        potential: lo?.potential, cultivate: lo?.cultivate,
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
       });
@@ -1086,7 +1098,10 @@ export class Match {
 
   _handle(ps, msg) {
     switch (msg.t) {
+      case 'g.rerollVote': return this.voteSetupReroll(ps, msg.voteId, msg.agree);
       case 'g.infoReady':
+        if (this.setupVote) return fail(ERR.WRONG_PHASE, 'setup reroll vote in progress');
+        if ((msg.setupRevision ?? 0) !== this.setupRevision) return fail(ERR.BAD_TARGET, 'setup revision changed');
         if (this.phase !== PHASE.INFO_CHECK) return fail(ERR.WRONG_PHASE);
         if (!ps.infoReady) { ps.infoReady = true; this.markPublic(); this.maybeEndInfo(); }
         return OK;
@@ -1302,10 +1317,13 @@ export class Match {
   }
 
   maybeEndInfo() {
-    if (this.phase !== PHASE.INFO_CHECK) return;
+    if (this.phase !== PHASE.INFO_CHECK || this.setupVote || this._infoAdvanceTimer) return;
     if (this.order.every((p) => p.isBot || p.left || p.infoReady)) {
       this.setDeadline(0);
-      this.later(0, () => { if (this.phase === PHASE.INFO_CHECK) this.enterBandDraft(); });
+      this._infoAdvanceTimer = this.later(0, () => {
+        this._infoAdvanceTimer = null;
+        if (this.phase === PHASE.INFO_CHECK && !this.setupVote) this.enterBandDraft();
+      });
     }
   }
 
@@ -3252,4 +3270,8 @@ export class Match {
     summary.errors = this.errorCount;
     try { this.onEndFn(summary); } catch (e) { this.reportError('onEnd', e); }
   }
+}
+
+for (const name of Object.getOwnPropertyNames(MatchSetupVote.prototype)) {
+  if (name !== 'constructor') Object.defineProperty(Match.prototype, name, Object.getOwnPropertyDescriptor(MatchSetupVote.prototype, name));
 }

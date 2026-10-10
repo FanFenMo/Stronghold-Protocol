@@ -11,8 +11,9 @@
 //                                               a new deployment for 坚固维式重锤's lock — items revivedInPlace)
 //   act1autochess_band13_buff 克莱门莎 崇高牺牲 records distinct devoured operators for next-round recruits;
 //   act1autochess_band16_buff 大帝 加急调派     "每次部署后再部署时间减少50%": every deployment of an operator stacks one
-//                                               redeploy ×(1 + respawn_time) for the rest of the battle [ASSUMED cumulative:
-//                                               "每次" — the first redeploy is −50 % under either reading]
+//                                               redeploy ×(1 + respawn_time) for the rest of the battle, with no cap (PRTS
+//                                               卫戍协议：盟约 下半 / PRTS盟约记录 备注 "※该策略效果可无限叠加"; a 20-stack cap
+//                                               until 0.2.2 — GitHub #328, PR #329)
 //   act1autochess_band17_buff 桑葚 药枚实验     at combat start the player's units on the front-most (最右边) column: each
 //                                               attack has `prob` to gain 1 shield layer (max 1)
 //   act1autochess_band18_buff 休谟斯 回收利用   a ground (地面) operator's skill ends ⇒ a random operator on its 4
@@ -36,12 +37,15 @@ import {
   num, buffsOf, bandRecord, isOp, onField, isElite, tierOf, unitBonds, activeBondIds, playerOps, passiveBuff, fxOn,
   matchBands, gainLayers, alliesAround, N4, baseChessId, isGroundOp, directMods,
 } from '../support/index.js';
-import { weaknessRetype, addShieldLayer, PRIO_REVIVE, revivedInPlace } from '../items/battle.js';
+import { weaknessRetype, addShieldLayer, PRIO_RESPAWN, reviveNow } from '../items/battle.js';
 import { spawnMapChar } from '../tokens.js';
 
 export const AMEDIC_BAND = 'band_amedic';
-/** 'fatal' priority of 埃芒加德: after the operators' own items (PRIO_REVIVE / PRIO_RESPAWN) and every talent / skill saver. */
-export const PRIO_BAND_REVIVE = PRIO_REVIVE - 10;
+/**
+ * 'death' priority of 埃芒加德's revive: a knock-out (so after every `fatal` saver — kits', 坚固维式重锤's 不死), after the
+ * operator's own M3茧甲 (PRIO_RESPAWN 13), before 阿戈尔 5's first-knock-out revive (11) and 不屈 (10).
+ */
+export const PRIO_BAND_REVIVE = PRIO_RESPAWN - 1;
 
 const keyOf = (bandId, part = '') => `band:${bandId}${part ? `:${part}` : ''}`;
 const deployedOps = (battle, pid) => playerOps(battle, pid, { fieldOnly: true });
@@ -67,18 +71,15 @@ const BY_KEY = {
     const max = Math.floor(num(p.max_respawn_cnt, 3));
     if (!(max > 0)) return;
     let used = 0;
-    battle.on('fatal', (c) => {
+    battle.on('death', (c) => {
       const u = c.unit;
-      if (c.prevented || used >= max || !isOp(u) || u.ownerId !== ps.playerId || !u.alive) return;
+      if (used >= max || !isOp(u) || u.ownerId !== ps.playerId || !reviveNow(battle, c, 'band')) return;
       used++;
-      c.prevented = true;
-      u.hp = u.s.maxHp;
-      revivedInPlace(u); // in place for PRTS's 0-time / 0-cost redeploy: a new deployment for 坚固维式重锤's lock (items)
       fxOn(battle, 'revive', u, keyOf(bandId), bandId, { left: max - used });
     }, { priority: PRIO_BAND_REVIVE });
   },
 
-  // 克莱门莎 崇高牺牲
+  // 克莱门莎 崇高牺牲: PRTS requires the 阿戈尔 bond to be active.
   act1autochess_band13_buff(battle, ps, p, bandId) {
     const devoured = new Set();
     battle.on('egirDevour', ({ playerId, target }) => {
@@ -97,7 +98,7 @@ const BY_KEY = {
     battle.on('deploy', (c) => {
       const u = c.unit;
       if (!isOp(u) || u.ownerId !== ps.playerId) return;
-      battle.addBuff(u, { key, mods: { redeployMul: mul }, refresh: 'stack', stacks: 1, maxStacks: 20, persist: true, allowDead: true });
+      battle.addBuff(u, { key, mods: { redeployMul: mul }, refresh: 'stack', stacks: 1, maxStacks: Infinity, persist: true, allowDead: true });
     });
   },
 

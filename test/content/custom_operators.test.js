@@ -13,7 +13,7 @@ function field(id, skillIndex = 1, extra = {}) {
   h.run(0.1);
   const u = h.unit(id);
   u.skill.rule = 'NEVER';
-  if (id.startsWith(AS)) { u.profile.noAttack = true; for (const e of h.enemies()) h.b.removeBuff(e, `ascalon:venom:${u.id}`); }
+  if (id.startsWith(AS)) { u.profile.noAttack = true; for (const e of h.enemies()) h.b.removeBuff(e, `ascln:dread#${u.id}`); }
   return { h, u, e: h.enemies()[0] };
 }
 const cast = (u) => { u.skill.addCharge(1); assert.equal(u.skill.activate('test'), true); };
@@ -38,8 +38,8 @@ for (const suffix of ['a', 'b']) {
   test(`Ascalon ${suffix}: three venom layers, linear slow, live ATK, refreshed duration and death cleanup`, () => {
     const { h, u, e } = field(AS + suffix);
     for (let i = 0; i < 4; i++) poke(h.b, u, e);
-    const key = `ascalon:venom:${u.id}`, mark = e.buffs.find((b) => b.key === key);
-    assert.equal(mark.data.layers, 3);
+    const key = `ascln:dread#${u.id}`, mark = e.buffs.find((b) => b.key === key);
+    assert.equal(mark.data.n, 3);
     near(mark.mods.moveMul, 0.46);
     h.run(1);
     const before = e.hp;
@@ -61,7 +61,7 @@ for (const suffix of ['a', 'b']) {
     const { h, u, e } = field(AS + suffix, 0);
     cast(u);
     assert.ok(h.b.forceAttack(u, [e]));
-    assert.equal(e.buffs.find((b) => b.key === `ascalon:venom:${u.id}`).data.layers, 2);
+    assert.equal(e.buffs.find((b) => b.key === `ascln:dread#${u.id}`).data.n, 2);
     assert.equal(h.hooksOf('damaged').filter((c) => c.source === u && c.dmg.isSkill).length, 2);
   });
 
@@ -70,11 +70,11 @@ for (const suffix of ['a', 'b']) {
     const ground = h.spawn('e', { pos: [10, 6] }), fly = h.spawn('fly', { pos: [10, 6] });
     cast(u);
     h.run(0.2);
-    assert.ok(fly.buffs.some((b) => b.key === `ascalon:mist:${u.id}`));
+    assert.ok(fly.buffs.some((b) => b.key === 'ascln:s2slow'));
     h.b.kill(e, null);
-    assert.equal(ground.buffs.find((b) => b.key === `ascalon:venom:${u.id}`).data.layers, 1);
-    assert.ok(!fly.buffs.some((b) => b.key === `ascalon:venom:${u.id}`));
-    assert.ok(h.eventsOf('fx').some((e) => e[1] === 'ascalonSpread'));
+    assert.equal(ground.buffs.find((b) => b.key === `ascln:dread#${u.id}`).data.n, 1);
+    assert.ok(!fly.buffs.some((b) => b.key === `ascln:dread#${u.id}`));
+    assert.ok(h.eventsOf('fx').some((e) => e[1] === 'aoe'));
   });
 
   test(`Ascalon ${suffix}: S3 shortens BAT and heals only a missed or dodged attack`, () => {
