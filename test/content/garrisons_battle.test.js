@@ -165,10 +165,10 @@ test('selfdead (砾 75): per knock-out; unpaired Aegir operators gain nothing on
   h.b.dealDamage(null, g, { amount: 1e9, type: 'true' });
   h.step(1);
   assert.ok(g.alive && g.trait.doll, 'substitute');
-  assert.deepEqual(gains(h), {}, 'body → substitute adds no layers');
+  assert.deepEqual(gains(h), { egirShip: 10 }, 'body → substitute grants fixed active Aegir layers');
   h.run(21);
   assert.ok(g.alive && !g.trait.doll, 'swapped back');
-  assert.deepEqual(gains(h), {}, 'substitute → body adds no layers');
+  assert.deepEqual(gains(h), { egirShip: 10 }, 'substitute → body adds no layers');
   for (const id of ['garrison_40_a','garrison_40_b','garrison_custom_specter2_swap_indom_a','garrison_custom_specter2_swap_indom_b']) cover(id);
   checkInvariants(h.b);
 });

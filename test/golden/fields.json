@@ -1291,8 +1291,8 @@
       ],
       "enemies": {"enemy_10029_vtshld":[1,0,0,0,0],"enemy_1249_lysdb_2":[3,3,0,0,53748],"enemy_1251_lysyta":[4,4,0,0,32846],"enemy_1329_cbshld":[3,3,0,0,89580]},
       "hooks": [1,29,6900,42,211,229,226,2685,10,12,5,4,5,9214,23,0,11,0,1,10,0,0,0],
-      "events": {"atk":55,"bounty":1,"deploy":18,"die":12,"dmg":226,"engage":3,"fx":5518,"heal":5,"skill":9,"spawn":27,"status":62},
-      "fx": {"mantraGate":1,"sakikoPhysicalNote":5419,"shield":32,"shieldBreak":3,"sp":1,"takeoff":1,"weightless":1,"zone":60},
+      "events": {"atk":55,"bounty":1,"deploy":18,"die":12,"dmg":226,"engage":3,"fx":5634,"heal":5,"skill":9,"spawn":27,"status":70},
+      "fx": {"mantraGate":1,"sakikoPhysicalNote":5419,"shield":148,"shieldBreak":3,"sp":1,"takeoff":1,"weightless":1,"zone":60},
       "snaps": "da053487 30a3dc7d fb248e89 0f9d8bad f8ab1b7a 47bc6f75 d4696f89 57e50762 ea07f1b8 22b223bb 6bc55965 6ff376e1 1018a4f1 5aaee709 939e03ec 8815daa5 c10b4c53 0ab08cb6 78a73ff7 a75b40bd 4f0c9992 d00d83d4 b4d7af07"
     }
   }
