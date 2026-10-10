@@ -66,6 +66,14 @@ test('繁盛：桌面与手机图标、当前数值、15人成员；浏览器和
         assert.equal(await page.$eval('.bpop__disc img', e => getComputedStyle(e).filter), 'none');
         await page.waitForSelector('.pbanner--overlay', { hidden: true });
         await page.screenshot({ path: `${OUT}/prosperity-${width}.png` });
+        await page.click('.bpop__member');
+        const glyph = '.dpanel .dbond[data-bond="prosperityShip"] img';
+        await page.waitForSelector(glyph);
+        assert.ok((await page.$eval(glyph, e => e.src)).endsWith('prosperity-glyph.png'));
+        await page.waitForFunction(sel => { const img = document.querySelector(sel); return img?.complete && img.naturalWidth > 0; }, {}, glyph);
+        assert.notEqual(await page.$eval(glyph, e => getComputedStyle(e).filter), 'none');
+        assert.equal(await page.$eval(glyph, e => getComputedStyle(e).borderRadius), '0px');
+        await page.screenshot({ path: `${OUT}/prosperity-detail-${width}.png` });
         assert.deepEqual(errors, []);
         if (width === 1920) {
           const target = enemyRec({ key: 'prosperity_target', hp: 100000, atk: 0, speed: 0 });

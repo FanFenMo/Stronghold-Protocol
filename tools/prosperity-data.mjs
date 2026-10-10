@@ -11,7 +11,7 @@ export const PROSPERITY_MEMBERS = [
 export const RETIRED_CHESS = ['chess_char_4_15_a', 'chess_char_4_15_b', 'chess_char_5_09_a', 'chess_char_5_09_b'];
 
 export function applyProsperityAssets(assets) {
-  assets.bonds[ID] = '/img/bonds/prosperity-inactive.png';
+  assets.bonds[ID] = '/img/bonds/prosperity-glyph.png';
   assets.bondStates = { ...assets.bondStates, [ID]: {
     inactive: '/img/bonds/prosperity-inactive.png', active: '/img/bonds/prosperity-active.png',
   } };

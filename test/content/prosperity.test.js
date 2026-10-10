@@ -178,7 +178,8 @@ for (const [suffix, mul] of [['a', 1], ['b', 2]]) test(`四条叠层特性 ${suf
 test('跨50层时治疗加成及时更新；繁盛图标根据激活状态选取用户提供的资源', () => {
   const h = field(49), u = h.unit(1), p = h.unit(3); h.b.addLayers('p1', ID, 1); h.step();
   p.hp -= 1000; approx(h.b.heal(u, p, 100), 130); clean(h);
-  assert.equal(bondIconUrl(DATA.assets, ID), '/img/bonds/prosperity-inactive.png');
+  assert.equal(bondIconUrl(DATA.assets, ID), '/img/bonds/prosperity-glyph.png');
+  assert.equal(bondIconUrl(DATA.assets, ID, false), '/img/bonds/prosperity-inactive.png');
   assert.equal(bondIconUrl(DATA.assets, ID, true), '/img/bonds/prosperity-active.png');
   assert.match(formatBondEffect(DATA.bonds[ID], 39), /治疗效果\+20%[\s\S]*范围为5格/);
   assert.match(formatBondEffect(DATA.bonds[ID], 50), /治疗效果\+30%[\s\S]*范围为9格/);

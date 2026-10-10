@@ -96,10 +96,10 @@ export function subProfIconUrl(m, chess) {
   return id ? str(sub[id]) : null;
 }
 
-/** Bond glyph (white; tint in CSS). */
-export function bondIconUrl(m, bondId, active = false) {
+/** Bond glyph (tinted in CSS), or the state disc when an activation state is supplied. */
+export function bondIconUrl(m, bondId, active) {
   const state = obj(obj(obj(m)?.bondStates)?.[bondId]);
-  if (state) return str(state[active ? 'active' : 'inactive']);
+  if (state && typeof active === 'boolean') return str(state[active ? 'active' : 'inactive']);
   return bondId ? str(obj(obj(m)?.bonds)?.[bondId]) : null;
 }
 

@@ -210,10 +210,10 @@ export function CoinGlyph({ class: cls }) {
 }
 
 /** Bond glyph image (white mask tinted by CSS) or first-letter fallback. */
-export function BondGlyph({ bondId, class: cls, active = false }) {
+export function BondGlyph({ bondId, class: cls, active }) {
   const b = data.lookup('bonds', bondId);
   const src = bondIconUrl(data.get('assets'), bondId, active);
-  return html`<span class=${cx('bglyph', cls, src?.startsWith('/img/bonds/') && 'is-colored')} title=${b?.name || bondId}>
+  return html`<span class=${cx('bglyph', cls, typeof active === 'boolean' && src?.startsWith('/img/bonds/') && 'is-colored')} title=${b?.name || bondId}>
     <${Img} src=${src} fallback=${html`<span class="bglyph__txt">${[...(b?.name || '?')][0]}</span>`} />
   </span>`;
 }
