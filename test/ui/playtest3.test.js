@@ -308,7 +308,7 @@ describe('8: 特质 right under the detail card\'s header', () => {
       return [...walk(section)].find((n) => n.props?.text != null).props.text;
     });
     assert.match(descriptions[0], /部署后100秒/);
-    assert.match(descriptions[1], /每叠加1层.*技力回复速度\+0\.015点\/秒/);
+    assert.match(descriptions[1], /每叠加1层.*技力回复速度\+0\.005点\/秒/);
     assert.equal(new Set(blocks.map((b) => b.key)).size, blocks.length);
     assert.ok(blocks.indexOf(rendered[1]) < blocks.findIndex((b) => b.key === 'stats'));
   });

@@ -264,8 +264,8 @@ for (const suffix of ['a', 'b']) for (const [base, skillIndex, tag] of [
   });
 }
 
-test('devour ATK retains 50%, 100%, 200%, 300% and beyond; block is always added, layers never are', () => {
-  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.5],[100,1],[300,2],[500,3],[700,4]]) {
+test('devour ATK starts at 20%, reaches 80% at 100 layers and grows linearly; block is always added, layers never are', () => {
+  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.2],[50,.5],[100,.8],[300,2],[500,3.2],[700,4.4]]) {
     const { h, u, food } = fight({ bandId, count, layers, depth: 1 });
     close(u.s.atk, 1000 + food.base.atk * scale);
     assert.equal(u.s.blockCnt, 4);

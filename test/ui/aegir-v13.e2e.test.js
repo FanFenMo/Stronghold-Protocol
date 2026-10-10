@@ -59,7 +59,7 @@ for (const suffix of ['a', 'b']) {
         await c.click('.gm__bonds .bslot[data-bond="egirShip"] .bond', null, { any: true });
         await c.page.waitForSelector('.bpop');
         const desc = await c.page.$eval('.bpop .bpop__desc', el => el.textContent);
-        for (const text of ['非远程敌人', '80%', '中间干员死亡不切断']) assert.ok(desc.includes(text), desc);
+        for (const text of ['20%＋每层0.6%', '100层为80%', '非远程敌人', '中间干员死亡不切断']) assert.ok(desc.includes(text), desc);
         assert.ok(!desc.includes('真伤') && !/[（()）]/.test(desc), desc);
         await c.shot('covenant-relay');
         await c.page.keyboard.press('Escape');
