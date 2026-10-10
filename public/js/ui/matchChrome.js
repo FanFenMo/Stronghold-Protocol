@@ -1,3 +1,4 @@
+import { recordQuit } from './stats.js';
 // Chrome shared by every in-match screen: the step header of the pre-game screens (exit + ping +
 // difficulty | "1/2 确认本局信息" | countdown) and the exit flow (confirm with 暂离 / 放弃, AI 托管 overlay).
 //
@@ -40,14 +41,21 @@ store.subscribe((s, prev) => { if (awayStore.get().away && awayEnds(s, prev)) aw
  * @returns {Promise<void>}
  */
 export async function quitMatch() {
+  const before = store.get();
+  let left = false;
   try {
     try { await net.request('g.leave', {}); } catch (err) {
       if (err?.code !== 'NOT_IN_ROOM' && err?.code !== 'WRONG_PHASE' && err?.code !== 'OFFLINE') throw err;
     }
     try { await net.request('room.leave', {}); } catch (err) { if (err?.code !== 'NOT_IN_ROOM' && err?.code !== 'OFFLINE') throw err; }
+    left = true;
   } catch (err) {
     toastError(err);
   } finally {
+    // (a settlement that arrived while the leave was in flight is the match's record already)
+    if (left && !store.get().match.result) {
+      try { recordQuit(before); } catch (err) { console.warn('[stats] quit record failed', err); }
+    }
     store.set({ room: null, match: emptyMatch() });
   }
 }

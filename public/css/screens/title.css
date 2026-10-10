@@ -104,7 +104,7 @@
   padding: .02rem .08rem;
   border: 1px solid rgba(246, 163, 41, .35);
   font-family: var(--font-display);
-  font-size: .1rem;
+  font-size: calc(.1 * var(--t));
   letter-spacing: .2em;
   color: rgba(246, 163, 41, .7);
   white-space: nowrap;
@@ -172,9 +172,9 @@
   line-height: 1;
   animation: rise-in 600ms 80ms var(--ease-out) backwards;
 }
-.title-en__a { font-size: .34rem; font-weight: 500; letter-spacing: .3em; padding-left: .3em; color: #cdd6d1; }
+.title-en__a { font-size: calc(.34 * var(--t)); font-weight: 500; letter-spacing: .3em; padding-left: .3em; color: #cdd6d1; }
 .title-en__b {
-  font-size: .38rem;
+  font-size: calc(.38 * var(--t));
   font-weight: 700;
   letter-spacing: .34em;
   padding-left: .34em;
@@ -183,7 +183,7 @@
 }
 .title-cn {
   margin-top: .14rem;
-  font-size: 1.02rem;
+  font-size: calc(1.02 * var(--t));
   font-weight: 900;
   line-height: 1.12;
   letter-spacing: .06em;
@@ -195,7 +195,7 @@
 .title-cn em { font-style: normal; color: var(--mint-500); text-shadow: 0 0 .26rem rgba(23, 249, 183, .45); }
 .title-tag {
   margin-top: .12rem;
-  font-size: .19rem;
+  font-size: calc(.19 * var(--t));
   color: var(--text-lo);
   letter-spacing: .1em;
   animation: rise-in 600ms 200ms var(--ease-out) backwards;
@@ -236,12 +236,13 @@
   background: rgba(246, 163, 41, .08);
   border: 1px solid rgba(246, 163, 41, .35);
   color: var(--amber);
-  font-size: .16rem;
+  font-size: calc(.16 * var(--t));
 }
 .title-invite .icon { width: .2rem; height: .2rem; }
-.title-invite b { font-size: .2rem; letter-spacing: .2em; color: #ffd08a; }
-.title-conn { display: flex; align-items: center; justify-content: center; gap: .1rem; min-height: .32rem; font-size: .14rem; color: var(--text-lo); }
-.title-conn .ping { height: .26rem; font-size: .15rem; }
+.title-invite b { font-size: calc(.2 * var(--t)); letter-spacing: .2em; color: #ffd08a; }
+.title-conn { display: flex; align-items: center; justify-content: center; gap: .1rem; min-height: .32rem; font-size: calc(.14 * var(--t)); color: var(--text-lo); }
+.title-extras { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .08rem; }
+.title-conn .ping { height: .26rem; font-size: calc(.15 * var(--t)); }
 
 .title-foot {
   position: absolute;
@@ -252,6 +253,6 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  font-size: .13rem;
+  font-size: calc(.13 * var(--t));
   color: var(--text-dim);
 }

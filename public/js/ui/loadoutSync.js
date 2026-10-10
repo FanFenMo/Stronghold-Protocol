@@ -13,8 +13,9 @@
 
 import { createStore, loadPref, savePref } from '../store.js';
 import { data } from '../data.js';
-import { LOADOUT_PREF, parseStored, toStored, sanitizeEntries } from './loadoutModel.js';
+import { LOADOUT_PREF, parseStored, toStored, sanitizeEntries, parseStoredOps, sanitizeOps } from './loadoutModel.js';
 import { toast } from './toasts.js';
+import { cultivationCharIds } from '../../../shared/protocol.js';
 import { EMPTY_SUPPORT_OPERATORS, isSupportSelection, sanitizeSupportOperators } from '../../../shared/supportOperators.js';
 
 export const SYNC_DEBOUNCE_MS = 500;
@@ -27,6 +28,8 @@ function readStored() {
 /** Loadout + screen state (separate from the app store: it must survive room / match resets). */
 export const loadoutStore = createStore({
   entries: readStored(),
+  ops: parseStoredOps(loadPref(LOADOUT_PREF, null)),
+  tab: 'loadout',
   supportOperators: isSupportSelection(loadPref('supportOperators', null))
     ? loadPref('supportOperators', null) : EMPTY_SUPPORT_OPERATORS,
   open: false,
@@ -39,8 +42,14 @@ export const loadoutStore = createStore({
 /** Replace the stored entries (persisted at once; the sync picks the change up). */
 export function setEntries(entries) {
   const next = entries && typeof entries === 'object' ? entries : {};
-  savePref(LOADOUT_PREF, toStored(next));
+  savePref(LOADOUT_PREF, toStored(next, loadoutStore.get().ops));
   loadoutStore.set({ entries: next });
+}
+
+export function setOpsMap(ops) {
+  const next = parseStoredOps({ ops });
+  savePref(LOADOUT_PREF, toStored(loadoutStore.get().entries, next));
+  loadoutStore.set({ ops: next });
 }
 
 export function setSupportOperators(selection) {
@@ -58,12 +67,14 @@ export function setSupportOperators(selection) {
  * @param {(id: string) => any} lookup chess lookup
  * @returns {{ applied: number, dropped: number }} entries kept / entries that were not imported
  */
-export function applyLoadoutEntries(entries, lookup) {
+export function applyLoadoutEntries(entries, lookup, { ops = null, isOperator = null } = {}) {
   const asked = Object.keys(entries || {}).length;
   const clean = sanitizeEntries(entries, lookup);
   const applied = Object.keys(clean).length;
   if (applied) setEntries(clean);
-  return { applied, dropped: Math.max(0, asked - applied) };
+  const cleanOps = ops ? sanitizeOps(ops, isOperator) : null;
+  if (cleanOps) setOpsMap(cleanOps);
+  return { applied, dropped: Math.max(0, asked - applied) + (ops ? Object.keys(ops).length - Object.keys(cleanOps).length : 0), ...(cleanOps ? { ops: Object.keys(cleanOps).length } : {}) };
 }
 
 /** Open the 干員调配 screen. @param {'lobby'|'room'|'briefing'} from @param {string|null} [sel] */
@@ -82,7 +93,7 @@ export const closeLoadout = () => loadoutStore.set({ open: false });
  *   timers?: { setTimeout: Function, clearTimeout: Function }, target?: ReturnType<typeof createStore> }} deps
  * @returns {{ flush: () => Promise<void>, dispose: () => void }}
  */
-export function installLoadoutSync({ net, getChessReady, lookupChess, timers, target = loadoutStore, notify } = {}) {
+export function installLoadoutSync({ net, getChessReady, lookupChess, isOperator, timers, target = loadoutStore, notify } = {}) {
   const T = timers || { setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: (id) => globalThis.clearTimeout(id) };
   const ready = getChessReady || (() => data.load('chess'));
   const lookup = lookupChess || ((id) => data.lookup('chess', id));
@@ -115,13 +126,14 @@ export function installLoadoutSync({ net, getChessReady, lookupChess, timers, ta
       // chess.json in the lobby just for this
       const supports = target.get().supportOperators;
       const empty = (!current || Object.keys(current).length === 0)
-        && !(supports?.[5]?.length || supports?.[6]?.length);
+        && !(supports?.[5]?.length || supports?.[6]?.length) && !Object.keys(target.get().ops || {}).length;
       const loaded = empty ? true : await ready();
       if (disposed) return;
       // never sanitise against missing data: every entry would be dropped and the server's copy cleared
       if (loaded == null) { setState('error'); return; }
       const entries = empty ? {} : sanitizeEntries(target.get().entries, lookup);
-      const payload = { entries };
+      const opIds = cultivationCharIds(data.get('chess'));
+      const payload = { entries, ops: empty ? {} : sanitizeOps(target.get().ops, isOperator || (id => opIds.has(id))) };
       if (target.get().supportOperators !== undefined)
         payload.supportOperators = sanitizeSupportOperators(target.get().supportOperators, lookup);
       const json = JSON.stringify(payload);
@@ -158,7 +170,7 @@ export function installLoadoutSync({ net, getChessReady, lookupChess, timers, ta
 
   const offWelcome = net.on('welcome', () => { lastSent = null; pendingJson = null; seq++; schedule(50); });
   const offStore = target.subscribe((s, prev) => {
-    if (s.entries !== prev.entries || s.supportOperators !== prev.supportOperators) { edited = true; schedule(); }
+    if (s.ops !== prev.ops || s.entries !== prev.entries || s.supportOperators !== prev.supportOperators) { edited = true; schedule(); }
     // closing the overlay sends a pending edit at once (review fix): the player's next click — 准备就绪 in the solo
     // briefing, 开始模拟 in the room — must not overtake the debounced room.loadout (the match locks its loadout when
     // INFO_CHECK ends, so a late edit would silently only apply to the next match). Same socket ⇒ ordered.

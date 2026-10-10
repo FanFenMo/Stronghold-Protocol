@@ -142,7 +142,7 @@ describe('6: 机变 cards (道具补给 / 机密商店 / 悬赏 / 战术) show t
     assert.match(rule('.spcard__head'), /display: flex/);
     const desc = rule('.spcard__desc');
     assert.match(desc, /-webkit-line-clamp: \d/);
-    const size = (r) => Number(r.match(/font-size: (\.\d+)rem/)[1]);
+    const size = (r) => Number(r.match(/font-size: (?:calc\()?((?:0)?\.\d+)(?:rem| \* var\(--t\))/)[1]);
     assert.ok(size(desc) >= 0.19, `desktop description ${size(desc)}rem`);
     // short landscape phones (height < 10.8rem because the root size is clamped at 40 px)
     const phone = css.match(/@media \(max-height: 431\.98px\) \{([\s\S]*?)\n\}/);

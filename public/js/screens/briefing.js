@@ -1,3 +1,4 @@
+import { SetupReroll } from '../ui/setupReroll.js';
 // Briefing — INFO_CHECK "1/2 确认本局信息" (research 06 §4.1, D1): enemy leader (silhouette, name,
 // abilities), stage (+ its pool: 战场固定 / 战场随机（共N张）), 特训敌人 factions (icon, name, description), the difficulty
 // tag, the ready count x/N with person pips, the 准备就绪 button (g.infoReady) and the countdown. The right column — 核心盟约
@@ -87,7 +88,8 @@ export function BriefingScreen() {
       </section>
     </main>
     <footer class="brief__foot">
-      <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />
+      <${SetupReroll} pub=${pub} />
+        <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />
       <div class="brief-ready">
         <span class="brief-ready__txt">已就绪 <b class="num">${readyN}</b><span class="num">/${players.length}</span></span>
         <span class="brief-ready__pips">${players.map((p) => html`<i key=${p.playerId} class=${cx(p.ready && 'on', p.playerId === myId && 'me')} title=${p.name}><${Icon} name="user" /></i>`)}</span>

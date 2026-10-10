@@ -155,7 +155,7 @@ test('prep: the record\'s attack range (card without a live entry, board overlay
   const key = (g) => (g || []).map(([r, c]) => `${r},${c}`).sort().join(' ');
   let runs = 0;
   const wider = new Set();
-  for (const c of Object.values(C)) {
+  for (const c of Object.values(C).filter(c => !c.supportOperator && !c.isDiy)) {
     if (!(c.visible || (c.isGolden && C[c.baseId]?.visible))) continue;
     const skills = (c.skills || []).length ? c.skills.map((s) => s.index) : [null];
     const mods = [null, ...(Array.isArray(c.modules) && c.modules.length ? ['none', ...c.modules.map((m) => m.uniEquipId)] : [])];

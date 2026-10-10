@@ -1,3 +1,4 @@
+import { keyHint } from './settings.js';
 // Underframe — the selection diamond of a tapped own piece (research 09 §1.2 "Tap a deployed unit", §5, §6.5;
 // official `act2autochess_panel_character_menu`: `util_btn` icon_sell + price "+1", funcId autochessSale; the
 // destroy variant `_underFramePanelBtnParamDestroyPos` with icon_destory).
@@ -91,13 +92,13 @@ export function Underframe({ view, uid = null, row, col, actions, name = '', bus
       <path class="uframe__corner" d="M-100 0 L-86 -14 M-100 0 L-86 14 M100 0 L86 -14 M100 0 L86 14 M0 -100 L-14 -86 M0 -100 L14 -86 M0 100 L-14 86 M0 100 L14 86" />
     </svg>
     ${actions.retreat ? html`<button type="button" class="uframe__btn uframe__btn--retreat" disabled=${busy} onPointerDown=${stop}
-        onClick=${(e) => { stop(e); onRetreat?.(); }} title=${actions.sell != null ? '撤退至整备区（Q）' : '撤退至整备区'} aria-label="撤退" aria-keyshortcuts=${actions.sell != null ? 'Q' : undefined}>
-      <${RetreatGlyph} /><span class="uframe__label">${actions.sell != null ? '撤退[Q]' : '撤退'}</span>
+        onClick=${(e) => { stop(e); onRetreat?.(); }} title=${actions.sell != null ? `撤退至整备区（${keyHint("retreat")}）` : '撤退至整备区'} aria-label="撤退" aria-keyshortcuts=${actions.sell != null ? keyHint('retreat') : undefined}>
+      <${RetreatGlyph} /><span class="uframe__label">${actions.sell != null ? `撤退[${keyHint("retreat")}]` : '撤退'}</span>
     </button>` : null}
     ${actions.sell != null ? html`<button type="button" class="uframe__btn uframe__btn--sell" disabled=${busy} onPointerDown=${stop}
         onClick=${(e) => { stop(e); onSell?.(); }} title=${`出售（+${actions.sell} 资金，X）`} aria-label=${`出售，获得 ${actions.sell} 资金`} aria-keyshortcuts="X">
       <${PlateIcon} sprite="icon_sell" glyph="sell" tone="sell" />
-      <span class="uframe__label">出售[X]</span>
+      <span class="uframe__label">出售[${keyHint("sell")}]</span>
       <${HexBadge} value=${`+${actions.sell}`} tone="gold" size="sm" class="uframe__price" />
     </button>` : null}
     ${actions.destroy ? html`<button type="button" class=${cx('uframe__btn', 'uframe__btn--destroy')} disabled=${busy} onPointerDown=${stop}

@@ -1,3 +1,4 @@
+import { keyHint } from './settings.js';
 // In-match top bar (research 06 §11.1): exit + ping (left); round box, phase capsule (prep label /
 // kills n/m / boss HP bar), LP tower, match-info and enemy-preview buttons (centre, bracket frame);
 // 7-segment countdown with gauge and the 准备就绪 toggle (right).
@@ -216,7 +217,7 @@ export function ReadyToggle({ priv, onToggle, busy, readyCount, total }) {
       aria-pressed=${ready ? 'true' : 'false'} aria-describedby=${!ready && temp.count ? 'readywrap-why' : undefined} onClick=${() => onToggle(!ready)}>
     <span class="readybtn__box">${ready ? html`<${Icon} name="check" />` : null}</span>
     <span class="readybtn__label">${ready ? '取消准备' : '准备就绪'}</span>
-    <kbd class="readybtn__key">Space</kbd>
+    <kbd class="readybtn__key">${keyHint('ready')}</kbd>
   </button>`;
   return html`<div class="readywrap">
     ${reason ? html`<${Tooltip} text=${reason} placement="bottom">${btn}<//>` : btn}
@@ -288,7 +289,7 @@ function PauseGlyph() {
  */
 export function PauseButton({ paused, busy = false, onToggle }) {
   const label = paused ? '继续作战' : '暂停';
-  return html`<${Tooltip} text=${paused ? '继续作战（Space）' : '暂停作战（Space）'} placement="bottom">
+  return html`<${Tooltip} text=${paused ? `继续作战（${keyHint('ready')}）` : `暂停作战（${keyHint('ready')}）`} placement="bottom">
     <button type="button" class=${cx('pausebtn', 'tapx', paused && 'is-on', busy && 'is-busy')} aria-pressed=${paused ? 'true' : 'false'}
         aria-label=${label} disabled=${busy} data-testid="pause" onClick=${() => onToggle?.()}>
       ${paused ? html`<${Icon} name="play" class="pausebtn__glyph" />` : html`<${PauseGlyph} />`}

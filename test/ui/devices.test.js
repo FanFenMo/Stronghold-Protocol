@@ -378,10 +378,10 @@ describe('room: copy the invite without navigator.clipboard (LAN over http, iOS)
     const { copyText } = await import('../../public/js/screens/room.js');
     const calls = [];
     const ta = {
-      style: {}, value: '',
+      style: {}, value: '', selectionStart:0, selectionEnd:0, focus() { document.activeElement=this; },
       setAttribute(k) { calls.push(['attr', k]); },
       select() { calls.push(['select']); },
-      setSelectionRange(a, b) { calls.push(['range', a, b]); },
+      setSelectionRange(a, b) { this.selectionStart=a; this.selectionEnd=b; calls.push(['range', a, b]); },
       remove() { calls.push(['remove']); },
     };
     const saved = { document: globalThis.document, secure: globalThis.isSecureContext, nav: Object.getOwnPropertyDescriptor(globalThis, 'navigator') };

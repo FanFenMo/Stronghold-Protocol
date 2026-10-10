@@ -1,3 +1,5 @@
+import { DEFAULT_HOTKEYS, sanitizeHotkeys } from './gameLogic/shortcuts.js';
+export { HOTKEY_ACTIONS, DEFAULT_HOTKEYS, isBindableCode, hotkeyLabel, sanitizeHotkeys, rebindHotkey, isDefaultHotkeys, hotkeyOf, actionForKey, captureHotkey, shortcutFor, facingSwallows, facingEnter, closesOnFieldPress, shortcutBlocked } from './gameLogic/shortcuts.js';
 // Pure in-match UI logic (no DOM, no Preact) — unit-tested in Node (test/ui/*.test.js).
 //
 // Placement legality (`canPlace`) mirrors the server rules of DESIGN §3/§6.2 so the render view can
@@ -23,6 +25,8 @@
 
 import { GEO, PHASE, UF } from '../../../shared/constants.js';
 import { resolveLoadout, loadoutOptions, MODULE_NONE } from '../../../shared/protocol.js';
+import { cultivationOf, cultivateMul, cultivatedStats, isPotential, isCultivate } from '../../../shared/potential.js';
+import { t } from '../../../shared/i18n.js';
 import { resolveRecordLoadout, loadoutRecord, attackRangeGrid } from '../../../shared/loadoutRecord.js';
 import { meleeOnHighGround } from '../../../shared/highGround.js';
 import { supportAvailable } from '../../../shared/supportOperators.js';
@@ -893,116 +897,7 @@ export function deploySets(stage, field = 'normal', overrides = {}) {
   return { melee, ranged };
 }
 
-// ---- special terrain tips (GitHub issue #184: 特殊地形的单击信息提示) ----------------------------------------
-
-/**
- * What tapping a special tile says. `lines` are functions of the stage's own terrain parameters (`stage.special[<terrain>]`
- * and the tile's `bb`, the very numbers the sim runs on — server/sim/content/devices.js), so a tip can never disagree with
- * the battle; the prose is ours (docs/PLAYING.md wording, PRTS 特殊地形 / 沼泽控制 / 深水区 地形信息).
- * `tag` is the chip above the name; `fact` needs the tile's own legend entry (see terrainInfo).
- */
-const TERRAIN_TIPS = Object.freeze({
-  infection: {
-    name: '活性源石', tag: '特殊地形',
-    lines: (st) => {
-      const b = isObj(st?.infection?.bb) ? st.infection.bb : {};
-      const dmg = param(b.damage, 0);
-      const mods = [];
-      if (param(b.atk, 0)) mods.push(`攻击力 +${Math.round(param(b.atk, 0) * 100)}%`);
-      if (param(b.attack_speed, 0)) mods.push(`攻击速度 +${param(b.attack_speed, 0)}`);
-      return [
-        dmg ? `部署于其上的我方单位、经过的敌方单位，每秒受到 ${dmg} 点真实伤害（无来源）` : '在其上的我方单位与经过的敌方单位持续受到伤害',
-        mods.length ? `同时获得：${mods.join('、')}` : null,
-        param(b.duration, 0) ? `效果持续 ${param(b.duration, 0)} 秒；离开地块后仍然保留，再次接触会重新计时` : null,
-      ].filter(Boolean);
-    },
-  },
-  mire: {
-    name: '沼泽', tag: '特殊地形',
-    lines: (st) => {
-      const m = isObj(st?.mire) ? st.mire : {};
-      const per = param(m.aspdPerStack, -0.05);
-      const move = param(m.moveMulPerStack, -0.05);
-      const max = param(m.maxStacks, 10);
-      const heavy = param(m.heavyWeight, 3);
-      return [
-        `留在沼泽里的单位每 ${param(m.intervalSec, 1)} 秒获得 1 层「陷入沼泽」：攻击速度 ${pctText(per)}${move ? `，敌方单位还有移动速度 ${pctText(move)}` : ''}`,
-        heavy ? `重量 ≥ ${heavy} 的敌人一次获得 2 层` : null,
-        `最多 ${max} 层；离开沼泽后解除`,
-      ].filter(Boolean);
-    },
-  },
-  smog: {
-    name: '排气格栅', tag: '特殊地形',
-    // the sim gives the tile's buff `flags: { stealth: true }` (devices.js enterTerrain): enemy ranged targeting
-    // skips it like 隐匿 — and, like 隐匿, it does NOT stop the enemy it blocks from attacking it (PRTS 隐匿).
-    lines: () => [
-      '站在排气格栅上的干员不会被敌方的远程攻击选中（效果相当于隐匿）',
-      '但挡住敌人的干员仍会被它攻击到',
-    ],
-  },
-  deepsea: {
-    name: '深水区', tag: '特殊地形',
-    lines: (st) => {
-      const b = isObj(st?.deepsea?.bb) ? st.deepsea.bb : {};
-      const dmg = param(b['sea_drown[enemy].damage'], 0);
-      const aspd = param(b['sea_drown[enemy].attack_speed'], 0);
-      const move = param(b['sea_drown[enemy].move_speed'], 0);
-      const out = [];
-      if (dmg) out.push(`敌人每秒受到 ${dmg} 点伤害`);
-      const mods = [];
-      if (aspd) mods.push(`攻击速度 ${pctText(aspd)}`);
-      if (move && move !== 1) mods.push(`移动速度 ×${move}`);
-      if (mods.length) out.push(mods.join('、'));
-      // devices.js tickDeepsea: sourceless true damage tagged 'dot' / 'periodic' / 'deepsea' — deliberately NOT 'terrain'
-      // (环境伤害, which is what 活性源石's tick is): it is nobody's damage, so no 干员's 增伤 / 穿透 / 装备 applies.
-      out.push('溺水伤害属于无来源伤害（不吃干员的增伤、穿透与装备加成），也不归类为环境伤害');
-      out.push('拒绝部署（特制水上平台可以让这一格变得可部署）');
-      return out;
-    },
-  },
-  start: { name: '红门', tag: '敌方入口', lines: () => ['敌方单位从这里出场'] },
-  end: { name: '蓝门', tag: '保护目标', lines: () => ['敌人走进这里会扣你的目标生命值（LP），一回合至多 10 点'] },
-  telin: { name: '传送入口', tag: '特殊地形', lines: () => ['敌人走到这里会从场上消失'] },
-  telout: { name: '传送出口', tag: '特殊地形', lines: () => ['消失的敌人会从这里重新出现'] },
-});
-
-/** Tile keys that carry a tip of their own although the legend gives them no `special` tag (gates, teleports). */
-const TIP_BY_TILEKEY = Object.freeze({ tile_start: 'start', tile_end: 'end', tile_telin: 'telin', tile_telout: 'telout' });
-/** 深水区's own legend entry is the one tile whose mechanism overrides the level's buildableType (grid.js DEPLOY_REFUSED_TILES). */
-const BUILDABILITY = Object.freeze({ ALL: '可部署', MELEE: '仅近战位可部署', RANGED: '仅远程位可部署', NONE: '不可部署' });
-
-const param = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
-const pctText = (v) => `${v > 0 ? '+' : '−'}${Math.abs(Math.round(param(v, 0) * 100))}%`;
-
-/**
- * The tip a tap on board tile (row, col) opens (GitHub issue #184 — "建议加入对于特殊地形的单击信息提示"), or null for an
- * ordinary tile (road / floor / wall / fence …): those say nothing, so a tap on them still just closes what is open.
- * The tile comes from the stage the board on screen is built from (`stage.rows` + `stage.tiles`, data/stages.json), and
- * the numbers from that stage's own terrain parameters — the same values the sim runs.
- * @param {{ rows?: string[], tiles?: Record<string, any>, special?: any } | null | undefined} stage the shown field's stage
- * @param {number} row board row (row 0 = the bottom row, DESIGN §1)
- * @param {number} col
- * @returns {{ key:string, name:string, tag:string, row:number, col:number, lines:string[], facts:string[] } | null}
- */
-export function terrainInfo(stage, row, col) {
-  const rows = Array.isArray(stage?.rows) ? stage.rows : null;
-  const line = rows && Number.isInteger(row) && row >= 0 ? rows[row] : null;
-  if (typeof line !== 'string' || !Number.isInteger(col) || col < 0 || col >= line.length) return null;
-  const tiles = isObj(stage.tiles) ? stage.tiles : null;
-  const tile = tiles ? tiles[line[col]] : null;
-  if (!isObj(tile)) return null;
-  const key = tile.special || TIP_BY_TILEKEY[tile.tileKey] || null;
-  const tip = key ? TERRAIN_TIPS[key] : null;
-  if (!tip) return null;
-  const facts = [];
-  const build = BUILDABILITY[tile.buildable];
-  if (build) facts.push(build);
-  if (tile.height === 'HIGH') facts.push('高台');
-  if (tile.groundPassable === false) facts.push('只有空中单位能通过');
-  else if (tile.groundPassable === true) facts.push('地面单位可通过');
-  return { key, name: tip.name, tag: tip.tag, row, col, lines: tip.lines(stage.special).filter((s) => typeof s === 'string' && s), facts };
-}
+export { terrainInfo, deviceInfo, deviceTipAt, noteDeviceUnits } from './gameLogic/terrain.js';
 
 // ---- per-player stage overrides (terrain 机变 cards) ------------------------------------------------------
 
@@ -1657,23 +1552,6 @@ export function rangeGridBox(grid, mirror = false) {
  * @param {{ key?: string, code?: string, ctrlKey?: boolean, metaKey?: boolean, altKey?: boolean, repeat?: boolean, target?: any }} e
  * @returns {'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'|'escape'|null}
  */
-export function shortcutFor(e) {
-  if (!e || e.ctrlKey || e.metaKey || e.altKey) return null;
-  const t = e.target;
-  const tag = t && typeof t.tagName === 'string' ? t.tagName.toUpperCase() : '';
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t?.isContentEditable) return null;
-  if (e.key === 'Escape') return 'escape';
-  if (e.repeat) return null;
-  const code = e.code || '';
-  const key = typeof e.key === 'string' ? e.key.toLowerCase() : '';
-  if (code === 'KeyR' || key === 'r') return 'refresh';
-  if (code === 'KeyF' || key === 'f') return 'freeze';
-  if (code === 'KeyD' || key === 'd') return 'levelUp';
-  if (code === 'KeyQ' || key === 'q') return 'retreat';
-  if (code === 'KeyX' || key === 'x') return 'sell';
-  if (code === 'Space' || key === ' ') return 'ready';
-  return null;
-}
 
 /**
  * Whether a press on the field closes the open detail card: a card opened from the field itself (an own piece — tap,
@@ -1682,7 +1560,6 @@ export function shortcutFor(e) {
  */
 // a card opened BY a field press (a piece, a unit, a special terrain tile: issue #184) closes on the next press of
 // the field; the ones opened from the shop / hand / HUD stay until their own close button (or the flow that opened them)
-export const closesOnFieldPress = (detail) => detail?.kind === 'piece' || detail?.kind === 'unit' || detail?.kind === 'terrain';
 
 /**
  * Whether an open overlay swallows a game shortcut: a modal / the guide own the keyboard (Esc included — they close
@@ -1691,15 +1568,12 @@ export const closesOnFieldPress = (detail) => detail?.kind === 'piece' || detail
  * @param {'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'|'escape'|null} act shortcutFor
  * @param {{ modal?: boolean, drawer?: boolean }} open
  */
-export function shortcutBlocked(act, { modal = false, drawer = false } = {}) {
-  if (!act) return true;
-  if (modal) return true;
-  return !!drawer && act !== 'escape';
-}
+
 
 // ---- settings ------------------------------------------------------------------------------------------------------
 
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false, damageNumbers: true, quality: 'high' });
+export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, muted: false, damageNumbers: true, quality: 'high', textSize: 'sm', keys: DEFAULT_HOTKEYS });
 const QUALITIES = ['high', 'medium', 'low'];
 
 /**
@@ -1717,6 +1591,8 @@ export function sanitizeSettings(raw) {
     muted: typeof r.muted === 'boolean' ? r.muted : DEFAULT_SETTINGS.muted,
     damageNumbers: typeof r.damageNumbers === 'boolean' ? r.damageNumbers : DEFAULT_SETTINGS.damageNumbers,
     quality: QUALITIES.includes(r.quality) ? r.quality : DEFAULT_SETTINGS.quality,
+    textSize: TEXT_SIZES.includes(r.textSize) ? r.textSize : DEFAULT_SETTINGS.textSize,
+    keys: sanitizeHotkeys(r.keys),
   };
 }
 
@@ -1787,7 +1663,7 @@ export function normalizeResult(res, pub) {
  * @returns {{ skill: any, skillIndex: number|null, defaultSkill: boolean, module: { id: string, name: string, typeName: string, none: boolean }|null,
  *   defaultModule: boolean, changed: boolean, choices: number } | null}
  */
-export function chessLoadout(chess, loadout, getChess = () => null) {
+export function chessLoadout(chess, loadout, getChess = () => null, opts = {}) {
   if (!isObj(chess)) return null;
   const lo = isObj(loadout) && !Array.isArray(loadout) ? loadout : null;
   let r = { skillIndex: null, moduleId: null };
@@ -1803,7 +1679,7 @@ export function chessLoadout(chess, loadout, getChess = () => null) {
   let defaultModule = true;
   if (chess.isGolden) {
     const id = r.moduleId ?? (chess.module?.active ? chess.module.id : MODULE_NONE);
-    if (id === MODULE_NONE) module = { id: MODULE_NONE, name: '未装备模组', typeName: '', none: true };
+    if (id === MODULE_NONE) module = { id: MODULE_NONE, name: t('未装备模组'), typeName: '', none: true };
     else {
       const rec = (Array.isArray(chess.modules) ? chess.modules : []).find((m) => isObj(m) && m.uniEquipId === id)
         || (isObj(chess.module) && chess.module.id === id ? { uniEquipId: id, name: chess.module.name, typeName: chess.module.type } : null);
@@ -1811,12 +1687,42 @@ export function chessLoadout(chess, loadout, getChess = () => null) {
     }
     defaultModule = opt.defaultModule == null || id === opt.defaultModule;
   }
-  // the record the unit fights with (stats / 特性 / talents of the chosen module or none — the battle's own composition,
-  // shared/loadoutRecord.js): the detail card must show what the sim runs
+  // 0.2.2: the operator's 潜能 / 练度 (the player's settings, or the unit's own)
+  const cv = cultivationFor(chess, opts);
+  // the record the unit fights with (stats / 特性 / talents of the chosen module or none, at its potential — the
+  // battle's own composition, shared/loadoutRecord.js): the detail card must show what the sim runs
   let record = chess;
-  try { record = loadoutRecord(chess, resolveRecordLoadout(chess, { skillIndex: r.skillIndex, moduleId: r.moduleId })) || chess; } catch { /* the record as is */ }
+  try { record = loadoutRecord(chess, resolveRecordLoadout(chess, { skillIndex: r.skillIndex, moduleId: r.moduleId, potential: cv ? cv.potential : null })) || chess; } catch { /* the record as is */ }
+  const mul = cv && isCultivate(cv.cultivate) ? cultivateMul(opts?.effects, cv.cultivate) : null;
+  if (mul && record && record.stats) record = { ...record, stats: cultivatedStats(record.stats, mul) };
   return { skill, skillIndex: skill?.index ?? null, defaultSkill, module, defaultModule, changed: !defaultSkill || !defaultModule,
-    choices: Math.max(skills.length, opt.skills?.length || 0), record };
+    choices: Math.max(skills.length, opt.skills?.length || 0), record, cultivation: cv };
+}
+
+/**
+ * The 潜能 / 练度 of a card's record (chessLoadout `opts`): the unit's own (`cultivation`, null = none) or the player's
+ * settings (`ops`, shared/potential.js cultivationOf — null for a stand-in / prototype 自选 record).
+ * @returns {{ potential: number, cultivate: number|null } | null}
+ */
+function cultivationFor(chess, opts) {
+  if (opts && opts.cultivation !== undefined) {
+    const c = opts.cultivation;
+    if (!isObj(c) || !isObj(chess) || chess.standInFor || chess.diyProto) return null;
+    return { potential: isPotential(c.potential) ? c.potential : 6, cultivate: isCultivate(c.cultivate) ? c.cultivate : null };
+  }
+  return cultivationOf(chess, opts ? opts.ops : null);
+}
+
+/**
+ * The 潜能 / 练度 a battle / scouting unit fights at (UnitInfo `potential` — below 6 only — and `cultivate`, 0.2.2): for
+ * chessLoadout `opts.cultivation`; null when the unit has neither (a stand-in, a prototype 自选 piece, a raw unit).
+ * @param {any} unit UnitInfo
+ */
+export function unitCultivation(unit) {
+  if (!isObj(unit)) return null;
+  const pot = isPotential(unit.potential) ? unit.potential : 6;
+  const cult = isCultivate(unit.cultivate) ? unit.cultivate : null;
+  return cult == null && pot === 6 ? null : { potential: pot, cultivate: cult };
 }
 
 /**
@@ -1837,6 +1743,7 @@ export function unitLoadout(chess, unit) {
   if (chess.isGolden && typeof unit.moduleId === 'string' && unit.moduleId) e.module = unit.moduleId;
   return Object.keys(e).length ? { [baseId]: e } : null;
 }
+
 
 // ---- detail panel placement (user playtest #2 item 8) ---------------------------------------------------------------
 

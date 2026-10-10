@@ -1,3 +1,6 @@
+import { PwaInstallButton } from '../ui/device.js';
+import { ResumeMatchButton } from '../ui/resumeMatch.js';
+import { openStats } from './stats.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 and a difficulty (标准/险境/绝境/终极), create a room,
 // or join one with a 同盟密钥 (recent codes remembered) — as a player (加入同盟) or in one of its MAX_SPECTATORS
 // spectator seats (观战: room.spectate, also while its match runs; community report #26, a remake feature — the
@@ -304,6 +307,8 @@ export function LobbyScreen() {
       </div>
       <div class="topbar__right">
         <${GuideButton} class="lobby-guide" variant="secondary" />
+        <${Button} variant="ghost" size="sm" onClick=${openStats}>统计数据<//>
+        <${PwaInstallButton} /><${ResumeMatchButton} />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
         <div class="me-chip">
           <${AvatarFrame} size="sm" name=${me.name} seat=${0} self=${true} />

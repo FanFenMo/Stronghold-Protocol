@@ -1,3 +1,5 @@
+import { pwaInstall } from '../pwa.js';
+import { t } from '../../../shared/i18n.js';
 // Multi-device support (desktop Chrome / Edge / Firefox / Safari, iPad and Android tablets in landscape, phones in
 // landscape ≥ 640×360 CSS px). Everything is feature-detected — never UA-sniffed:
 //
@@ -20,7 +22,7 @@
 // CSS counterpart: public/css/devices.css (safe-area insets, touch-action, overscroll, tap-target expansion).
 
 import { useEffect, useState } from '../../vendor/hooks.module.js';
-import { html, Icon } from './components.js';
+import { html, Icon, Button } from './components.js';
 
 /** A touch held this long without moving opens the detail (contextmenu) on DOM controls. */
 export const LONG_PRESS_MS = 520;
@@ -254,4 +256,12 @@ export function installDeviceSupport(win = globalThis) {
 
   installed = () => { for (const off of offs.splice(0)) { try { off(); } catch { /* ignore */ } } clearTimeout(rotTimer); installed = null; };
   return installed;
+}
+
+export function PwaInstallButton({ class: cls = '', size = 'sm' }) {
+  const [available, setAvailable] = useState(pwaInstall.available);
+  useEffect(() => pwaInstall.subscribe(setAvailable), []);
+  if (!available) return null;
+  return html`<${Button} variant="secondary" size=${size} icon="download" class=${cls}
+    data-testid="pwa-install" onClick=${() => pwaInstall.request()}>${t('添加到桌面')}<//>`;
 }

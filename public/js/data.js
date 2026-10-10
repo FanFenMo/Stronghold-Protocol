@@ -23,6 +23,7 @@ import { useEffect, useReducer } from '../vendor/hooks.module.js';
 /** Known data files (name → URL basename). Unknown names are allowed too (`/data/<name>.json`). */
 export const DATA_FILES = Object.freeze({
   chess: 'chess.json',
+  backups: 'backups.json',
   bonds: 'bonds.json',
   items: 'items.json',
   bands: 'bands.json',

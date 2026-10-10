@@ -4,6 +4,7 @@
 // `net.request` is looked up at call time so the dev mock harness can stub it.
 
 import { net } from '../net.js';
+import { store } from '../store.js';
 import { toastError } from './toasts.js';
 import { audio } from '../audio.js';
 
@@ -48,7 +49,10 @@ export async function act(t, fields = {}, opts = {}) {
 }
 
 export const actions = {
-  infoReady: () => act('g.infoReady'),
+  rerollSetup: setupRevision => act('room.rerollSetup', {setupRevision}),
+  cancelReroll: voteId => act('room.cancelReroll', {voteId}),
+  rerollVote: (voteId, agree) => act('g.rerollVote', {voteId, agree}),
+  infoReady: () => act('g.infoReady', {setupRevision: store.get().match.public?.setupRevision ?? 0}),
   band: (bandId) => act('g.band', { bandId }),
   bandSkip: () => act('g.bandSkip'),
   buy: (slot) => act('g.buy', { slot }),
