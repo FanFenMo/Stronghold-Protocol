@@ -357,4 +357,3 @@ export function StatsHost() {
   if (!open) return null;
   return html`<${StatsScreen} tab=${tab} />`;
 }
-
