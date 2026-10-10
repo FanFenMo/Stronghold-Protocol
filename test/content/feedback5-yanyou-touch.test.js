@@ -9,7 +9,7 @@ import { makeBattle } from '../helpers/battleHarness.js';
 import { hasGeneratedData } from '../../server/sim/simdata.js';
 
 const REAL = { skip: !hasGeneratedData() };
-const YAN = ['chess_char_1_03', 'chess_char_2_04', 'chess_char_3_03', 'chess_char_3_04', 'chess_char_4_15', 'chess_char_4_17', 'chess_char_5_03', 'chess_char_5_12', 'chess_char_6_03'];
+const YAN = ['chess_char_1_03', 'chess_char_2_04', 'chess_char_3_03', 'chess_char_3_04', 'chess_char_5_23', 'chess_char_4_17', 'chess_char_5_03', 'chess_char_5_12', 'chess_char_6_03'];
 const TILES = [[9, 3], [9, 4], [10, 3], [10, 4], [11, 3], [11, 4], [9, 5], [11, 5], [10, 5]];
 
 function tokensAt(stageId, n, elite = false) {

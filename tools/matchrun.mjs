@@ -132,7 +132,7 @@ function runOne(seed, difficulty) {
       last = key;
       if (lpOverride && m.phase === 'PREP' && m.round === 1) for (const ps of m.players.values()) ps.lp = lpOverride;
       if (layerBoost && m.phase === 'PREP' && m.round === m.gd.bossRound) {
-        for (const ps of m.alivePlayers()) { for (const id of m.gd.bondIds) { const before = ps.layers[id] || 0; ps.layers[id] = before + layerGainRoom(before, layerBoost); } ps.recompute(); }
+        for (const ps of m.alivePlayers()) { for (const id of m.gd.bondIds) { const before = ps.layers[id] || 0; ps.layers[id] = before + layerGainRoom(before, layerBoost, id); } ps.recompute(); }
       }
       if (m.phase === 'SETTLE' || ((m.phase === 'RESULT') && (m.round === m.gd.bossRound || m.round === m.gd.hiddenRound))) {
         const row = { round: m.round, unite: !!m.unitePlan, players: {} };

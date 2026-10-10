@@ -1,4 +1,5 @@
 // Rich-text description formatting (pure, no DOM / Preact — unit-tested in Node).
+import { PROSPERITY_BOND, prosperityHealBonus, prosperityBlastGrid } from '../../../shared/prosperity.js';
 //
 // Official descriptions (data/*.json `descRaw`, DATA.md §0) carry Arknights markup:
 //   <@ba.vup>+15%</>        styled span (class `ba.vup`: value-up highlight)
@@ -169,6 +170,7 @@ export function formatBondEffect(bond, layers = 0) {
   const params = Array.isArray(bond.effectDescParams) ? bond.effectDescParams : [];
   const bb = bond.bb && typeof bond.bb === 'object' ? bond.bb : {};
   const L = Number.isFinite(Number(layers)) ? Math.max(0, Number(layers)) : 0;
+  if (bond.bondId === PROSPERITY_BOND) return fillPlaceholders(src, [prosperityHealBonus(L), prosperityBlastGrid(L).length]);
   const values = [];
   const formats = [];
   for (const p of params) {

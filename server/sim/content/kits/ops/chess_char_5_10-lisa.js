@@ -41,7 +41,7 @@ export default {
             if (!(healRatio > 0)) return;
             // until the next refresh (a little longer, so it never lapses in between; onEnd takes it off)
             const v = unit.s.atk * healRatio;
-            for (const a of battle.alliesInGrid(unit)) battle.addBuff(a, { key: foxKey(unit), duration: 1.25, source: unit, mods: { hpRegen: v } });
+            for (const a of battle.alliesInGrid(unit)) battle.addBuff(a, { key: foxKey(unit), duration: 1.25, source: unit, mods: { hpRegen: v }, data: { skillRegen: true } });
           }
         },
         onEnd({ battle, unit }) {

@@ -272,7 +272,7 @@ export function applyBoard(m, ps, plan, r, rng, { profile = 1 } = {}) {
   for (const [id, b] of Object.entries(planned)) {
     if (!b.active) continue;
     const base = id === plan.core ? curve('coreLayers', r) : curve('addonLayers', r);
-    const v = layerGainRoom(0, Math.round(base * profile * jit())); // ≤ BOND_LAYER_CAP (999) for any --profile
+    const v = layerGainRoom(0, Math.round(base * profile * jit()), id);
     if (v > 0) ps.layers[id] = v;
   }
   ps.recompute();

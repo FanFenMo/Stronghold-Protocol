@@ -119,9 +119,20 @@ export class BattleStatus {
       if (u.alive && u.deployed && !u.bossPool) {
         const regen = u.s.hpRegen;
         if (regen > 0 && u.hp < u.s.maxHp) {
-          u._regenAcc = (u._regenAcc ?? 0) + regen * dt;
+          const ctx = { unit: u, amount: regen * dt, dt, credits: [] };
+          if (this._hooks.regen) this.emit('regen', ctx);
+          u._regenAcc = (u._regenAcc ?? 0) + ctx.amount;
+          if (ctx.credits.length) {
+            u._regenSources ??= new Map();
+            for (const { source, amount } of ctx.credits) u._regenSources.set(source, (u._regenSources.get(source) || 0) + amount);
+          }
           if (u._regenAcc >= 1 || u.hp + u._regenAcc >= u.s.maxHp) {
-            this.heal(u, u, u._regenAcc, { self: true, silent: true, regen: true });
+            const actual = this.heal(u, u, u._regenAcc, { self: true, silent: true, regen: true });
+            if (actual > 0 && u._regenSources?.size && this._hooks.regenerated) {
+              const credits = [...u._regenSources].map(([source, amount]) => ({ source, amount: amount * actual / u._regenAcc }));
+              this.emit('regenerated', { unit: u, amount: actual, credits });
+            }
+            u._regenSources?.clear();
             u._regenAcc = 0;
           }
         }

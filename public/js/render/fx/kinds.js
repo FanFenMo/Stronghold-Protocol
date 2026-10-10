@@ -6,6 +6,7 @@
  * kinds fall back to a keyword guess, then to a generic sparkle (fxSpec).
  */
 export const FX_KINDS = Object.freeze({
+  lifeOrb: { a: 'lifeOrb', c: 0x62f08a, pt: true },
   sakikoPhysicalNote: { a: 'musicNote', c: 0xffdb7b, pt: true },
   sakikoArtsNote: { a: 'musicNote', c: 0xff65b2, pt: true },
   sakikoNoteHit: { a: 'strike', c: 0xffabd6 },

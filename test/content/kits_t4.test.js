@@ -17,14 +17,14 @@ const withTags = (rec, tags) => ({ ...rec, tags });
 const noisy = (h, name) => h.hooksOf(name);
 const dmgBy = (h, u, pred = () => true) => noisy(h, 'damaged').filter((c) => c.source === u && pred(c));
 const T4 = [];
-for (let i = 1; i <= 26; i++) T4.push(`chess_char_4_${String(i).padStart(2, '0')}_a`);
+for (let i = 1; i <= 26; i++) if (i !== 15) T4.push(`chess_char_4_${String(i).padStart(2, '0')}_a`);
 
 test('tier4: every tier-4 chess has a hand-authored kit', () => {
   for (const id of T4) assert.equal(typeof kits[id], 'function', id);
-  assert.equal(Object.keys(kits).length, 26);
+  assert.equal(Object.keys(kits).length, 25);
 });
 
-test('tier4: all 52 kits (normal + elite) fight a mixed wave without content errors', () => {
+test('tier4: all 50 kits (normal + elite) fight a mixed wave without content errors', () => {
   for (const id of T4.flatMap((a) => [a, a.replace(/_a$/, '_b')])) {
     const h = makeBattle({
       defs: { enemies: {
@@ -617,29 +617,8 @@ test('同名效果取最高: two 灵知 never compound 坚冰, two 莱恩哈特 
   approx(x.s.res, 50, 1e-9, 'expired');
 });
 
-test('录武官 S2: healed allies regain 80 HP whenever damaged for 10 s; 学成于聚 SP +1 & ASPD +16 when an operator in range casts', () => {
-  const id = 'chess_char_4_15_a', bb = D(id).skill.bb, t0 = D(id).talents[0].bb;
-  const h = makeBattle({ units: [{ chessId: id, row: 10, col: 3 }, { chessId: 'chess_char_1_02_a', row: 10, col: 4 }], timeLimit: 60, hooks: ['heal'], captureNoisy: true });
-  h.step();
-  const u = h.unit(id), ally = h.unit('chess_char_1_02_a');
-  const sp0 = u.skill.sp;
-  ally.skill.activate('test', { free: true });
-  approx(u.skill.sp, sp0 + t0.sp, 1e-9);
-  approx(u.s.aspd, u.base.aspd + t0.attack_speed, 1e-9);
-  assert.ok(u.skill.activate('test', { free: true }));
-  approx(u.s.atk, u.base.atk * (1 + bb.atk), 1e-9);
-  h.b.dealDamage(null, ally, { amount: ally.s.maxHp * 0.6, type: 'true' });
-  h.runUntil(() => ally.findBuff(`reckpr:guard:${u.id}`), 5);
-  assert.ok(ally.findBuff(`reckpr:guard:${u.id}`), 'guard buff after her heal');
-  const n0 = noisy(h, 'heal').length;
-  h.b.dealDamage(null, ally, { amount: 300, type: 'true' });
-  const hl = noisy(h, 'heal').slice(n0).filter((c) => c.source === u && c.target === ally);
-  assert.equal(hl.length, 1);
-  approx(hl[0].amount, bb['attack@fixed_heal_value'] * ally.s.healingTakenMul, 1e-6);
-});
-
-test('录武官 / 华法琳 elite trait: heals on allies below 50 % are ×1.15', () => {
-  for (const id of ['chess_char_4_15_b', 'chess_char_4_26_b']) {
+test('华法琳 elite trait: heals on allies below 50 % are ×1.15', () => {
+  for (const id of ['chess_char_4_26_b']) {
     const tb = D(id).traitBb;
     const h = makeBattle({ units: [{ chessId: id, row: 10, col: 3 }, { chessId: 'chess_char_1_02_a', row: 10, col: 4 }], timeLimit: 30, hooks: ['heal'], captureNoisy: true });
     h.step();
@@ -1125,7 +1104,6 @@ test('elite (精锐) kits read the Lv7 blackboard: skill magnitudes differ from 
     ['chess_char_4_06_b', (u, bb) => approx(u.s.interval, u.base.bat + bb.base_attack_time)],
     ['chess_char_4_09_b', (u, bb) => approx(u.s.interval, (u.base.bat + bb.base_attack_time) * 100 / u.s.aspd)],
     ['chess_char_4_11_b', (u, bb) => approx(u.s.maxHp, u.base.maxHp * (1 + bb.max_hp))],
-    ['chess_char_4_15_b', (u, bb) => approx(u.s.atk, u.base.atk * (1 + bb.atk))],
     ['chess_char_4_21_b', (u, bb) => approx(u.s.interval, u.base.bat + bb.base_attack_time)],
     ['chess_char_4_22_b', (u, bb) => approx(u.s.atk, u.base.atk * (1 + D('chess_char_4_22_b').talents[0].bb.atk + bb.atk))],
     ['chess_char_4_23_b', (u, bb) => approx(u.s.aspd, u.base.aspd + bb.attack_speed)],
@@ -1153,19 +1131,6 @@ test('elite (精锐) kits read the Lv7 blackboard: skill magnitudes differ from 
     const e = h.spawn('enemy_dummy', { pos: [10, 5] });
     assert.ok(h.runUntil(() => u.skill.activations >= 1, 30));
     approx(e.s.res, 50 * (1 + bb.magic_resistance));
-  }
-  // 录武官: 120 HP per hit taken
-  {
-    const [h, u, bb] = mk('chess_char_4_15_b', { units: [{ chessId: 'chess_char_4_15_b', row: 10, col: 3 }, { chessId: 'chess_char_1_02_a', row: 10, col: 4 }] });
-    const ally = h.unit('chess_char_1_02_a');
-    u.skill.activate('test', { free: true });
-    h.b.dealDamage(null, ally, { amount: ally.s.maxHp * 0.4, type: 'true' });
-    assert.ok(h.runUntil(() => ally.findBuff(`reckpr:guard:${u.id}`), 5));
-    const n0 = noisy(h, 'heal').length;
-    h.b.dealDamage(null, ally, { amount: 10, type: 'true' });
-    const hl = noisy(h, 'heal').slice(n0).find((c) => c.source === u && c.target === ally);
-    assert.equal(bb['attack@fixed_heal_value'], 120);
-    approx(hl.amount, bb['attack@fixed_heal_value'] * ally.s.healingTakenMul * (ally.hpRatio < D('chess_char_4_15_b').traitBb.hp_ratio ? D('chess_char_4_15_b').traitBb.heal_scale : 1), 1e-6);
   }
   // 缄默德克萨斯: 3 rain targets for 7 s
   {

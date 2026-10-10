@@ -116,6 +116,11 @@ export class FxSim {
         if (ex.id == null) { this.flashScreen(col, 0.45, 1); this.snowfall(col, true); } else { this.flashScreen(col, 0.35, 0.8); this.snowfall(col); }
         break;
       case 'heal': this.heal(at.v || { x: at.x, y: at.y, z: at.z }, 0); break;
+      case 'lifeOrb':
+        this.tileFlash(ex.tiles, col, 0.55);
+        this.particle('glow', p.x, p.y, { tint: col, life: 0.55, s0: s / 128 * 0.5, s1: s / 128 * 1.8, a0: 1, a1: 0 });
+        this.ring(at.x, at.y, at.z, 0.15, 1.5, col, 0.55);
+        break;
       case 'healAoe': {
         this.ring(at.x, at.y, at.z, 0.2, r, col, 0.6);
         const n = this.quality === 'low' ? 4 : 9;

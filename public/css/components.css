@@ -346,6 +346,7 @@
   box-shadow: 0 0 .16rem rgba(23, 249, 183, .5), inset 0 0 0 1px rgba(255, 255, 255, .45), inset 0 -4px 8px rgba(0, 60, 40, .45);
 }
 .bond.is-active .bond__icon { filter: brightness(0) opacity(.85); }
+.bond .bond__icon.is-colored, .bond.is-active .bond__icon.is-colored { filter: none; border-radius: 50%; }
 .bond.is-active .bond__glyph { color: #06221a; }
 .bond__count {
   position: absolute;

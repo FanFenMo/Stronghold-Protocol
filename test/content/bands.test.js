@@ -97,12 +97,13 @@ test('华法琳 重点监护: prep end — for every distinct tier on the board,
     const { m, ps, prepEnd } = setup({ band: 'band_bldsk', seed: 50 + s });
     give(m, ps, 'chess_char_1_04_a', 'board', [10, 3]); // T1 阿戈尔
     give(m, ps, 'chess_char_1_09_a', 'board', [10, 4]); // T1 精准
-    give(m, ps, 'chess_char_2_06_a', 'board', [10, 5]); // T2 萨尔贡
+    give(m, ps, 'chess_char_2_06_a', 'board', [10, 5]); // T2 萨尔贡 / 繁盛
     give(m, ps, 'chess_char_3_06_a', 'hand');            // hand: ignored
     prepEnd();
     assert.equal(ps.layers.sargonShip, 2, 'the only T2');
+    assert.equal(ps.layers.prosperityShip, 2, '莎草所属繁盛也由重点监护叠层，无需激活');
     assert.equal((ps.layers.egirShip || 0) + (ps.layers.preciShip || 0), 2, 'exactly one of the T1 operators');
-    assert.equal(Object.values(ps.layers).reduce((a, b) => a + b, 0), 4);
+    assert.equal(Object.values(ps.layers).reduce((a, b) => a + b, 0), 6);
   }
   cover('band_bldsk');
 });

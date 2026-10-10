@@ -36,7 +36,7 @@ test('LE (heal_scale_up[hpratio][LE]): 华法琳 (tier 4 and 5) and 闪灵 PHY-X
 });
 
 test('LT (set_heal_scale_by_hpratio, reckpr_e_002_tr): 塞雷娅 GUA-X and 录武官 PHY-X (tier 4 and 5) give nothing at exactly 50 %, ×1.15 below', () => {
-  for (const id of ['chess_char_5_11_b', 'chess_char_4_15_b', 'chess_char_5_23_b']) {
+  for (const id of ['chess_char_5_11_b', 'chess_char_5_23_b']) {
     near(factorAt({ uid: 1, chessId: id, row: 10, col: 5 }, 0.5), 1, `${id} at 50 %`);
     near(factorAt({ uid: 1, chessId: id, row: 10, col: 5 }, 0.49), 1.15, `${id} at 49 %`);
   }

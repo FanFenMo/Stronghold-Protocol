@@ -17,10 +17,10 @@ const fxOf = (h, kind) => h.eventsOf('fx').filter((e) => e[1] === kind);
 const absKeysHas = (grid, u, r, c) => grid.some(([dr, dc]) => u.tileR + dr === r && u.tileC + dc * u.facing === c);
 const clean = (h) => { assert.deepEqual(h.b.errors.map((e) => `${e.label}: ${e.message}`), []); checkInvariants(h.b); };
 
-test('tier-5 registry: all 23 non-DIY tier-5 chess have a hand-authored kit', () => {
+test('tier-5 registry: all 22 non-DIY tier-5 chess have a hand-authored kit', () => {
   const ids = Object.keys(KITS).sort();
-  assert.equal(ids.length, 23);
-  for (let i = 1; i <= 23; i++) assert.ok(KITS[`chess_char_5_${String(i).padStart(2, '0')}_a`], `kit for 5_${i}`);
+  assert.equal(ids.length, 22);
+  for (let i = 1; i <= 23; i++) if (i !== 9) assert.ok(KITS[`chess_char_5_${String(i).padStart(2, '0')}_a`], `kit for 5_${i}`);
   for (const id of ids) {
     const h = makeBattle({ units: [{ chessId: id, row: 10, col: 5 }], autoFinish: false, timeLimit: 3 });
     h.step();
@@ -455,56 +455,6 @@ test('号角 S3: cast with an enemy in range (DEFAULT, DESIGN §21.29); ATK +25 
   assert.equal(u.s.aspd, u.base.aspd + t1.attack_speed);
   h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
   assert.equal(u.alive, false, 'once per deployment');
-  clean(h);
-});
-
-// ------------------------------------------------------------------------------------------------------------------
-test('魔王 S3: inspire +65 % of her max HP to others in range, HP equalised every 2 s; T1 orbiting motes ×1.5 trait (生命回复速度); T2 −10 % from Sarkaz', () => {
-  const sark = dummy('enemy_sark');
-  sark.tags = ['sarkaz'];
-  const h = makeBattle({
-    defs: { enemies: { enemy_dummy: dummy(), enemy_sark: sark }, chess: { t_a: ally('t_a'), t_b: ally('t_b'), t_c: ally('t_c') } },
-    units: [{ chessId: 'chess_char_5_09_a', row: 10, col: 5 }, { chessId: 't_a', row: 10, col: 4 }, { chessId: 't_b', row: 12, col: 5 }, { chessId: 't_c', row: 11, col: 6 }],
-    autoFinish: false, timeLimit: 120,
-  });
-  const u = h.unit('chess_char_5_09_a');
-  const a = h.unit('t_a'), b = h.unit('t_b'), c = h.unit('t_c');
-  const bb = bbOf(u), t0 = tal(u, 0), t1 = tal(u, 1);
-  const aura = () => u.s.atk * u.def.traitBb['attack@atk_to_hp_recovery_ratio'];
-  // the trait: 生命回复速度 on the allies in range (an hpRegen buff — PRTS 分支特性信息 吟游者; professions.js bardRegen)
-  const trait = (x) => x.findBuff(`trait:bard:${u.id}`)?.mods.hpRegen ?? 0;
-  h.step();
-  a.hp = 2000; b.hp = 8000; c.hp = 2000;
-  h.run(1.05);
-  // the 3 motes orbit at range_radius 1.15 (dynamic_spd 30°/s, 120° apart): none sits on the left neighbour at t = 1 s
-  assert.ok(!a.hasBuff('cetsyr:mote'), 'motes orbit: not on the left neighbour yet');
-  approx(trait(a), aura(), 1e-6, 'plain trait before the mote arrives');
-  approx(trait(b), aura(), 1e-6, 'plain trait (2 tiles away)');
-  assert.ok(a.hp > 2000 && b.hp > 8000, 'regenerating');
-  assert.ok(h.runUntil(() => a.hasBuff('cetsyr:mote'), 2), 'an orbiting mote reaches the adjacent operator');
-  h.run(0.3);
-  approx(trait(a), aura() * t0['attack@trait_mul'], 1e-6, 'mote ×1.5');
-  const hpA = a.hp;
-  h.run(1);
-  assert.ok(Math.abs(a.hp - hpA - aura() * t0['attack@trait_mul']) <= 1.5, `mote ×1.5: +${a.hp - hpA} in 1 s`);
-  assert.ok(h.runUntil(() => c.hasBuff('cetsyr:mote'), 12), 'a diagonal neighbour (1.41 tiles) is on the orbit too');
-  h.run(8);
-  assert.ok(!fxOf(h, 'mote').some((e) => e[4].id === b.id), 'two tiles away: off the orbit');
-  // Sarkaz damage −10 %
-  const s = h.spawn('enemy_sark', { pos: [9, 9] });
-  approx(h.b.dealDamage(s, b, { amount: 1000, type: 'true' }), 1000 * (1 - t1.damage_resistance));
-  const n = h.spawn('enemy_dummy', { pos: [10, 6] });
-  approx(h.b.dealDamage(n, b, { amount: 1000, type: 'true' }), 1000);
-  u.skill.gainSp(1000);
-  assert.ok(h.runUntil(() => u.skill.active, 2));
-  h.step();
-  approx(a.s.maxHp, 10000 + u.s.maxHp * bb.max_hp, 1e-6, 'inspire');
-  assert.ok(h.runUntil(() => fxOf(h, 'hpShare').length > 0, 3));
-  approx(a.hpRatio, b.hpRatio, 1e-9, 'HP equalised');
-  approx(a.hpRatio, u.hpRatio, 1e-9);
-  assert.equal(u.profile.auraRatio, bb['attack@atk_to_hp_recovery_ratio']);
-  h.runUntil(() => !u.skill.active, 40);
-  approx(a.s.maxHp, 10000, 1e-6, 'inspire removed');
   clean(h);
 });
 
@@ -1383,12 +1333,12 @@ test('elite modules: burst ×1.1 (烛煌/妮芙), heal ×1.15 below 50 % (华法
   clean(h);
 });
 
-test('elite modules: range = the module grid (夕/白面鸮), ASPD +8 unblocking (史尔特尔), +10 above half HP (山), SP +0.2 with enemies (铃兰), ATK +8 % (魔王)', () => {
+test('elite modules: range = the module grid (夕/白面鸮), ASPD +8 unblocking (史尔特尔), +10 above half HP (山), SP +0.2 with enemies (铃兰)', () => {
   const h = makeBattle({
     defs: { enemies: { enemy_dummy: dummy() }, chess: { t_a: ally('t_a'), t_b: ally('t_b') } },
     units: [
       { chessId: 'chess_char_5_12_b', row: 12, col: 3 }, { chessId: 'chess_char_5_16_b', row: 12, col: 4 }, { chessId: 'chess_char_5_07_b', row: 9, col: 3 },
-      { chessId: 'chess_char_5_17_b', row: 9, col: 8 }, { chessId: 'chess_char_5_10_b', row: 11, col: 7 }, { chessId: 'chess_char_5_09_b', row: 10, col: 5 },
+      { chessId: 'chess_char_5_17_b', row: 9, col: 8 }, { chessId: 'chess_char_5_10_b', row: 11, col: 7 },
       { chessId: 't_a', row: 10, col: 4 }, { chessId: 't_b', row: 10, col: 6 },
     ],
     autoFinish: false, timeLimit: 10,
@@ -1416,8 +1366,6 @@ test('elite modules: range = the module grid (夕/白面鸮), ASPD +8 unblocking
   mtn.hp = mtn.s.maxHp * 0.4;
   h.run(0.5);
   assert.equal(mtn.s.aspd, mtn.base.aspd, '山 below 50 %');
-  const cet = h.unit('chess_char_5_09_b');
-  approx(cet.s.atk, cet.base.atk * (1 + (cet.def.raw.talents.find((t) => t.index === -1).bb.atk)), 1e-9, '魔王 ≥2 ops in range');
   const lisa = h.unit('chess_char_5_10_b');
   assert.equal(lisa.findBuff('lisa:module'), null, 'no enemy in range yet');
   h.spawn('enemy_dummy', { pos: [11, 8] });
@@ -1455,7 +1403,7 @@ test('determinism: a full tier-5 lineup on a real wave replays identically', () 
       units: [
         { chessId: 'chess_char_5_05_a', row: 9, col: 3 }, { chessId: 'chess_char_5_02_b', row: 10, col: 3 }, { chessId: 'chess_char_5_12_a', row: 11, col: 3 },
         { chessId: 'chess_char_5_06_a', row: 12, col: 4 }, { chessId: 'chess_char_5_15_a', row: 10, col: 5 }, { chessId: 'chess_char_5_14_a', row: 9, col: 6 },
-        { chessId: 'chess_char_5_20_a', row: 11, col: 6 }, { chessId: 'chess_char_5_09_a', row: 12, col: 7 },
+        { chessId: 'chess_char_5_20_a', row: 11, col: 6 }, { chessId: 'chess_char_5_11_a', row: 12, col: 7 },
       ],
     });
     const r = h.runToEnd(200);

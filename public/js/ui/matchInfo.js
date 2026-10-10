@@ -68,7 +68,7 @@ export function MatchBondRow({ title, micro, bonds, model }) {
         const bannedN = model.perBond.get(b.bondId) || 0;
         return html`<${Tooltip} key=${b.bondId} text=${briefingBondTip(b.name, state, bannedN)}>
           <div class=${cx('brief-bond', off && 'is-off', state === 'drawn' && 'is-incomplete', !off && bannedN > 0 && 'is-partial')} data-bond=${b.bondId}>
-            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId)} active=${!off} disabled=${off} tier=${off ? 0 : (b.thresholds?.length || 1)}
+            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId, !off)} active=${!off} disabled=${off} tier=${off ? 0 : (b.thresholds?.length || 1)}
               maxTier=${Math.max(1, b.thresholds?.length || 1)} size="md" />
             ${bannedN > 0 ? html`<span class="brief-bond__ban num"><${Icon} name="user" />${bannedN}</span>` : null}
           </div>

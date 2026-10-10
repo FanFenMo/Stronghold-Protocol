@@ -86,6 +86,14 @@ test('items: 信标 on a bench single; both 博士投影 on a normal operator ev
   ps.returnCopies(top);
   ps.board.delete(topKey);
   const elite = give(m, ps, m.gd.goldenIdOf(top.id), 'board', parseKey(topKey));
+  // 阵容可能自带普通对子；先留下每种干员一人，让下面准备的对子成为唯一合成目标。
+  const seen = new Set();
+  for (const [key, piece] of ps.board) {
+    if (piece.kind !== 'chess' || m.gd.isGolden(piece.id)) continue;
+    if (seen.has(piece.id)) { ps.returnCopies(piece); ps.board.delete(key); }
+    else seen.add(piece.id);
+  }
+  ps.recompute();
   const single = give(m, ps, fresh(4), 'hand');
   const pairId = fresh(1);
   const pairA = give(m, ps, pairId, 'hand');

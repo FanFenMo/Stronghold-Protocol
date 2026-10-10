@@ -75,14 +75,14 @@ test('numbers: every stats/bb/enemyScale object holds only finite numbers (no nu
   assert.deepEqual(bad.slice(0, 10), [], `${bad.length} bad numeric fields`);
 });
 
-test('chess: 266 records, 112 visible non-DIY (16/17/19/22/19/19 per tier)', () => {
-  assert.equal(Object.keys(chess).length, 558);
+test('chess: 554 records, 258 visible non-DIY, 19 hidden normal records', () => {
+  assert.equal(Object.keys(chess).length, 554);
   assert.equal(visible.length, 258);
   const perTier = {};
   for (const c of visible) perTier[c.tier] = (perTier[c.tier] || 0) + 1;
   assert.deepEqual(perTier, { 1: 16, 2: 17, 3: 19, 4: 22, 5: 92, 6: 92 });
   assert.equal(normalChess.filter((c) => c.isDiy).length, 4);
-  assert.equal(normalChess.filter((c) => c.isHidden).length, 21);
+  assert.equal(normalChess.filter((c) => c.isHidden).length, 19);
 });
 
 test('chess: ids, golden pairs and references resolve', () => {
@@ -129,8 +129,8 @@ test('chess: every non-DIY chess has stats, range, classification and a resolvab
   assert.equal(chess.chess_char_1_01_a.targetPriority, 'fly');
 });
 
-test('bonds: 23 bonds with valid members, thresholds and effects', () => {
-  assert.equal(Object.keys(bonds).length, 23);
+test('bonds: 24 bonds with valid members, thresholds and effects', () => {
+  assert.equal(Object.keys(bonds).length, 24);
   assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 8);
   const modes = new Set(['BOARD', 'BOARD_AND_DECK', 'BOARD_ALL_CHESS']);
   for (const b of Object.values(bonds)) {

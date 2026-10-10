@@ -261,6 +261,7 @@
 .bpop__disc .bglyph img { filter: brightness(0) invert(.8); }
 .bpop__disc.is-active { background: var(--mint-500); border-color: var(--mint-400); box-shadow: 0 0 .24rem rgba(23, 249, 183, .45); }
 .bpop__disc.is-active .bglyph img { filter: brightness(0) opacity(.85); }
+.bpop__disc .bglyph.is-colored img, .bpop__disc.is-active .bglyph.is-colored img, .bglyph.is-colored img { filter: none; border-radius: 50%; }
 .bpop__titles { display: flex; flex-direction: column; gap: .02rem; min-width: 0; }
 .bpop__name { font-size: calc(.32 * var(--t)); font-weight: 900; letter-spacing: .08em; }
 .bpop__owner { display: inline-flex; align-items: center; gap: .06rem; font-size: calc(.14 * var(--t)); color: var(--amber); }

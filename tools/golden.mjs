@@ -62,7 +62,7 @@ import { computeBonds, bondSnapshot } from '../server/match/bondsMeta.js';
 import { Match } from '../server/match/Match.js';
 import { VirtualScheduler } from '../server/match/scheduler.js';
 import { resolveRecordLoadout, loadoutRecord, attackRangeGrid } from '../shared/loadoutRecord.js';
-import { GEO } from '../shared/constants.js';
+import { GEO, bondLayerCap } from '../shared/constants.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const GOLDEN_DIR = join(ROOT, 'test', 'golden');
@@ -517,7 +517,7 @@ export function bondScenarios() {
       const wanted = picks.map((id, j) => ({ chessId: id, items: level === 'high' && j < 4 ? [items.next()] : [] }));
       const { units } = layout(gd, stageId, wanted, { max: 12, dirs: false });
       const wave = normalWave(gd, round, seed);
-      const bonds = bondsOf(gd, units, (id) => (id === bondId ? (level === 'low' ? 1 : 999) : 0));
+      const bonds = bondsOf(gd, units, (id) => (id === bondId ? (level === 'low' ? 1 : bondLayerCap(id)) : 0));
       const pid = 'p1';
       scenarios.push({
         id: `bond-${bondId}-${level}`, family: 'bonds', kind: 'normal', modeId, round, stageId, seed,
@@ -674,7 +674,7 @@ export function runMatch(cfg) {
         boosted = true;
         for (const ps of m.order) {
           ps.lp = cfg.boost.lp;
-          for (const id of m.gd.bondIds) ps.layers[id] = cfg.boost.layers;
+          for (const id of m.gd.bondIds) ps.layers[id] = Math.min(cfg.boost.layers, bondLayerCap(id));
           ps.recompute();
         }
       }

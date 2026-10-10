@@ -543,12 +543,14 @@ export function heal(battle, source, target, amount, opts = {}) {
   if (!self && ((target.s.flags.noHeal && !through) || (target.profile && target.profile.noHeal))) return 0;
   const regen = !!opts.regen;
   if (target.s.flags.healFree && !regen && !opts.ignoreHealFree && !through) return 0;
-  let amt = regen ? amount : amount * (source && source.s ? source.s.healingDealtMul : 1) * target.s.healingTakenMul;
+  // Fixed healing (生命球) has already been calculated from actual healing; do not amplify it a second time.
+  const fixed = !!opts.fixedHeal;
+  let amt = regen || fixed ? amount : amount * (source && source.s ? source.s.healingDealtMul : 1) * target.s.healingTakenMul;
   if (!(amt > 0) || !Number.isFinite(amt)) return 0;
   if (battle._hooks.heal) {
     const ctx = { source, target, amount: amt, opts };
     battle.emit('heal', ctx);
-    if (!regen) amt = Number.isFinite(ctx.amount) ? Math.max(0, ctx.amount) : 0;
+    if (!regen && !fixed) amt = Number.isFinite(ctx.amount) ? Math.max(0, ctx.amount) : 0;
     // a handler may have killed / retreated the target: healing a dead unit would leave it "dead with hp > 0"
     if (!target.alive || !target.deployed) return 0;
   }
@@ -566,5 +568,6 @@ export function heal(battle, source, target, amount, opts = {}) {
     if (source.side === 'ally' && source.ownerId != null) { const pp = battle._pp(source.ownerId); if (pp) pp.healingDone += actual; }
   }
   if (actual >= 0.5 && !opts.silent) battle._ev(['heal', target.id, Math.round(actual)]);
+  if (actual > 0 && battle._hooks.healed) battle.emit('healed', { source, target, amount: actual, opts });
   return actual;
 }

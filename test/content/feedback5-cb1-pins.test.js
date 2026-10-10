@@ -18,7 +18,7 @@ import { hasGeneratedData } from '../../server/sim/simdata.js';
 const REAL = { skip: !hasGeneratedData() };
 
 test('49: a 源石溶剂 carrier on the field drains the 炎佑 60 HP a second, with no ATK bonus', REAL, () => {
-  const ids = ['chess_char_1_03', 'chess_char_2_04', 'chess_char_3_03', 'chess_char_3_04', 'chess_char_4_15', 'chess_char_4_17'];
+  const ids = ['chess_char_1_03', 'chess_char_2_04', 'chess_char_3_03', 'chess_char_3_04', 'chess_char_5_23', 'chess_char_4_17'];
   const tiles = [[11, 3], [11, 4], [12, 3], [12, 4], [11, 5], [12, 5]];
   const h = makeBattle({
     units: ids.map((id, i) => ({ chessId: `${id}_a`, row: tiles[i][0], col: tiles[i][1], items: i === 0 ? ['chess_item_1_05_e_a'] : [] })),
