@@ -35,8 +35,8 @@ for (const suffix of ['a', 'b']) {
         await sleep(1800);
         const pieces = await c.handPieces('chess'), mul = suffix === 'a' ? 1 : 2;
         for (const [id, count, texts] of [
-          [ids[1], 2, [`层数+${2 * mul}`, '每击倒5名敌人', `最多叠加${10 * mul}层`]],
-          [ids[4], 3, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', '每有2名', `层数+${mul}`, `层数+${2 * mul}`]],
+          [ids[1], 2, [`层数+${2 * mul}`, '每击杀1名敌人', `最多叠加${20 * mul}层`]],
+          [ids[4], 4, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', `层数+${5 * mul}`, `层数+${10 * mul}`, `层数+${2 * mul}`, `最多叠加${30 * mul}层`]],
         ]) {
           const piece = pieces.find(p => p.id === id), pt = await c.piecePoint(piece.uid);
           await c.page.mouse.click(pt.x, pt.y);
