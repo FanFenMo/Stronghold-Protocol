@@ -31,6 +31,7 @@
 // The stats block (chessStatsBlock), the 特性 text (traitText) and the talent list (chessTalents) are exported: the 干员调配
 // screen's 局内数值 section draws the same ones for the chosen skill / module, without a live entry (GitHub issue #64).
 
+import { mergeGarrisonDescriptions } from './garrisonDescriptions.js';
 import { useEffect } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, MicroLabel, Button, confirmDialog, useTicker } from './components.js';
 import { Img, RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
@@ -306,7 +307,7 @@ export function garrisonTypeIconKey(garrison) {
 
 /** The operator's own effect (特质, garrisons.json): trigger chip + description, compact. */
 export function GarrisonBlock({ garrison, m }) {
-  return html`<section class="dgarrison" aria-label="特质" data-garrison=${garrison.garrisonId || ''}>
+  return html`<section class="dgarrison" aria-label="特质" data-garrison=${garrison.garrisonId || ''} data-garrison-sources=${garrison.sourceGarrisonIds?.join(' ') || garrison.garrisonId}>
     <div class="dgarrison__head">
       <span class="dgarrison__k">特质</span>
       <span class="dgarrison__type">
@@ -369,7 +370,7 @@ export function ChessDetail({ ops = null, cultivation = null, chess, piece, unit
   // a chosen skill the manifest has no icon for (only the default skills' icons are fetched): its slot letter
   const skIcon = sk && lo && !lo.defaultSkill ? skillRecordIconUrl(m, sk, { empty: false }) : skillIconUrl(m, c);
   const skSlot = sk && Number.isInteger(sk.index) ? `S${sk.index + 1}` : null;
-  const garrisons = (c.garrisonIds || []).map((id) => data.lookup('garrisons', id)).filter(Boolean);
+  const garrisons = mergeGarrisonDescriptions((c.garrisonIds || []).map((id) => data.lookup('garrisons', id)).filter(Boolean), id => data.lookup('bonds', id).name);
   const items = Array.isArray(piece?.items) ? piece.items : [];
   // the bonds the unit counts for: its own + a 变形同构体 pairing's (its piece's items; without one: `unitItems` — a
   // teammate's unit's UnitInfo items, a bond popup 同构 row's wearer's)

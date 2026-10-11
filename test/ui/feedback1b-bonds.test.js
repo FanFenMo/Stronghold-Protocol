@@ -97,20 +97,19 @@ test('shop / reward card: a mode-disabled bond tag is struck through with the �
   assert.ok(tags(null).every((v) => !hasClass(v, 'is-off')), 'no set: as before');
 });
 
-test('bond popup: 本局禁用 instead of 未激活, a note, and no misleading member count or 当前效果 numbers', () => {
+test('bond popup: disabled effects stay gray in one paragraph with no duplicated overview', () => {
   const pop = BondPopup({ bondId: 'arcaneShip', entry: null, priv: { board: [], hand: [] }, onClose() {}, off: true });
   const text = textOf(pop);
   assert.match(text, /本局禁用/);
   assert.match(text, /本模式下该盟约不会激活/);
   assert.doesNotMatch(text, /在场/);
-  // the 当前效果 block ("提升20% … 68%") would promise an effect the mode never gives; the bond text (盟约效果) stays
-  assert.doesNotMatch(text, /当前效果/);
-  assert.ok(![...walk(pop)].some((v) => hasClass(v, 'bpop__sec--now')), 'no current-effect section');
-  assert.match(text, /盟约效果/);
+  assert.doesNotMatch(text, /当前效果|盟约效果/);
+  assert.equal([...walk(pop)].filter(v => hasClass(v, 'bpop__sec--effect')).length, 1);
+  assert.ok([...walk(pop)].filter(v => hasClass(v, 'bpop__clause')).every(v => !hasClass(v, 'is-active')));
   const plain = textOf(BondPopup({ bondId: 'arcaneShip', entry: null, priv: { board: [], hand: [] }, onClose() {} }));
   assert.match(plain, /未激活/);
   assert.match(plain, /在场/);
-  assert.match(plain, /当前效果/, 'an enabled bond keeps its current-effect block');
+  assert.doesNotMatch(plain, /当前效果|盟约效果/);
 });
 
 test('the game screen hands the mode-disabled set to the shop bar, the detail card and the bond popup', () => {
