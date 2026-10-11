@@ -7,12 +7,13 @@
 #        docker build -t stronghold-protocol --build-arg FETCH_ASSETS=1 .
 #   B) build without it and mount the host's copy (prepared with `node tools/setup.mjs` on the host):
 #        docker build -t stronghold-protocol .
-#        docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
+#        docker run -it --rm --name stronghold -p 3000:3000 \
 #          -v "$PWD/public/assets:/app/public/assets:ro" stronghold-protocol
 #      (public/fonts, data/assets.json and data/local-assets.json are copied from the build context when present)
 # Without any art the game still runs with placeholder visuals.
 #
-# Run:  docker run -d --name stronghold -p 3000:3000 --restart unless-stopped stronghold-protocol
+# Run:  docker run -it --rm --name stronghold -p 3000:3000 stronghold-protocol
+# Enter this process's access username/password in the terminal; both empty allow direct access.
 # Env:  PORT (3000), HOST (0.0.0.0), SP_COMBAT (client|server), SP_VERIFY (off|sample|all), TRUST_PROXY (auto|1|0), DEBUG
 
 ARG NODE_IMAGE=node:22-alpine

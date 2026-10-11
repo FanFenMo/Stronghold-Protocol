@@ -44,6 +44,8 @@ import { Lobby } from './lobby.js';
 import { getData, loadData } from './data.js';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
+import { createAccess } from './access.js';
+import { promptAccess } from './access-prompt.js';
 
 /** Repository root. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -607,6 +609,7 @@ function makeLogger(quiet) {
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
+ *   access?: { username: string, password: string },
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: WebSocketServer,
  *                     lobby: Lobby, network: Network, registry: SessionRegistry, close: () => Promise<void> }>}
@@ -636,6 +639,7 @@ export async function startServer(opts = {}) {
   const lobby = new Lobby({ registry, log, MatchClass: opts.MatchClass, getData: () => data, seedFn: opts.seedFn, options: lobbyOptions });
   const network = new Network({ registry, handler: lobby, log, options: netOptions });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, log });
+  const access = createAccess(opts.access);
   const startedAt = Date.now();
   // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
   resetBuildTag();
@@ -655,6 +659,7 @@ export async function startServer(opts = {}) {
     if (url.length > MAX_URL_LENGTH) { sendError(req, res, 414, '请求地址过长 · URI too long'); return; }
     const parts = splitUrl(url);
     if (!parts) { sendError(req, res, 400, '请求地址无效 · Bad request'); return; }
+    if (await access.handle(req, res, parts.rawPath)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
@@ -692,6 +697,7 @@ export async function startServer(opts = {}) {
       try { socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`); } catch { socket.destroy(); }
     };
     if (!parts || parts.rawPath !== '/ws') { reject(404, 'Not Found'); return; }
+    if (!access.authenticated(req)) { reject(401, 'Unauthorized'); return; }
     const refused = network.admission(req);
     if (refused === 'per-address') { reject(429, 'Too Many Requests'); return; }
     if (refused) { reject(503, 'Service Unavailable'); return; }
@@ -713,6 +719,7 @@ export async function startServer(opts = {}) {
     });
   } catch (e) {
     network.close(); // stop heartbeat/sweep timers of the half-built server
+    access.clear();
     throw e;
   }
   server.on('error', (e) => log.error('[http] server error', e));
@@ -725,6 +732,7 @@ export async function startServer(opts = {}) {
   async function close() {
     if (closing) return closing;
     closing = (async () => {
+      access.clear();
       try { lobby.shutdown('shutdown'); } catch (e) { log.error('[shutdown] lobby', e); }
       network.close();
       await new Promise((resolve) => {
@@ -758,7 +766,10 @@ async function main() {
   process.on('uncaughtException', (e) => console.error('[process] uncaught exception', e));
   let srv;
   try {
-    srv = await startServer();
+    const access = await promptAccess();
+    srv = await startServer({ access });
+    access.username = '';
+    access.password = '';
   } catch (e) {
     if (e && e.code === 'EADDRINUSE') console.error(`端口已被占用 / port in use: ${e.port ?? process.env.PORT ?? 3000}. Try PORT=3001 npm start`);
     else console.error('[boot] failed to start', e);

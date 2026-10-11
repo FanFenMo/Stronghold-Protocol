@@ -67,9 +67,9 @@ function printShare(port) {
   console.log(`${line}\n`);
 }
 
-async function waitHealthy(port, child, timeoutMs = 30000) {
-  const until = Date.now() + timeoutMs;
-  while (Date.now() < until && child.exitCode === null) {
+async function waitHealthy(port, child) {
+  // The host may take any amount of time to enter this run's credentials before the server listens.
+  while (child.exitCode === null) {
     const p = await probePort(port);
     if (p.state === 'ours') return true;
     await new Promise((r) => setTimeout(r, 300));

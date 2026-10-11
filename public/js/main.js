@@ -48,6 +48,7 @@ import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
 import { installLoadoutSync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
+import { installAccessGuard } from './ui/accessGuard.js';
 
 const RESTORE_GRACE_MS = 1500;
 const JOIN_DELAY_MS = 350;
@@ -318,6 +319,8 @@ function installGlobalErrorHandlers() {
 
 async function boot() {
   installGlobalErrorHandlers();
+  const access = installAccessGuard(net);
+  if (!await access.check()) return;
   // touch / hover / fullscreen classes, zoom-gesture blocking, rotation re-layout (ui/device.js, css/devices.css)
   installDeviceSupport();
   // A page restored from the back/forward cache has a dead socket and a stale token choice: start over.

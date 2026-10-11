@@ -36,6 +36,14 @@
 
 等价的手动命令：`npm ci`、`node tools/setup.mjs`、`npm start`。
 
+### 本次开服的账号密码
+
+通过启动脚本、`npm start` 或 `node server/index.js` 开服时，终端先询问账号，再询问密码。密码不回显，输入完成后才监听端口并打开网页。两项都可以直接回车留空；**两项均为空时，所有访客直接进入游戏**。其中任意一项有值时，所有访客首次进入网页都需填写这一组共用的开服凭据，留空的项按空字符串验证。
+
+登录成功后，浏览器通过 HttpOnly Cookie 继续访问，刷新和断线重连不必重复填写。同盟邀请链接的 `?room=...` 参数在登录后保留。凭据只在后端内存中保留校验摘要，既不写配置文件，也不保存到浏览器；浏览器持有的是本次进程的随机登录凭证。服务器关闭后全部失效，重新开服时主机重新输入，已打开的网页会在重新连接时回到登录页。
+
+每次启动必须由主机完成输入，不能沿用上一次的账号密码。没有标准输入的后台服务会报告“开服账号密码输入未完成”并退出，不会自动放行。需要此行为时请保持前台终端打开，SSH 可在 `tmux` / `screen` 会话内交互开服；Docker 使用下文的 `-it`。下面原有的无人值守自启方式与每次手动输入不兼容。
+
 #### 国内镜像下载
 
 Setup 默认使用「GitHub 原始源 → jsDelivr」，不查询公网 IP，也不请求 gh-proxy.com。GitHub 下载失败时会提示如何手动开启镜像；仅添加提示，不自动切换到第三方代理。
@@ -78,6 +86,8 @@ $env:SP_ASSET_SOURCE = 'mirror'             # 也可用环境变量显式启用
 主机 IP 变了，朋友收藏的地址就失效。推荐在**路由器**后台的「DHCP 静态分配 / 地址保留」里把小主机的 MAC 地址绑定到固定 IP（如 `192.168.1.50`）。也可以在 Windows「设置 → 网络和 Internet → 属性 → IP 分配 → 编辑」里手动设置（IP、子网掩码、网关、DNS 与路由器一致，且不要与别的设备冲突）。
 
 ### 1.4 开机自动在后台运行
+
+**当前版本每次启动均需终端输入开服账号密码，以下 SYSTEM 计划任务和 NSSM 后台服务没有输入终端，不能用于本次开服方式。** 请使用 1.1 的前台启动脚本。以下保留原后台服务的管理命令，便于停止或卸载已有服务。
 
 先关闭 `start-windows.bat` 的窗口（否则端口冲突），然后在项目目录运行（会自动请求管理员权限）：
 
@@ -155,7 +165,7 @@ cloudflared tunnel --url http://localhost:3000
 2. 路由器「虚拟服务器 / 端口转发」：外部端口 3000（或任意端口）→ 内部 `主机IP:3000`，TCP。
 3. 朋友访问 `http://<你的公网 IP>:外部端口`。
 
-注意：游戏没有账号系统，知道地址的人都能进来。服务器对来自互联网的连接有按网络的数量限制（每个网络最多 64 个连接，房间 / 对局数量也有上限），但仍建议不玩时关掉转发，或优先用 Tailscale。
+开服时设置非空的账号或密码后，网页及 WebSocket 都需通过本次开服验证；两项都留空时，知道地址的人可直接进入。服务器对来自互联网的连接有按网络的数量限制（每个网络最多 64 个连接，房间 / 对局数量也有上限），不玩时可关掉转发。
 
 ### 2.4 反向代理与 HTTPS（有域名时）
 
@@ -203,15 +213,17 @@ https / wss 说明：页面通过 https 打开时客户端自动连接 `wss://�
 ```bash
 # A) 构建时下载素材（需要联网，约 250 MB）
 docker build -t stronghold-protocol --build-arg FETCH_ASSETS=1 .
-docker run -d --name stronghold -p 3000:3000 --restart unless-stopped stronghold-protocol
+docker run -it --rm --name stronghold -p 3000:3000 stronghold-protocol
 
 # B) 不把素材打进镜像：先在宿主机运行 node tools/setup.mjs，然后挂载
 docker build -t stronghold-protocol .
-docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
+docker run -it --rm --name stronghold -p 3000:3000 \
   -v "$PWD/public/assets:/app/public/assets:ro" stronghold-protocol
 ```
 
 镜像基于 `node:22-alpine`，多阶段构建，只含生产依赖；`public/vendor` 在构建时生成。`.dockerignore` 排除了 `public/assets`（不会把宿主机素材打进构建上下文）；`public/fonts`、`data/assets.json` 和 `data/local-assets.json` 若存在会被复制进去。环境变量同 README（`-e SP_VERIFY=sample` 等）。健康检查：`GET /healthz`。
+
+使用 `-it` 在容器终端输入本次开服账号密码。关闭或重建容器后需要重新输入，不配置无人值守自动重启；`--rm` 只删除退出的容器，镜像及只读挂载的宿主机素材保留。
 
 docker compose 示例：
 
@@ -222,12 +234,16 @@ services:
       context: .
       args: { FETCH_ASSETS: "1" }
     ports: ["3000:3000"]
-    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    restart: "no"
     environment:
       SP_VERIFY: "off"
 ```
 
 ## 4. macOS / Linux 常驻
+
+每次设置开服凭据时使用 `scripts/start.sh` 或 `npm start` 的交互终端；远程服务器可在 `tmux` / `screen` 中运行。上面的 Compose 配置使用 `docker compose run --rm --service-ports stronghold` 交互启动。下面原有 systemd 配置没有输入终端，与每次手动设定凭据不兼容，请先停止已有服务再在终端启动。
 
 - 临时开服：`scripts/start.sh`（或 `npm start`），保持终端窗口打开。macOS 首次会询问是否允许 node 接受传入连接，选「允许」。
 - Linux systemd（`/etc/systemd/system/stronghold.service`，路径与用户按实际修改）：
