@@ -243,6 +243,8 @@ function installMapChars(battle) {
   if (!holders.length) return;
   battle.on('battleStart', () => {
     for (const ps of holders) {
+      if (ps.bandId === AMEDIC_BAND && ps.units.some(u => u.kind === 'token'
+        && ['char_605_cmedic', 'char_613_acmedc'].includes(u.defId))) continue;
       const elites = deployedOps(battle, ps.playerId).filter(isElite).length;
       for (const id of amedicCharsFor(elites, variants)) {
         const u = spawnMapChar(battle, ps.playerId, id);

@@ -71,6 +71,7 @@
 //     normal chess → moduleId null, elite → uniEquipId | 'none'); m.private exposes `loadout`.
 
 import { ERR, GEO, PHASE, layerGainRoom } from '../../shared/constants.js';
+import { TOUCH_BAND, MEDIC_TOKEN, TOUCH_TOKEN, isStrategyMedic } from '../../shared/strategies.js';
 import { checkLoadout, resolveLoadout } from '../../shared/protocol.js';
 import { FIELD, tileKey, parseKey, inField, canPlace, placeClass, boardOrder, freeSlot, pieceDir, parseDir, mergeTile, ownerRangeKeys } from './board.js';
 import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../shared/loadoutRecord.js';
@@ -1219,7 +1220,7 @@ export class PlayerState {
     if (occ) return fail(ERR.BAD_TILE, 'occupied');
     // owner must be on the board for its summons to be deployable
     const owner = [...this.board.values()].find((p) => p.uid === piece.ownerUid);
-    if (!owner) return fail(ERR.BAD_TARGET, 'owner not deployed');
+    if (!owner && !isStrategyMedic(piece, this.bandId)) return fail(ERR.BAD_TARGET, 'owner not deployed');
     if ((piece.count || 1) > 1) {
       piece.count -= 1;
       const one = this.newPiece('token', piece.id, { count: 1, ownerUid: piece.ownerUid, dir });
@@ -1498,6 +1499,7 @@ export class PlayerState {
     this.rollShop({ keepFrozen: true });
     this.shop.frozen = false;
     for (const s of this.shop.slots) if (s) s.frozen = false;
+    this.syncStrategyMedic({ create: true });
     this.recompute();
   }
 
@@ -1539,10 +1541,21 @@ export class PlayerState {
     this.recompute();
   }
 
+  /** Touch's own medical unit can be dragged from the bench, with no operator owner or deployment slot. */
+  syncStrategyMedic({ create = false } = {}) {
+    if (this.bandId !== TOUCH_BAND) return;
+    const elites = [...this.board.values()].filter(p => p.kind === 'chess' && this.gd.chess(p.id).isGolden).length;
+    const id = elites >= 2 ? TOUCH_TOKEN : MEDIC_TOKEN;
+    const medic = [...this.board.values(), ...this.hand, ...this.temp].find(p => p && isStrategyMedic(p, this.bandId));
+    if (medic) medic.id = id;
+    else if (create) this.stow(this.newPiece('token', id, { meta: { strategyBand: TOUCH_BAND } }), { allowTemp: true });
+  }
+
   recompute() {
     this.deployMap(); // a change of the deploy field (a boss round's prep) marks the legality stale
     if (this._legalityStale) this._evictIllegal();
     this._liftOutOfRange();
+    this.syncStrategyMedic();
     this.bonds = computeBonds(this.gd, this);
     this.dirty();
   }

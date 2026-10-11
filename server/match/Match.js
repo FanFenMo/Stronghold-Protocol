@@ -144,6 +144,7 @@ import { bondList } from './bondsMeta.js';
 import { EffectDispatcher, getDefaultRegistry } from './effectsMeta.js';
 import { generateDraft, applyCard, cardView, bountyBattles, isMultiRoundBounty } from './choices.js';
 import { setupMatchWaves, buildNormalWave, buildBossWave, bountySpawns, withBounties, previewOf, weightedPick } from './waves.js';
+import { planWTransfers, applyWTransfers } from './strategyWaves.js';
 import { planUnite, uniteBattleOpts, uniteSurvivors } from './unite.js';
 import { pairPlayers, bossPoolHp, SharedBossPool, hiddenEligible, BOSS_HIT_STEPS } from './finalAssault.js';
 import {
@@ -966,8 +967,7 @@ export class Match {
       return previewOf([...g.wave.spawns, ...bountySpawns(this.gd, this.round, g.wave, ps.bounties, ps.playerId, { solo: this.isSolo, side: g.side })]);
     }
     if (!this.wave) return [];
-    const bounty = bountySpawns(this.gd, this.round, this.wave, ps.bounties, ps.playerId, { solo: this.isSolo });
-    return previewOf([...this.wave.spawns, ...bounty]);
+    return previewOf(this.normalSpawnsFor(ps));
   }
 
   /** UnitInfo list of a player's board and hand (prep scouting): board pieces on their tiles, held pieces on the
@@ -1547,6 +1547,7 @@ export class Match {
       this.wave = buildNormalWave(this.gd, this.rngWaves, this.factions, r);
     }
     for (const ps of alive) ps.startRound(r);
+    this.wTransfers = planWTransfers(this, alive);
     for (const ps of alive) this.dispatch(ps, 'onRoundStart', { round: r });
     // an eliminated player's pending 信标 gift still goes to its teammate (effects flagged afterElimination; GitHub #86)
     for (const ps of this.order) {
@@ -1924,12 +1925,17 @@ export class Match {
 
   _normalBattle(ps) { return this.newBattle(this._normalOpts(ps)); }
 
+  normalSpawnsFor(ps) {
+    return applyWTransfers(this.gd, withBounties(this.gd, this.round, this.wave, ps.bounties, ps.playerId),
+      this.wTransfers?.get(ps.playerId));
+  }
+
   /** Battle options of a player's normal field (after the onBattleStart handlers). */
   _normalOpts(ps) {
     const wave = this.wave;
     const input = ps.battleInput({ side: 'L', colOffset: 0 });
     // the client's list: bounty units inserted among their host action's own units, which are re-timed around them
-    const spawns = withBounties(this.gd, this.round, wave, ps.bounties, ps.playerId).map((s) => ({ ...s, ownerPlayerId: ps.playerId }));
+    const spawns = this.normalSpawnsFor(ps).map((s) => ({ ...s, ownerPlayerId: ps.playerId }));
     const ev = { input, kind: 'normal', round: this.round, spawns };
     this.dispatch(ps, 'onBattleStart', ev);
     return {

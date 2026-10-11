@@ -23,6 +23,7 @@ import { getData } from '../../server/data.js';
 import { FIELD, canPlace, placeClass, positionClass, tileKey } from '../../server/match/board.js';
 import { FakeBattle } from './fakeBattle.js';
 import { GEO } from '../../shared/constants.js';
+import { isStrategyMedic } from '../../shared/strategies.js';
 import { collectViolations } from '../../server/match/invariants.js';
 import { attachSimClients } from './simClient.js';
 
@@ -183,7 +184,7 @@ function legacyInvariants(m) {
       assert.ok(canPlace(dmap, cls, r, c), `illegal tile ${p.id} @ ${k}`);
       assert.notEqual(p.kind, 'item', 'items never stand on the board');
       if (p.kind === 'chess') deployed++;
-      if (p.kind === 'token') assert.ok(chessUids.has(p.ownerUid), `orphan token ${p.uid}`);
+      if (p.kind === 'token') assert.ok(chessUids.has(p.ownerUid) || isStrategyMedic(p, ps.bandId), `orphan token ${p.uid}`);
     }
     assert.ok(deployed <= ps.deployCap, `${ps.playerId} deployCount ${deployed} > cap ${ps.deployCap}`);
     for (const p of all) {
@@ -200,7 +201,7 @@ function legacyInvariants(m) {
         assert.ok(m.gd.item(p.id), `unknown item ${p.id}`);
       } else if (p.kind === 'token') {
         assert.ok(p.count >= 1, 'token stack count');
-        assert.ok(chessUids.has(p.ownerUid), `orphan token ${p.uid}`);
+        assert.ok(chessUids.has(p.ownerUid) || isStrategyMedic(p, ps.bandId), `orphan token ${p.uid}`);
       }
     }
     // merges are immediate: never 3 normal copies (风丸 2) of one chess owned at once

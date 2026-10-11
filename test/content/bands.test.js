@@ -66,18 +66,18 @@ const slotOf = (id) => ({ kind: 'chess', id, basePrice: DATA.chess[id].tier === 
 // ---------------------------------------------------------------------------------------------------------------
 // data / wiring
 
-test('bands.js wires both parts: 28 bands with a prep handler, 10 with a battle part, 鸭爵 global, 歌利亚 = LP only', () => {
+test('bands.js wires all 43 bands: 30 prep handlers, battle parts, 鸭爵 global and effectless squads', () => {
   assert.equal(typeof bands.install, 'function');
   assert.equal(typeof bands.registerMeta, 'function');
   const ids = Object.keys(DATA.bands);
-  assert.equal(ids.length, 40);
+  assert.equal(ids.length, 43);
   const meta = ids.filter((id) => REG.has(`band:${id}`));
   const battle = ids.filter(hasBattlePart);
-  assert.equal(meta.length, 28);
+  assert.equal(meta.length, 30);
   assert.deepEqual(battle.sort(), ['band_amedic', 'band_amiya', 'band_chen', 'band_clementia', 'band_dusk', 'band_emperor', 'band_ermengard', 'band_humus', 'band_ioleta', 'band_mberry', 'band_qalaisa'].sort());
   assert.ok(REG.has('global:bands_ducklord'));
   const none = ids.filter((id) => !meta.includes(id) && !battle.includes(id));
-  assert.deepEqual(none.sort(), ['band_ducklord', 'band_sarkazb']);
+  assert.deepEqual(none.sort(), ['band_ducklord', 'band_rolling_logs', 'band_sarkazb']);
   for (const id of ids) if (!meta.includes(id)) assert.equal(bandMetaHandler(id), null, id);
 });
 
@@ -671,6 +671,47 @@ test('Touch 外勤医疗: every player of a match with the band gets 预备干�
   assert.deepEqual(run(['t_n'], { band: null, matchBands: ['band_bldsk', 'band_amedic'] }), [['char_605_cmedic', 10, 2]], 'a teammate holds it');
   assert.deepEqual(run(['t_n'], { band: null }), [], 'nobody holds it');
   cover('band_amedic');
+});
+
+test('青枳: free special refresh is manual, uses current shop level, and only the first pick is free', () => {
+  const { ps, roundStart, m } = setup({ band: 'band_qingzhi' });
+  ps.shop.level = 3;
+  roundStart(6);
+  assert.equal(ps.shop.freeRefreshes, 1);
+  roundStart(6);
+  assert.equal(ps.shop.freeRefreshes, 1, 'grant once, not on each snapshot');
+  ps.shop.level = 4;
+  const before = ps.funds;
+  assert.deepEqual(ps.refresh(), OK);
+  const slots = ps.shop.slots.filter(s => s?.kind === 'chess');
+  assert.ok(slots.length > 0);
+  assert.ok(slots.every(s => m.gd.chess(s.id).tier === 3), '7 minus the level at refresh time');
+  assert.ok(slots.every(s => ps.priceOf(s) === 0));
+  assert.deepEqual(ps.buy(0), OK);
+  assert.equal(ps.funds, before, 'refresh and first operator both free');
+  assert.ok(ps.shop.slots.filter(s => s?.kind === 'chess' && !s.sold).every(s => ps.priceOf(s) > 0));
+  assert.deepEqual(ps.refresh(), OK);
+  assert.equal(ps.funds, before - m.gd.refreshPrice, 'second refresh normal');
+  cover('band_qingzhi');
+});
+
+test('W rolls once per non-boss round end; rolling logs has no hooks or buffs', () => {
+  const { ps, m, at } = setup({ band: 'band_w' });
+  m.rngMeta.chance = () => true;
+  at(1); m.dispatch(ps, 'onBattleResult', { result: {}, boss: false });
+  assert.equal(ps.counters['band:w:next_round'], 2);
+  m.rngMeta.chance = () => false;
+  m.dispatch(ps, 'onBattleResult', { result: {}, boss: false });
+  assert.equal(ps.counters['band:w:next_round'], 2, 'settle retries cannot roll again');
+  at(2); m.dispatch(ps, 'onBattleResult', { result: {} });
+  assert.equal(ps.counters['band:w:next_round'], 0);
+  at(m.gd.bossRound); m.rngMeta.chance = () => true;
+  m.dispatch(ps, 'onBattleResult', { result: {}, boss: true });
+  assert.equal(ps.counters['band:w:next_round'], 0);
+  assert.deepEqual(DATA.bands.band_rolling_logs.buffs, []);
+  assert.equal(bandMetaHandler('band_rolling_logs'), null);
+  assert.equal(hasBattlePart('band_rolling_logs'), false);
+  cover('band_w', 'band_rolling_logs');
 });
 
 test('coverage: every band is exercised by a test above', () => {
