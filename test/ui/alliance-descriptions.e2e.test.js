@@ -20,6 +20,7 @@ function rulesCheck(S, ds) {
       bonds: { egirShip: { count: 5, active: true, tier: 2, layers: 0 } } }] });
   const b = S.createBattleFromSpec(spec, ds, { quiet: true }); b.autoFinish = false; b.start(); b.step();
   const [source, food] = b.allyUnits;
+  const initialShield = !!source.findBuff('band:band_clementia:barrier');
   for (const u of b.allyUnits) u.profile.noAttack = true;
   const e = b.spawnEnemy('alliance_target', { pos: [food.tileR, food.tileC + 1] }); b.step();
   b.forceAttack(source);
@@ -30,7 +31,7 @@ function rulesCheck(S, ds) {
   const loss = hp - source.hp;
   const next = b.dealDamage(null, source, { amount: 2000, type: 'true' });
   const low = b.dealDamage(null, food, { amount: 2999, type: 'true' });
-  return { relayDamage, blocked: !!e.blockedBy, high, loss, next, low, errors: b.errors };
+  return { initialShield, relayDamage, blocked: !!e.blockedBy, high, loss, next, low, errors: b.errors };
 }
 
 test('one live bond paragraph, active colors, changing numbers, merged details; browser combat matches Node',
@@ -99,6 +100,7 @@ test('one live bond paragraph, active colors, changing numbers, merged details; 
             return new Function(`return (${src})`)()(S, view);
           }, rulesCheck.toString(), fixture, target);
           assert.deepEqual(actual, expected);
+          assert.equal(actual.initialShield, true);
           assert.equal(actual.blocked, false); assert.ok(actual.relayDamage > 0);
           assert.deepEqual([actual.high, actual.loss, actual.next, actual.low], [0, 1500, 2000, 1499.5]);
           assert.deepEqual(actual.errors, []);

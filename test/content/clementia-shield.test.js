@@ -16,8 +16,12 @@ function field(kind = 'normal', bandId = 'band_clementia') {
 }
 const hit = (h, amount, type = 'true') => h.b.dealDamage(null, h.unit(1), { amount, type, canDodge: false });
 
-test('first barrier appears at 15 seconds, refreshes without stacking and protects each operator once', () => {
+test('barrier appears at battle start, refreshes every 15 seconds without stacking and protects each operator once', () => {
   const h = field();
+  assert.ok(h.unit(1).findBuff(key));
+  assert.ok(h.unit(2).findBuff(key));
+  assert.equal(hit(h, 2000), 1000);
+  assert.equal(hit(h, 2000), 2000);
   h.run(14.9);
   assert.equal(h.unit(1).findBuff(key), null);
   h.run(.1);
@@ -35,8 +39,8 @@ test('first barrier appears at 15 seconds, refreshes without stacking and protec
   checkInvariants(h.b);
 });
 
-for (const amount of [2999, 3000, 3001, 100000]) test(`barrier boundary ${amount}: high damage includes exactly 3000`, () => {
-  const h = field(); h.run(15);
+for (const delay of [0, 15]) for (const amount of [2999, 3000, 3001, 100000]) test(`barrier boundary ${amount} at ${delay}s: high damage includes exactly 3000`, () => {
+  const h = field(); if (delay) h.run(delay);
   const hp = h.unit(1).hp;
   assert.equal(hit(h, amount), amount < 3000 ? amount / 2 : 0);
   assert.equal(h.unit(1).hp, hp - (amount < 3000 ? amount / 2 : 1500));
@@ -61,14 +65,19 @@ test('barrier measures mitigated damage, HP loss bypasses it and high-hit loss c
 
 test('barrier skips retreated operators and works in shared combat without requiring Aegir', () => {
   for (const kind of ['normal', 'unite']) {
-    const h = field(kind); h.b.retreat(h.unit(2)); h.run(15);
+    const h = field(kind);
+    assert.ok(h.unit(1).findBuff(key));
+    assert.equal(h.b.dealDamage(null, h.unit(2), { amount: 1000, type: 'true' }), 500);
+    h.b.retreat(h.unit(2)); h.run(15);
     assert.ok(h.unit(1).findBuff(key));
     assert.equal(h.unit(2).findBuff(key), null);
     assert.equal(hit(h, 3000), 0);
     assert.deepEqual(h.result().perPlayer.p1.layerGains, {});
     checkInvariants(h.b);
   }
-  const plain = field('normal', null); plain.run(15);
+  const plain = field('normal', null);
+  assert.equal(plain.unit(1).findBuff(key), null);
+  plain.run(15);
   assert.equal(hit(plain, 3000), 3000);
 });
 

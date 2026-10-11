@@ -9,7 +9,7 @@
 //   act1autochess_band28_buff 埃芒加德 命结之秘 the first max_respawn_cnt operator knock-downs of the battle revive at
 //                                               once at full HP (runs after every other death saver, items included;
 //                                               a new deployment for 坚固维式重锤's lock — items revivedInPlace)
-//   act1autochess_band13_buff 克莱门莎 崇高牺牲 every 15 s refreshes a single-hit barrier for deployed operators
+//   act1autochess_band13_buff 克莱门莎 崇高牺牲 grants a single-hit barrier at battle start, then refreshes every 15 s
 //   act1autochess_band16_buff 大帝 加急调派     "每次部署后再部署时间减少50%": every deployment of an operator stacks one
 //                                               redeploy ×(1 + respawn_time) for the rest of the battle, with no cap (PRTS
 //                                               卫戍协议：盟约 下半 / PRTS盟约记录 备注 "※该策略效果可无限叠加"; a 20-stack cap
@@ -82,12 +82,14 @@ const BY_KEY = {
   // 克莱门莎 崇高牺牲: damage is measured after mitigation and ordinary shields, before HP loss.
   act1autochess_band13_buff(battle, ps, p, bandId) {
     const key = keyOf(bandId, 'barrier');
-    battle.every(p.interval, () => {
+    const refreshBarrier = () => {
       for (const u of deployedOps(battle, ps.playerId)) {
         battle.addBuff(u, { key, refresh: 'replace', visible: true });
         fxOn(battle, 'shield', u, keyOf(bandId), bandId);
       }
-    });
+    };
+    battle.on('battleStart', refreshBarrier);
+    battle.every(p.interval, refreshBarrier);
     battle.on('hpDamage', c => {
       if (c.target.ownerId !== ps.playerId || !isOp(c.target) || !(c.amount > 0)) return;
       const shield = c.target.findBuff(key);
