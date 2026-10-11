@@ -16,6 +16,84 @@ function field(kind = 'normal', bandId = 'band_clementia') {
 }
 const hit = (h, amount, type = 'true') => h.b.dealDamage(null, h.unit(1), { amount, type, canDodge: false });
 
+function devourField({ kind = 'normal', bandId = 'band_clementia', def = 0, chain = false, foodHp = 4000, teammateBand } = {}) {
+  const shared = teammateBand !== undefined;
+  const markerUnits = [
+    { uid: 1, kind: 'chess', chessId: 'marker_a', row: 10, col: shared ? 9 : 3, dir: 'RIGHT' },
+    { uid: 2, kind: 'chess', chessId: 'helper_a', row: chain ? 10 : 12, col: chain ? 4 : 3, dir: 'RIGHT' },
+    { uid: 3, kind: 'chess', chessId: 'third_a', row: 12, col: 7, dir: 'RIGHT' },
+  ];
+  const food = { uid: 4, kind: 'chess', chessId: 'food_a', row: 10, col: shared ? 2 : chain ? 5 : 4, dir: 'RIGHT' };
+  const bonds = { egirShip: { count: 3, active: true, tier: 1, layers: 0 } };
+  const h = makeBattle({ kind, autoFinish: false,
+    defs: { chess: {
+      marker_a: chessRec({ id: 'marker_a', bonds: ['egirShip'], skill: null, stats: { maxHp: 30000, atk: 1000, def: 0 } }),
+      helper_a: chessRec({ id: 'helper_a', bonds: ['egirShip'], skill: null, stats: { maxHp: 30000, atk: 100, def: 0 } }),
+      third_a: chessRec({ id: 'third_a', bonds: ['egirShip'], skill: null, stats: { maxHp: 30000, def: 0 } }),
+      food_a: chessRec({ id: 'food_a', bonds: [], skill: null, stats: { maxHp: foodHp, atk: 500, def } }),
+    } },
+    players: [
+      { playerId: 'p1', seat: 0, side: 'L', colOffset: 0, bandId, bonds, units: shared ? markerUnits : [...markerUnits, food] },
+      ...(shared ? [{ playerId: 'p2', seat: 1, side: 'L', colOffset: 8, bandId: teammateBand, bonds: {}, units: [food] }] : []),
+    ],
+    hooks: ['damaged', 'egirDevour'], captureNoisy: true,
+    setup: b => b.on('battleStart', () => {
+      b.addBuff(b.allyUnits.find(u => u.uid === 4), { key: 'test:ordinary', shield: 10000 });
+    }, { priority: 100 }),
+  });
+  h.step();
+  for (const u of h.allies()) u.profile.noAttack = true;
+  return h;
+}
+
+for (const kind of ['normal', 'unite', 'boss', 'hidden']) for (const def of [0, 2000, 2001]) {
+  test(`initial Clementia barrier protects Aegir devour after DEF: ${kind}, DEF ${def}`, () => {
+    const h = devourField({ kind, def }), food = h.unit(4), marker = h.unit(1);
+    const loss = def > 2000 ? (5000 - def) / 2 : 1500;
+    assert.equal(food.hp, 4000 - loss);
+    assert.ok(food.alive);
+    assert.equal(food.findBuff(key), null);
+    assert.ok(marker.findBuff(key));
+    assert.equal(food.findBuff('test:ordinary').shield, 10000);
+    assert.equal(marker.s.atk, 1200);
+    assert.equal(marker.s.blockCnt, 4);
+    assert.equal(h.hooksOf('egirDevour').length, 1);
+    const damage = h.hooksOf('damaged')[0];
+    assert.equal(damage.amount, loss);
+    assert.equal(damage.source, marker);
+    assert.ok(damage.dmg.tags.includes('hpLoss') && damage.dmg.tags.includes('bond:egir:devour'));
+    assert.equal(h.b.errorCount, 0);
+    checkInvariants(h.b);
+  });
+}
+
+test('devour consumes only one Clementia barrier even when multiple Aegir mark the same food', () => {
+  const h = devourField({ chain: true, foodHp: 10000 });
+  assert.equal(h.unit(4).hp, 3500);
+  assert.deepEqual(h.hooksOf('damaged').filter(c => c.target === h.unit(4)).map(c => c.amount), [1500, 5000]);
+  assert.equal(h.unit(1).s.atk, 1240);
+  assert.equal(h.unit(2).s.atk, 300);
+  assert.equal(h.unit(4).findBuff(key), null);
+  assert.equal(h.b.errorCount, 0);
+  checkInvariants(h.b);
+});
+
+test('shared-field devour uses the food owner\'s barrier, including a teammate whose band installs later', () => {
+  for (const [bandId, teammateBand, loss] of [[null, 'band_clementia', 1500], ['band_clementia', null, 5000]]) {
+    const h = devourField({ kind: 'unite', bandId, teammateBand, foodHp: 8000 });
+    assert.equal(h.unit(4).hp, 8000 - loss);
+    assert.equal(h.unit(4).findBuff('test:ordinary').shield, 10000);
+    assert.equal(h.unit(4).findBuff(key), null);
+    assert.equal(h.unit(1).s.atk, 1200);
+    assert.equal(h.b.errorCount, 0);
+    checkInvariants(h.b);
+  }
+  const plain = devourField({ bandId: null });
+  assert.equal(plain.unit(4).alive, false);
+  assert.equal(plain.b.errorCount, 0);
+  checkInvariants(plain.b);
+});
+
 test('barrier appears at battle start, refreshes every 15 seconds without stacking and protects each operator once', () => {
   const h = field();
   assert.ok(h.unit(1).findBuff(key));

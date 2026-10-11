@@ -468,7 +468,12 @@ function devour(battle, pid, bb, members) {
     // start, resolves nothing (`knocked`: it is off the field)
     if (knocked(t)) continue;
     S.fxOn(battle, 'devour', t, 'bond:egirShip', 'devour', { from: m.id });
-    if (amount > 0) battle.loseHp(t, mitigate(amount, 'phys', t.s), { source: m, tags: ['bond:egir:devour'] });
+    if (amount > 0) {
+      // Clementia can absorb devour after DEF; it remains HP loss, bypassing ordinary shields and damage hooks.
+      const dmg = battle.makeDamage({ amount: mitigate(amount, 'phys', t.s), type: 'true', tags: ['hpLoss', 'bond:egir:devour'], noSp: true });
+      const c = battle.emit('egirDevourDamage', { source: m, credit: m, target: t, amount: dmg.amount, dmg });
+      battle.loseHp(t, c.amount, { source: m, tags: ['bond:egir:devour'] });
+    }
     if (!devoured.has(t)) {
       devoured.add(t);
       battle.emit('egirDevour', { playerId: pid, source: m, target: t });

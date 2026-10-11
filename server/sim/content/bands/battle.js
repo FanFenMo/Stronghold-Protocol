@@ -88,9 +88,10 @@ const BY_KEY = {
         fxOn(battle, 'shield', u, keyOf(bandId), bandId);
       }
     };
-    battle.on('battleStart', refreshBarrier);
+    // The initial barrier must exist before any player's Aegir devour pass.
+    battle.on('battleStart', refreshBarrier, { priority: 50 });
     battle.every(p.interval, refreshBarrier);
-    battle.on('hpDamage', c => {
+    const absorb = c => {
       if (c.target.ownerId !== ps.playerId || !isOp(c.target) || !(c.amount > 0)) return;
       const shield = c.target.findBuff(key);
       if (!shield) return;
@@ -100,7 +101,9 @@ const BY_KEY = {
         c.amount = 0;
         battle.loseHp(c.target, p.hp_loss, { source: c.credit, from: c.dmg, tags: [key] });
       }
-    }, { priority: 50 });
+    };
+    battle.on('hpDamage', absorb, { priority: 50 });
+    battle.on('egirDevourDamage', absorb, { priority: 50 });
   },
 
   // 大帝 加急调派
