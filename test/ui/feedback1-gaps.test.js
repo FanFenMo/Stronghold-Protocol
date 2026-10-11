@@ -318,9 +318,9 @@ describe('§21.26 4 — the strategy draft marks a strategy built around a bond 
   const modeIds = Object.keys(config.modes);
   const markedIn = (modeId) => Object.values(bands).map((b) => [b.bandId, bandOffBonds(b, modeOffBonds(getMode(modeId)))]).filter(([, ids]) => ids.length);
 
-  test('标准: exactly 潘格尼尼 (拉特兰), 克莱门莎 (阿戈尔) and 玛恩纳 (卡西米尔); 险境 / 绝境 / 终极: none; a band tied to no bond: never', () => {
+  test('标准: 潘格尼尼 and 玛恩纳 are bond-limited; Clementia shields work without Aegir', () => {
     for (const id of ['mode_single_funny', 'mode_multi_funny']) {
-      assert.deepEqual(markedIn(id), [['band_paganini', ['lateranoShip']], ['band_clementia', ['egirShip']], ['band_mlynar', ['kazimierzShip']]], id);
+      assert.deepEqual(markedIn(id), [['band_paganini', ['lateranoShip']], ['band_mlynar', ['kazimierzShip']]], id);
     }
     for (const id of ['mode_single_normal', 'mode_multi_normal', 'mode_single_hard', 'mode_multi_hard', 'mode_single_abyss', 'mode_multi_abyss']) assert.deepEqual(markedIn(id), [], id);
     for (const b of Object.values(bands).filter((x) => !x.bondIds.length)) {

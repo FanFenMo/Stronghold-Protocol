@@ -106,7 +106,7 @@ test('custom roster survives rebuild overlay idempotently and retains exactly th
     assert.ok(!Object.keys(bb).some(key=>key.startsWith('burn_')));
   }
   assert.ok(aegir.desc.includes('80%')&&!/[（()）]/.test(aegir.desc)&&!aegir.desc.includes('真伤'));
-  for(const [id,per,cap]of [['garrison_38_a',2,20],['garrison_38_b',4,30]]) {
+  for(const [id,per,cap]of [['garrison_38_a',2,18],['garrison_38_b',4,36]]) {
     const g=files.garrisons[id];
     assert.equal(g.effectKey,'act1autochess_gar_event_selfkillenemy');
     assert.deepEqual(g.bb,{check_cnt:1,bond_add_count:per,max_add_count_per_battle:cap});
@@ -115,13 +115,16 @@ test('custom roster survives rebuild overlay idempotently and retains exactly th
   for(const [suffix,mul]of [['a',1],['b',2]]) {
     const kill=files.garrisons[`garrison_46_${suffix}`],swap=files.garrisons[`garrison_40_${suffix}`];
     assert.equal(kill.effectKey,'act1autochess_gar_event_selfkillenemy');
-    assert.deepEqual(kill.bb,{check_cnt:5,bond_add_count:mul,max_add_count_per_battle:10*mul});
+    assert.deepEqual(kill.bb,{check_cnt:1,bond_add_count:mul,max_add_count_per_battle:20*mul});
     assert.equal(kill.bbStr.bond_id,'egirShip');
     assert.equal(swap.effectKey,'act1autochess_gar_event_dollswap');
-    assert.deepEqual(swap.bb,{bond_add_count_multi:mul,bond_add_count_divide:2});
+    assert.deepEqual(swap.bb,{bond_add_count:5*mul});
     assert.equal(swap.bbStr.bond_id,'egirShip');
     assert.ok(files.chess[`chess_char_2_07_${suffix}`].garrisonIds.includes(`garrison_custom_specter_gain_${suffix}`));
     assert.ok(files.chess[`chess_char_5_13_${suffix}`].garrisonIds.includes(`garrison_custom_specter2_gain_${suffix}`));
+    const dollKill=files.garrisons[`garrison_custom_specter2_kill_${suffix}`];
+    assert.deepEqual(dollKill.bb,{check_cnt:1,bond_add_count:2*mul,max_add_count_per_battle:30*mul});
+    assert.deepEqual(files.garrisons[`garrison_custom_specter2_swap_indom_${suffix}`].bb,{bond_add_count:10*mul});
   }
   for(const [base,bond,tier]of [[bases[0],'yanShip',5],[bases[1],'siracusaShip',6],[bases[2],'yanShip',6]])for(const s of ['a','b']){
     const c=files.chess[base+s];assert.deepEqual(c.bonds,[bond]);assert.equal(c.tier,tier);

@@ -101,7 +101,7 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
     const tied = Object.fromEntries(funny.bandIds().map((id) => [DATA.bands[id].name, funny.bandBondIds(id)]).filter(([, b]) => b.length));
     assert.deepEqual(tied, {
       杜遥夜: ['yanShip'], 佩佩: ['sargonShip'], 哈洛德: ['victoriaShip'], 休露丝: ['kjeragShip'], 潘格尼尼: ['lateranoShip'],
-      克莱门莎: ['egirShip'], 玛恩纳: ['kazimierzShip'], 贾维: ['siracusaShip'], 娜仁图亚: ['sargonShip'],
+      玛恩纳: ['kazimierzShip'], 贾维: ['siracusaShip'], 娜仁图亚: ['sargonShip'],
     });
     // every tied band mentions its bond; custom strategy copy may omit the official missing-operator note
     for (const id of funny.bandIds()) {
@@ -112,8 +112,9 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
         return b.desc.includes(`<${name}>`) || b.desc.includes(`【${name}】`);
       }), b.name);
     }
-    // the three 标准 switches off; a bracketed item (<寻呼模块>, <画卷>) is no bond; unknown bands: []
-    assert.deepEqual(funny.bandIds().filter((id) => funny.bandBondIds(id).some((b) => funny.modeInactiveBonds.has(b))), ['band_paganini', 'band_clementia', 'band_mlynar']);
+    // Clementia's barrier is independent of Aegir; only the other two strategies are switched off.
+    assert.deepEqual(funny.bandIds().filter((id) => funny.bandBondIds(id).some((b) => funny.modeInactiveBonds.has(b))), ['band_paganini', 'band_mlynar']);
+    assert.deepEqual(funny.bandBondIds('band_clementia'), []);
     assert.deepEqual(funny.bandBondIds('band_jesica'), []);
     assert.deepEqual(funny.bandBondIds('band_dusk'), []);
     assert.deepEqual(funny.bandBondIds('nope'), []);
@@ -122,7 +123,7 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
   test('the derivation (shared/bandBonds.js, run by the data build) catches a tie through a pool or a blackboard bond id alone; GameData reads the field', () => {
     const ctx = { bonds: DATA.bonds, pools: DATA.choices.pools };
     const pool = { ...DATA.bands.band_paganini, desc: '【定制铳械】累计花费55资金后，获得1名精锐干员' };
-    const bb = { ...DATA.bands.band_clementia, desc: '【崇高牺牲】' };
+    const bb = { desc: '策略', buffs: [{ bbStr: { bond_id: 'egirShip' } }] };
     assert.deepEqual(bandBondIdsOf(pool, ctx), ['lateranoShip'], 'choices.json pools.pool_char_later.bond');
     assert.deepEqual(bandBondIdsOf(bb, ctx), ['egirShip'], 'bbStr bond_id');
     assert.deepEqual(bandBondIdsOf({ desc: '在<阿戈尔>部分干员缺席时体验可能不完整；<寻呼模块>', buffs: [{ bb: { bond: 'kazimierzShip,nope' } }] }, ctx), ['egirShip', 'kazimierzShip'], 'the note, comma lists; an item in <…> is no bond');
@@ -153,12 +154,13 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
     }
     return { solo, coop };
   }
-  const TIED = new Set(['band_paganini', 'band_clementia', 'band_mlynar']);
+  const TIED = new Set(['band_paganini', 'band_mlynar']);
 
-  test('标准: over seeds 1–200 no bot picks 潘格尼尼 / 克莱门莎 / 玛恩纳 — solo (200) or in the co-op draft (800); every pick is offered', () => {
+  test('标准: bots exclude 潘格尼尼 / 玛恩纳 but may choose Clementia shields without Aegir', () => {
     const { solo, coop } = picks('FUNNY');
     assert.equal(solo.filter((id) => TIED.has(id)).length, 0, 'solo');
     assert.equal(coop.filter((id) => TIED.has(id)).length, 0, 'co-op');
+    assert.ok([...solo,...coop].includes('band_clementia'));
     const offered = new Set(funny.bandIds());
     assert.ok([...solo, ...coop].every((id) => offered.has(id)));
     assert.ok(new Set(solo).size >= 15 && new Set(coop).size >= 25, 'the other strategies are still spread out');
@@ -205,10 +207,10 @@ describe('§21.26 3 — strategies tied to a bond the mode switches off', () => 
     // every offered band tied to a bond 标准 switches off (the default band 华法琳 not offered here): the default band
     const data = { ...DATA, bands: {
       band_bldsk: { ...DATA.bands.band_bldsk, modeTypeList: ['MULTI'] },
-      band_paganini: DATA.bands.band_paganini, band_clementia: DATA.bands.band_clementia, band_mlynar: DATA.bands.band_mlynar,
+      band_paganini: DATA.bands.band_paganini, band_mlynar: DATA.bands.band_mlynar,
     } };
     const gd = new GameData(data, 'mode_single_funny');
-    assert.deepEqual(gd.bandIds(), ['band_paganini', 'band_clementia', 'band_mlynar']);
+    assert.deepEqual(gd.bandIds(), ['band_paganini', 'band_mlynar']);
     for (const r of [0, 0.3, 0.999]) assert.equal(botPickBand(fake(gd, r), null), gd.defaultBandId);
     // one free band left: always it, whatever the draw (also at the top of the range)
     const one = new GameData({ ...data, bands: { ...data.bands, band_amiya: DATA.bands.band_amiya } }, 'mode_single_funny');
