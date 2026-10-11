@@ -9,7 +9,7 @@
 //   act1autochess_band28_buff 埃芒加德 命结之秘 the first max_respawn_cnt operator knock-downs of the battle revive at
 //                                               once at full HP (runs after every other death saver, items included;
 //                                               a new deployment for 坚固维式重锤's lock — items revivedInPlace)
-//   act1autochess_band13_buff 克莱门莎 崇高牺牲 records distinct devoured operators for next-round recruits;
+//   act1autochess_band13_buff 克莱门莎 崇高牺牲 every 15 s refreshes a single-hit barrier for deployed operators
 //   act1autochess_band16_buff 大帝 加急调派     "每次部署后再部署时间减少50%": every deployment of an operator stacks one
 //                                               redeploy ×(1 + respawn_time) for the rest of the battle, with no cap (PRTS
 //                                               卫戍协议：盟约 下半 / PRTS盟约记录 备注 "※该策略效果可无限叠加"; a 20-stack cap
@@ -79,15 +79,26 @@ const BY_KEY = {
     }, { priority: PRIO_BAND_REVIVE });
   },
 
-  // 克莱门莎 崇高牺牲: PRTS requires the 阿戈尔 bond to be active.
+  // 克莱门莎 崇高牺牲: damage is measured after mitigation and ordinary shields, before HP loss.
   act1autochess_band13_buff(battle, ps, p, bandId) {
-    const devoured = new Set();
-    battle.on('egirDevour', ({ playerId, target }) => {
-      if (playerId === ps.playerId && isOp(target)) devoured.add(target);
+    const key = keyOf(bandId, 'barrier');
+    battle.every(p.interval, () => {
+      for (const u of deployedOps(battle, ps.playerId)) {
+        battle.addBuff(u, { key, refresh: 'replace', visible: true });
+        fxOn(battle, 'shield', u, keyOf(bandId), bandId);
+      }
     });
-    battle.on('battleEnd', ({ result }) => {
-      if (devoured.size) result.perPlayer[ps.playerId].egirDevoured = devoured.size;
-    });
+    battle.on('hpDamage', c => {
+      if (c.target.ownerId !== ps.playerId || !isOp(c.target) || !(c.amount > 0)) return;
+      const shield = c.target.findBuff(key);
+      if (!shield) return;
+      battle.removeBuff(c.target, shield);
+      if (c.amount < p.damage_threshold) c.amount *= p.damage_scale;
+      else {
+        c.amount = 0;
+        battle.loseHp(c.target, p.hp_loss, { source: c.credit, from: c.dmg, tags: [key] });
+      }
+    }, { priority: 50 });
   },
 
   // 大帝 加急调派

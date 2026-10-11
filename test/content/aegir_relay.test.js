@@ -29,9 +29,9 @@ function fight({ depth = 2, count = 5, layers = 0, bandId, source = {}, terminal
   h.step();
   for (const u of h.allies()) u.profile.noAttack = true;
   const u = h.unit('g0_a'), food = h.unit(`g${depth}_a`);
-  const e = h.spawn('dummy', { pos: [food.tileR, food.tileC] });
+  const e = h.spawn('dummy', { pos: [food.tileR, food.tileC + 1] });
   h.step();
-  assert.equal(e.blockedBy, food);
+  assert.equal(e.blockedBy, null);
   return { h, u, food, e };
 }
 const hits = (h, u) => h.hooksOf('damaged').filter(c => c.source === u && c.target.side === 'enemy');
@@ -40,6 +40,28 @@ const kill = (h, u) => {
   if (u.alive) h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
   assert.equal(u.alive, false);
 };
+
+test('relay uses the living food facing-front tile without blocking and selects one target', () => {
+  for (const [dir, dr, dc] of [['UP', 1, 0], ['RIGHT', 0, 1], ['DOWN', -1, 0], ['LEFT', 0, -1]]) {
+    const { h, u, food, e } = fight({ depth: 1 });
+    h.b.dealDamage(null, e, { amount: 1e9, type: 'true' });
+    food.dir = dir;
+    for (const x of [u, food]) h.b.addBuff(x, { key: 'test:unblockable', flags: { noBlock: true } });
+    const front = h.spawn('ranged', { pos: [food.tileR + dr, food.tileC + dc] });
+    h.spawn('dummy', { pos: [food.tileR + 3, food.tileC] });
+    h.step();
+    assert.equal(front.blockedBy, null);
+    assert.deepEqual(acquireTargets(h.b, u, effectiveProfile(u)), [front]);
+    const own = h.spawn('dummy', { pos: [food.tileR, food.tileC] }); h.step();
+    u.profile.allInRange = true;
+    const selected = acquireTargets(h.b, u, effectiveProfile(u));
+    assert.equal(selected.length, 1);
+    assert.ok(selected[0] === own || selected[0] === front);
+    assert.ok(h.b.forceAttack(u));
+    assert.equal(hits(h, u).length, 1);
+    checkInvariants(h.b);
+  }
+});
 
 test('five-member relay replaces true burn; four do not relay, five/six do, every consumer qualifies', () => {
   for (const count of [4, 5, 6]) {
@@ -76,7 +98,7 @@ test('dead intermediate nodes preserve living front blockers and their ORIGINAL 
   kill(h, food);
   assert.equal(h.b.forceAttack(u), false);
   assert.ok(h.b.redeploy(food, { free: true })); h.step();
-  assert.equal(e.blockedBy, food); assert.ok(h.b.forceAttack(u));
+  assert.equal(e.blockedBy, null); assert.ok(h.b.forceAttack(u));
   close(hits(h, u).at(-1).amount, (u.s.atk - e.s.def) * .512);
   checkInvariants(h.b);
 });
@@ -107,7 +129,7 @@ test('valid own-range target takes priority at full damage; invalid local target
   checkInvariants(h.b);
 });
 
-test('own blocked enemy is a local target even outside the attack grid; ranged enemy never relays', () => {
+test('own blocked enemy is local even outside the attack grid; ranged enemies on food tile relay', () => {
   const { h, u, food, e } = fight();
   const local = h.spawn('dummy', { pos: [u.tileR, u.tileC] }); h.step();
   assert.equal(local.blockedBy, u);
@@ -117,8 +139,8 @@ test('own blocked enemy is a local target even outside the attack grid; ranged e
   h.b.dealDamage(null, e, { amount: 1e9, type: 'true' });
   const ranged = h.spawn('ranged', { pos: [food.tileR, food.tileC] }); h.step();
   assert.equal(ranged.blockedBy, food);
-  assert.deepEqual(acquireTargets(h.b, u, effectiveProfile(u)), []);
-  assert.equal(h.b.forceAttack(u), false);
+  assert.deepEqual(acquireTargets(h.b, u, effectiveProfile(u)), [ranged]);
+  assert.equal(h.b.forceAttack(u), true);
   checkInvariants(h.b);
 });
 
@@ -145,7 +167,7 @@ test('relay uses consumer attack cadence, stats and kill credit without extra at
 test('ranged projectile snapshots relay decay before the blocker dies, including splash and multihit', () => {
   const { h, u, food, e } = fight({ depth: 2 });
   Object.assign(u.profile, { attack: 'ranged', projectile: 'arrow', hits: 2, splashRadius: 1, splashScale: .5 });
-  const nearby = h.spawn('dummy', { pos: [food.tileR + 1, food.tileC] }); h.step();
+  const nearby = h.spawn('dummy', { pos: [food.tileR + 1, e.tileC] }); h.step();
   assert.ok(h.b.forceAttack(u));
   assert.equal(hits(h, u).length, 0);
   kill(h, food); h.run(2);
@@ -174,7 +196,7 @@ test('non-Aegir food also relays; released/stale blocks and sleeping targets can
   close(hits(h, u).at(-1).amount, (u.s.atk - e.s.def) * .8);
   h.b.applyStatus(e, 'sleep', { duration: 1 });
   assert.equal(e.blockedBy, null); assert.equal(h.b.forceAttack(u), false);
-  h.run(1.2); assert.equal(e.blockedBy, food); assert.ok(h.b.forceAttack(u));
+  h.run(1.2); assert.equal(e.blockedBy, null); assert.ok(h.b.forceAttack(u));
   h.b.retreat(food); assert.equal(h.b.forceAttack(u), false);
   checkInvariants(h.b);
 });
@@ -191,9 +213,9 @@ for (const suffix of ['a', 'b']) for (let skillIndex = 0; skillIndex < 3; skillI
     for (const a of h.allies()) { a.profile.noAttack = true; if (a.skill) a.skill.rule = 'NEVER'; }
     const [u, middle, food] = [1, 2, 3].map(id => h.unit(id));
     kill(h, middle); assert.ok(food.alive);
-    const e = h.spawn('dummy', { pos: [food.tileR, food.tileC] });
+    const e = h.spawn('dummy', { pos: [food.tileR, food.tileC + 1] });
     const control = h.spawn('dummy', { pos: [12, 9] }); h.step();
-    assert.equal(e.blockedBy, food);
+    assert.equal(e.blockedBy, null);
     if (!u.skill.active) { u.skill.addCharge(1); assert.ok(u.skill.activate('test')); }
     assert.deepEqual(acquireTargets(h.b, u, effectiveProfile(u)), [e]);
     assert.ok(h.b.forceAttack(u, [control]));
@@ -249,7 +271,7 @@ for (const suffix of ['a', 'b']) for (const [base, skillIndex, tag] of [
     h.step();
     for (const a of h.allies()) { a.profile.noAttack = true; if (a.skill) a.skill.rule = 'NEVER'; }
     const u = h.unit(1), food = h.unit('food3');
-    const e = h.spawn('dummy', { pos: [food.tileR, food.tileC] });
+    const e = h.spawn('dummy', { pos: [food.tileR, food.tileC + 1] });
     const control = h.spawn('dummy', { pos: [12, 9] }); h.step();
     u.skill.addCharge(1); assert.ok(u.skill.activate('test')); u.hp = u.s.maxHp;
     assert.deepEqual(acquireTargets(h.b, u, effectiveProfile(u)), [e]);
@@ -264,8 +286,8 @@ for (const suffix of ['a', 'b']) for (const [base, skillIndex, tag] of [
   });
 }
 
-test('devour ATK starts at 20%, reaches 80% at 100 layers and grows linearly; block is always added, layers never are', () => {
-  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.2],[50,.5],[100,.8],[300,2],[500,3.2],[700,4.4]]) {
+test('devour ATK starts at 40%, reaches 100% at 100 layers and grows linearly; block is always added, layers never are', () => {
+  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.4],[50,.7],[100,1],[300,2.2],[500,3.4],[700,4.6]]) {
     const { h, u, food } = fight({ bandId, count, layers, depth: 1 });
     close(u.s.atk, 1000 + food.base.atk * scale);
     assert.equal(u.s.blockCnt, 4);

@@ -32,6 +32,7 @@ const STYLE_CLASS = {
   'autochess.yellow': 'rt-rem',
   'eb.key': 'rt-kw',
   'eb.danger': 'rt-vdown',
+  'bond.value': 'bpop__value',
 };
 
 /**

@@ -19,7 +19,7 @@
 //                        the marker's gained base ATK is a 最终加算, `atkFinal`, not scaled by its ATK +%);
 //                        5: max_free_respawn_cnt free redeploys, one per member on its first knock-out — the devour's
 //                        knock-outs by board position once every devour is over (egirReviveScan), later ones at once
-//                        5: with no local target, attack living devoured operators’ blocked enemies, ×0.8 per hop
+//                        5: with no local target, attack one enemy on living food's own / facing-front tile, ×0.8 per hop
 //   叙拉古 siracusaShip  every member deployment: ASPD +(base + per·L) for (base_duration + per·L) s; 6: 隐匿 for the same
 //                        time, and while hidden / end_duration s after, every 普通伤害 hit (siracusaRolls) procs (PRD,
 //                        nominal `prob`) base_damage + damage_per_stack·L true damage + fear `fear` s
@@ -401,7 +401,7 @@ function egirDownAtStart(battle, u) {
  * 2026-10-05 after GitHub #140 comment 4): on a shared field (联防, boss) a teammate's operator — standing, or entering
  * 联防 down — is marked like an own one, gives the same base ATK / block count, and the chain goes on through it when it
  * is an 阿戈尔 (S.isMember: its own bonds). Its knock-out is its owner's (their bonds' revives, 不屈 …), credited to the
- * marker as usual. Devour grants block and base ATK scaled by 0.2 + 0.006 * current Aegir layers, but no layers.
+ * marker as usual. Devour grants block and base ATK scaled by 0.4 + 0.006 * current Aegir layers, but no layers.
  * Tokens / devices / empty tiles are never devoured.
  */
 function devour(battle, pid, bb, members) {

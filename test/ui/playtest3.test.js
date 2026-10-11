@@ -282,7 +282,8 @@ describe('8: 特质 right under the detail card\'s header', () => {
     const blocks = ChessDetail({ chess: c, piece: { uid: 7, kind: 'chess', id: c.chessId, golden: true, items: [] }, editable: false, onSell() {}, bonds: [], loadout: null, onBond: null });
     const keys = blocks.map((b) => b.key);
     assert.deepEqual(keys, ['head', 'garrison', 'trait', 'stats', 'skill', 'module', 'equip', 'talents']);
-    assert.equal(blocks[1].props.garrison, g, 'the operator\'s own garrison');
+    assert.equal(blocks[1].props.garrison.garrisonId, g.garrisonId, 'the operator\'s own garrison');
+    assert.deepEqual(blocks[1].props.garrison.sourceGarrisonIds, [g.garrisonId]);
     // the garrison block itself: the 特质 label, the trigger chip and the description
     const gb = blocks[1].type(blocks[1].props);
     assert.ok(hasClass(gb, 'dgarrison'));

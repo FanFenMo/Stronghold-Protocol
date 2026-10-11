@@ -20,7 +20,7 @@
 import { html, BondDisc, Icon, MicroLabel, Tooltip } from './components.js';
 import { RichText, UnitThumb, BondGlyph, GIcon } from './gameComponents.js';
 import { sortBonds, bondMembers, nextThreshold, bondTier, harmonyMembers, HARMONY_BOND, memberHeadCount, briefingBondTip } from './gameLogic.js';
-import { formatBondEffect } from './richText.js';
+import { bondDescriptionClauses } from './bondDescriptions.js';
 import { bondIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
 
@@ -75,7 +75,7 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
  *   detail card; `owner`: the watched teammate's name (`entry` / `priv` are then theirs: ui/watchBonds.js); `onMember`
  *   gets a 变形同构体 row's item ids too (its card shows the pair and the granted chip), null for a plain member; `off`: the
  *   mode never activates this bond (gameLogic modeOffBonds — 标准's 10 inactive bonds): 本局禁用 instead of 未激活, with a
- *   note, no 在场 count and no 当前效果 block (its numbers would promise an effect the mode never gives; the bond text stays).
+ *   note and no 在场 count; all effect clauses and their live numbers remain dim.
  *   `entry.harmony` (the server's bond views: the +1 调和 added to `count`): 在场 n（含调和 +1） and the 调和 row
  */
 export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember, place = null, over = false, beside = null, owner = null, off = false }) {
@@ -90,7 +90,7 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
   const members = bondMembers(b, priv, banned, getChess, (id) => data.lookup('items', id));
   const countsHand = entry?.countsHand ?? b.countsHand;
   const next = nextThreshold(count, th);
-  const hasNow = !off && !!(b.effectDescRaw || b.effectDesc);
+  const clauses = bondDescriptionClauses(b, { layers, tier, active, thresholds: th });
   const at = place || (beside === 'left' ? 'beside' : 'left');
   // 调和's +1 in this count (the server's word), and the 调和 operators on that board who give it
   const harmony = !off && Number.isInteger(entry?.harmony) && entry.harmony > 0 ? entry.harmony : 0;
@@ -117,13 +117,9 @@ export function BondPopup({ bondId, entry, priv, banned = [], onClose, onMember,
     <div class="bpop__tiers">
       ${th.map((n, i) => html`<span key=${i} class=${cx('bpop__tier', i < tier && 'is-on')}><b class="num">${n}</b><small>${b.maxCount != null ? '名及以下' : '名'}</small></span>`)}
     </div>
-    ${hasNow ? html`<section class="bpop__sec bpop__sec--now">
-      <h4>当前效果 ${b.noStack ? null : html`<small class="num">（${layers} 层）</small>`}</h4>
-      <${RichText} as="p" text=${formatBondEffect(b, layers)} class="bpop__desc" />
-    </section>` : null}
-    <section class="bpop__sec">
-      <h4>盟约效果</h4>
-      <${RichText} as="p" text=${b.descRaw || b.desc} class="bpop__desc" />
+    <section class="bpop__sec bpop__sec--effect">
+      <p class="bpop__desc" data-bond-effect=${bondId}>${clauses.map((clause, i) => html`<${RichText}
+        key=${i} text=${clause.text + ' '} class=${cx('bpop__clause', clause.active && 'is-active')} />`)}</p>
     </section>
     <section class="bpop__sec">
       <h4>成员 <small>${memberHeadCount(members, countsHand)}/${members.length}</small></h4>

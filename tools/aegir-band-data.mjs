@@ -1,16 +1,16 @@
 export function applyAegirBandData(files) {
   const band = files.bands.band_clementia;
   const effect = files.effects[band.effectId];
-  band.desc = '每累计吞噬10名干员（不限盟约），下回合获得1名不高于当前调度中心等级的随机【阿戈尔】干员，余数保留。';
+  band.desc = '每15秒，为在场所有我方干员刷新一次单次护盾：本次伤害低于3000时减半；达到3000时免疫本次伤害并流失1500生命。护盾不累计。';
   band.descRaw = band.desc;
   band.buffs = [
-    { key: 'env_gbuff_new_with_verify', bb: {}, bbStr: { key: 'act1autochess_band13_buff' } },
-    { key: 'band_devour_gain_bond_char_next_round', bb: { devour_count: 10, count: 1 }, bbStr: { bond: 'egirShip' } },
+    { key: 'env_gbuff_new_with_verify', bb: { interval: 15, damage_threshold: 3000, damage_scale: 0.5, hp_loss: 1500 }, bbStr: { key: 'act1autochess_band13_buff' } },
   ];
-  band.params = { key: 'act1autochess_band13_buff', devour_count: 10, count: 1, bond: 'egirShip' };
+  band.params = { key: 'act1autochess_band13_buff', ...band.buffs[0].bb };
+  band.bondIds = [];
   effect.desc = band.desc;
   effect.descRaw = band.descRaw;
   effect.buffs = structuredClone(band.buffs);
   effect.params = { ...band.params };
-  files.bonds.egirShip.spec.layerGain = '吞噬不叠层。斯卡蒂保留自身所有已激活盟约的击杀叠层；幽灵鲨获得时阿戈尔+2，战斗每5次击杀阿戈尔+1，上限10；归溟幽灵鲨获得时阿戈尔+4、不屈+6，切为替身时同排每2名在场干员使已激活阿戈尔+1、不屈+2。幽灵鲨与归溟幽灵鲨的精锐增加层数翻倍，幽灵鲨精锐战斗上限20。灼烧击杀计入，友军吞噬不计入击杀特质。';
+  files.bonds.egirShip.spec.layerGain = '吞噬不叠层。斯卡蒂每次击杀使自身所有已激活盟约+2，每回合各上限18；幽灵鲨获得时阿戈尔+2，每次击杀使已激活阿戈尔+1，每回合上限20；归溟幽灵鲨获得时阿戈尔+4、不屈+6，每次击杀使已激活阿戈尔+2，每回合上限30，切为替身时使已激活阿戈尔+5、不屈+10。精锐的增量和击杀叠层上限均翻倍。友军吞噬不计入击杀特质。';
 }

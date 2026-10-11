@@ -61,9 +61,9 @@ test('繁盛：桌面与手机图标、当前数值、15人成员；浏览器和
         await page.waitForFunction(sel => { const img = document.querySelector(`${sel} img`); return img?.complete && img.naturalWidth > 0; }, {}, selector);
         await page.click(`${selector} .bond`); await page.waitForSelector('.bpop__members');
         assert.equal(await page.$$eval('.bpop__member', els => els.length), 15);
-        const text = await page.$eval('.bpop__sec--now', e => e.textContent);
-        assert.match(text, /治疗效果\+60%/); assert.match(text, /范围为9格/);
-        assert.match(text, /实际治疗量÷10/); assert.doesNotMatch(text, /晕眩/);
+        const text = await page.$eval('.bpop__sec--effect', e => e.textContent);
+        assert.match(text, /治疗效果\+60%/); assert.match(text, /覆盖9格/);
+        assert.doesNotMatch(text, /晕眩|÷|每50层/);
         assert.equal(await page.$eval('.bpop__disc img', e => getComputedStyle(e).filter), 'none');
         await page.waitForSelector('.pbanner--overlay', { hidden: true });
         await page.screenshot({ path: `${OUT}/prosperity-${width}.png` });

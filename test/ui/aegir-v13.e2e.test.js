@@ -35,8 +35,8 @@ for (const suffix of ['a', 'b']) {
         await sleep(1800);
         const pieces = await c.handPieces('chess'), mul = suffix === 'a' ? 1 : 2;
         for (const [id, count, texts] of [
-          [ids[1], 2, [`层数+${2 * mul}`, '每击倒5名敌人', `最多叠加${10 * mul}层`]],
-          [ids[4], 3, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', '每有2名', `层数+${mul}`, `层数+${2 * mul}`]],
+          [ids[1], 2, [`层数+${2 * mul}`, '每击杀1名敌人', `最多叠加${20 * mul}层`]],
+          [ids[4], 3, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', `层数+${5 * mul}`, `层数+${10 * mul}`, `层数+${2 * mul}`, `最多叠加${30 * mul}层`]],
         ]) {
           const piece = pieces.find(p => p.id === id), pt = await c.piecePoint(piece.uid);
           await c.page.mouse.click(pt.x, pt.y);
@@ -59,7 +59,7 @@ for (const suffix of ['a', 'b']) {
         await c.click('.gm__bonds .bslot[data-bond="egirShip"] .bond', null, { any: true });
         await c.page.waitForSelector('.bpop');
         const desc = await c.page.$eval('.bpop .bpop__desc', el => el.textContent);
-        for (const text of ['20%＋每层0.6%', '100层为80%', '非远程敌人', '中间干员死亡不切断']) assert.ok(desc.includes(text), desc);
+        for (const text of ['基础攻击力的', '自身格或身前一格内的1名敌人', '中间干员死亡不切断']) assert.ok(desc.includes(text), desc);
         assert.ok(!desc.includes('真伤') && !/[（()）]/.test(desc), desc);
         await c.shot('covenant-relay');
         await c.page.keyboard.press('Escape');

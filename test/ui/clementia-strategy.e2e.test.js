@@ -4,7 +4,7 @@ import { Client, hasChrome, startRealServer, problemsOf } from '../e2e/client.mj
 
 const enabled = process.env.SP_E2E === '1' && hasChrome();
 
-test('Clementia strategy: the real draft displays ten-operator recruits without obsolete block restoration',
+test('Clementia strategy: the real draft displays periodic single-hit barrier without obsolete devour recruits',
   { skip: !enabled && 'SP_E2E=1 + Chrome required', timeout: 120000 }, async () => {
     const srv = await startRealServer();
     const P = (await import('puppeteer-core')).default;
@@ -35,7 +35,7 @@ test('Clementia strategy: the real draft displays ten-operator recruits without 
       await c.page.waitForFunction(() => document.querySelector('.draft-detail__name')?.textContent === '克莱门莎');
       assert.equal(await c.exists('.draft-detail__off'), false, 'Aegir is available in this mode');
       const desc = await c.page.$eval('.draft-detail__desc', el => el.textContent);
-      for (const text of ['每累计吞噬10名', '不限盟约', '下回合获得1名', '不高于当前调度中心等级', '余数保留']) {
+      for (const text of ['每15秒', '低于3000时减半', '达到3000时免疫', '流失1500生命', '不累计']) {
         assert.ok(desc.includes(text), `${text}: ${desc}`);
       }
       assert.ok(!desc.includes('被击倒时'), desc);
@@ -50,7 +50,7 @@ test('Clementia strategy: the real draft displays ten-operator recruits without 
         return { bandId: p.bandId, effect: p.effects.find(e => e.id === 'aceffect_band_33') };
       });
       assert.equal(selected.bandId, 'band_clementia');
-      assert.ok(selected.effect.desc.includes('每累计吞噬10名') && !selected.effect.desc.includes('被击倒时'));
+      assert.ok(selected.effect.desc.includes('每15秒') && !selected.effect.desc.includes('被击倒时'));
       console.log(desc);
     } finally {
       await c.close();

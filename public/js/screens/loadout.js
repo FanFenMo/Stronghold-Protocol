@@ -13,6 +13,7 @@
 // The second tab configures external operators: two per tier, saved per player.
 // Keyboard: Esc closes, ←/→ move through the (filtered) roster when focus is not in the search field (干员调配 tab).
 
+import { mergeGarrisonDescriptions } from '../ui/garrisonDescriptions.js';
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, MicroLabel, Button, TierChip, TextField, Countdown, Spinner, confirmDialog, hasDeadline, Modal, Fragment } from '../ui/components.js';
 import { Img, RichText, UnitThumb } from '../ui/gameComponents.js';
@@ -171,7 +172,7 @@ function RosterCard({ m, chess, golden, entries, ops = {}, selected, onPick }) {
 
 /** The same attribute records and rich-text renderer as the in-match card, including literal trigger markers. */
 export function LoadoutGarrisons({ chess, m }) {
-  const records = (chess?.garrisonIds || []).map((id) => data.lookup('garrisons', id)).filter(Boolean);
+  const records = mergeGarrisonDescriptions((chess?.garrisonIds || []).map((id) => data.lookup('garrisons', id)).filter(Boolean), id => data.lookup('bonds', id).name);
   return records.length ? html`<section class="lo-garrisons" data-variant=${chess.isGolden ? 'elite' : 'normal'}>
     ${records.map((garrison) => html`<${GarrisonBlock} key=${garrison.garrisonId} garrison=${garrison} m=${m} />`)}
   </section>` : null;

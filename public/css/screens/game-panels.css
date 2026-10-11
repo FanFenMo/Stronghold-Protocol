@@ -278,8 +278,11 @@
 .bpop__sec { display: flex; flex-direction: column; gap: .06rem; }
 .bpop__sec h4 { font-size: calc(.16 * var(--t)); color: var(--mint-400); display: flex; align-items: baseline; gap: .08rem; }
 .bpop__sec h4 small { font-size: calc(.13 * var(--t)); color: var(--text-lo); font-weight: 400; }
-.bpop__sec--now { padding: .1rem .12rem; background: rgba(78, 216, 175, .06); border-left: 3px solid var(--mint-500); }
 .bpop__desc { font-size: calc(.15 * var(--t)); line-height: 1.7; color: var(--text-md); }
+.bpop__clause { color: var(--text-md); }
+.bpop__clause.is-active { color: var(--mint-600); }
+.bpop__value { color: var(--text-lo); font-variant-numeric: tabular-nums; }
+.bpop__clause.is-active .bpop__value { color: var(--mint-400); font-weight: 700; }
 .bpop__members { display: grid; grid-template-columns: repeat(5, 1fr); gap: .08rem; }
 .bpop__member { position: relative; display: flex; flex-direction: column; align-items: center; gap: .03rem; padding: .04rem 0; background: none; border: 1px solid transparent; }
 .bpop__member:hover { border-color: var(--line-2); background: rgba(255, 255, 255, .03); }
