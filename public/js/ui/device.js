@@ -1,7 +1,7 @@
 import { pwaInstall } from '../pwa.js';
 import { t } from '../../../shared/i18n.js';
 // Multi-device support (desktop Chrome / Edge / Firefox / Safari, iPad and Android tablets in landscape, phones in
-// landscape ≥ 640×360 CSS px). Everything is feature-detected — never UA-sniffed:
+// landscape). Everything is feature-detected — never UA-sniffed:
 //
 //   detectFeatures()        { touch, coarse, hover, fullscreen, standalone, reducedMotion, importMaps, … } of this browser
 //   installDeviceSupport()  once at boot (main.js): <html> classes (sp-touch / sp-coarse / sp-hover / sp-fs /
@@ -10,7 +10,7 @@ import { t } from '../../../shared/i18n.js';
 //                           gesturestart / gesturechange are cancelled, ctrl+wheel / trackpad pinch too; touch-action in
 //                           css/devices.css handles the rest); re-fires `resize` once the viewport
 //                           settles after a rotation (iOS reports the old size for a few frames) so the field view and
-//                           the rem scale re-layout; keeps --sp-vh (the real visible height) for the CSS.
+//                           the rem scale re-layout; keeps --sp-vw / --sp-vh (the visible viewport) for the CSS.
 //   fullscreen              { supported(), active(), toggle(), exit() }: Fullscreen API with the webkit-prefixed
 //                           variant (iPadOS / older Safari); iPhone Safari has no element fullscreen → unsupported and the
 //                           button hides. Android: after entering, the orientation is locked to landscape when allowed.
@@ -192,21 +192,24 @@ export function installDeviceSupport(win = globalThis) {
     else if (typeof m.addListener === 'function') { m.addListener(apply); offs.push(() => m.removeListener(apply)); }  // Safari < 14
   }
 
-  // visible height (the URL bar of mobile browsers comes and goes): --sp-vh = 1 % of the real visible height
-  const setVh = () => {
+  // Keep the layout and renderer on the same visible viewport when browser bars / the keyboard move.
+  const setViewport = () => {
+    const w = win.visualViewport?.width || win.innerWidth || 0;
     const h = win.visualViewport?.height || win.innerHeight || 0;
+    if (w > 0) root.style.setProperty('--sp-vw', `${w / 100}px`);
     if (h > 0) root.style.setProperty('--sp-vh', `${h / 100}px`);
+    root.classList.toggle('sp-short', h > 0 && h <= 460);
   };
-  setVh();
-  on(win, 'resize', setVh, { passive: true });
-  on(win.visualViewport, 'resize', setVh, { passive: true });
+  setViewport();
+  on(win, 'resize', setViewport, { passive: true });
+  on(win.visualViewport, 'resize', setViewport, { passive: true });
 
   // rotation: the new viewport size settles a few frames late on iOS → one more resize after it settles
   let rotTimer = 0;
   const onRotate = () => {
     apply();
     clearTimeout(rotTimer);
-    rotTimer = setTimeout(() => { apply(); setVh(); try { win.dispatchEvent(new win.Event('resize')); } catch { /* ignore */ } }, 350);
+    rotTimer = setTimeout(() => { apply(); setViewport(); try { win.dispatchEvent(new win.Event('resize')); } catch { /* ignore */ } }, 350);
   };
   on(win, 'orientationchange', onRotate);
   on(win.screen?.orientation, 'change', onRotate);

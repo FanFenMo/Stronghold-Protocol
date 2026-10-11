@@ -131,6 +131,25 @@ describe('ui/device.js feature detection', () => {
 });
 
 describe('ui/device.js installDeviceSupport', () => {
+  test('browser bars and rotation update the visible layout dimensions; disposal removes the listeners', () => {
+    const f = fakeWindow({ media: { '(any-pointer: coarse)': true }, touchPoints: 5 });
+    f.win.innerWidth = 844;
+    f.win.visualViewport = Object.assign(emitter(), { width: 844, height: 330 });
+    const dispose = installDeviceSupport(f.win);
+    assert.equal(f.props.get('--sp-vw'), '8.44px');
+    assert.equal(f.props.get('--sp-vh'), '3.3px');
+    assert.ok(f.classes.has('sp-short'));
+    Object.assign(f.win.visualViewport, { width: 1180, height: 820 });
+    f.win.visualViewport.dispatch(new FakeEvent('resize'));
+    assert.equal(f.props.get('--sp-vw'), '11.8px');
+    assert.equal(f.props.get('--sp-vh'), '8.2px');
+    assert.equal(f.classes.has('sp-short'), false);
+    dispose();
+    f.win.visualViewport.height = 300;
+    f.win.visualViewport.dispatch(new FakeEvent('resize'));
+    assert.equal(f.props.get('--sp-vh'), '8.2px');
+  });
+
   test('classes, --sp-vh, zoom gestures cancelled, long press → contextmenu (once), click after it swallowed', async (t) => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const f = fakeWindow({ media: { '(any-pointer: coarse)': true }, touchPoints: 5 });

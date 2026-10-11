@@ -1,6 +1,6 @@
 /* ==========================================================================================
    devices.css — multi-device layer (loaded last). Desktop Chrome / Edge / Firefox / Safari, iPad and Android tablets
-   in landscape, phones in landscape (≥ 640×360 CSS px). js/ui/device.js puts the feature classes on <html>
+   in landscape, phones in landscape. js/ui/device.js puts the feature classes on <html>
    (sp-touch, sp-coarse, sp-hover / sp-no-hover, sp-fs, sp-standalone, sp-reduced-motion) — never UA sniffing.
 
    1. no page zoom / scroll / pull-to-refresh while playing (touch-action, overscroll-behavior, callouts)
@@ -12,12 +12,51 @@
    ========================================================================================== */
 
 :root {
+  --sp-vw: 1vw;
+  --sp-vh: 1vh;
+  --sp-width: calc(var(--sp-vw) * 100);
+  --sp-height: calc(var(--sp-vh) * 100);
   --sa-t: env(safe-area-inset-top, 0px);
   --sa-r: env(safe-area-inset-right, 0px);
   --sa-b: env(safe-area-inset-bottom, 0px);
   --sa-l: env(safe-area-inset-left, 0px);
   --tap-min: 44px;
 }
+
+@supports (height: 100dvh) {
+  :root { --sp-vw: 1dvw; --sp-vh: 1dvh; }
+}
+
+/* The app and both renderers share the visible area, including when browser bars change without a window resize. */
+html { height: var(--sp-height); }
+#app { position: relative; width: 100%; height: 100%; }
+/* Short phones need a lower layout floor; touch targets keep their own pixel minimums below. */
+html.sp-coarse {
+  --t: max(1rem, 40px);
+  font-size: clamp(32px, min(calc((var(--sp-width) - var(--sa-l) - var(--sa-r)) / 19.2),
+    calc((var(--sp-height) - var(--sa-t) - var(--sa-b)) / 10.8)), 240px);
+}
+
+.app-root, .modal, .guide, .awayov, .boot, .rotate-hint {
+  right: auto; bottom: auto; width: var(--sp-width); height: var(--sp-height);
+}
+.modal {
+  padding: max(.3rem, var(--sa-t)) max(.3rem, var(--sa-r)) max(.3rem, var(--sa-b)) max(.3rem, var(--sa-l));
+}
+.modal__box { max-width: 100%; max-height: calc(var(--sp-height) - var(--sa-t) - var(--sa-b) - .6rem); }
+.modal__head, .modal__stripe { flex-shrink: 0; }
+.modal__body { min-height: 0; }
+.guide__page { width: min(calc(96vw - .5rem), calc((var(--sp-height) - var(--sa-t) - var(--sa-b) - 2.3rem) * 16 / 9)); }
+.guide__stage--text { max-height: calc(var(--sp-height) - var(--sa-t) - var(--sa-b) - 2rem); }
+
+/* Keep the logo and login controls on short landscape screens, including with the on-screen keyboard open. */
+.sp-coarse.sp-short .title-screen { padding: .3rem .2rem; overflow-y: auto; }
+.sp-coarse.sp-short .title-main { flex-shrink: 0; margin: auto; max-width: 100%; }
+.sp-coarse.sp-short .emblem { margin-bottom: .12rem; }
+.sp-coarse.sp-short .emblem__svg { width: .8rem; height: .86rem; }
+.sp-coarse.sp-short .emblem__bracket { height: 1rem; }
+.sp-coarse.sp-short .title-tag { display: none; }
+.sp-coarse.sp-short .title-login { margin-top: .2rem; gap: .1rem; padding-top: .16rem; padding-bottom: .14rem; }
 
 /* ---- 1. gestures ------------------------------------------------------------------------------------------------- */
 html, body { overscroll-behavior: none; }
