@@ -35,12 +35,12 @@ test('Clementia strategy: the real draft displays periodic single-hit barrier wi
       await c.page.waitForFunction(() => document.querySelector('.draft-detail__name')?.textContent === '克莱门莎');
       assert.equal(await c.exists('.draft-detail__off'), false, 'Aegir is available in this mode');
       const desc = await c.page.$eval('.draft-detail__desc', el => el.textContent);
-      for (const text of ['每15秒', '低于3000时减半', '达到3000时免疫', '流失1500生命', '不累计']) {
+      for (const text of ['【崇高牺牲】', '每15秒', '减伤护盾']) {
         assert.ok(desc.includes(text), `${text}: ${desc}`);
       }
       assert.ok(!desc.includes('被击倒时'), desc);
       assert.ok(!desc.includes('在场6名') && !desc.includes('吞噬仍增加阻挡数'), desc);
-      assert.ok(!desc.includes('崇高牺牲') && !desc.includes('体验可能不完整'), 'no repeated title or missing-operator footnote');
+      assert.ok(!desc.includes('3000') && !desc.includes('1500') && !desc.includes('体验可能不完整'), 'concise shield description');
       assert.deepEqual(problemsOf([c]), []);
       await c.shot('draft');
       await c.click('.draft-detail__btns .btn--primary', '确认选择');
