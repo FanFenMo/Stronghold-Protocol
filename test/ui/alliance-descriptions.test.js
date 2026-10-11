@@ -23,9 +23,9 @@ test('all bonds have one concise description, complete tier requirements, no for
 });
 
 test('Aegir final HP and devour ATK update live; the five-member clause stays inactive at three', () => {
-  assert.match(text(clauses('egirShip', 0)), /生命值\+35%.*基础攻击力的20%/);
+  assert.match(text(clauses('egirShip', 0)), /生命值\+35%.*基础攻击力的40%/);
   const list = clauses('egirShip', 100);
-  assert.match(text(list), /生命值\+135%.*基础攻击力的80%/);
+  assert.match(text(list), /生命值\+135%.*基础攻击力的100%/);
   assert.deepEqual(list.map(c => c.active), [true, false]);
   assert.ok(clauses('egirShip', 100, 2).every(c => c.active));
   assert.doesNotMatch(text(list), /灼烧|真伤|阻挡的非远程/);
