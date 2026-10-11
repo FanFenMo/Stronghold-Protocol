@@ -279,6 +279,7 @@ function modsWithoutBounty(mods) {
   const copy = { ...mods };
   delete copy.bountyId;
   delete copy.bountyCoins;
+  delete copy.bountyChance;
   return copy;
 }
 

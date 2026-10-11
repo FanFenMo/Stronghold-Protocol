@@ -76,6 +76,7 @@ import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash
 import { fontJobs, buildFonts } from './assets/fonts.mjs';
 import { skelParserAvailable } from './assets/skel.mjs';
 import { applyProsperityAssets } from './prosperity-data.mjs';
+import { applyStrategyAssets } from './strategy-data.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ASSETS = join(ROOT, 'public', 'assets');
@@ -462,6 +463,7 @@ async function main() {
   const body = resolved.value;
   tidyManifest(body);
   applyProsperityAssets(body);
+  applyStrategyAssets(body);
   const fontFaces = {};
   for (const [name, f] of Object.entries(fonts.files)) fontFaces[name] = f;
   body.fonts = opts.addOnly && current?.fonts ? current.fonts

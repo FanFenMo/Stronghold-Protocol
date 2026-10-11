@@ -66,7 +66,8 @@ export function planUnite(m, results) {
       let bounty = card && card.payout !== 'perfect' && Number(card.coin) > 0 && l.enemyKey === card.enemyKey
         ? { coins: Math.trunc(card.coin), ownerPlayerId: ps.playerId } : null;
       const extra = !bountyId && l.mods ? Math.trunc(Number(l.mods.bountyCoins) || 0) : 0;
-      if (!bounty && extra > 0) bounty = { coins: extra, ownerPlayerId: ps.playerId };
+      if (!bounty && extra > 0) bounty = { coins: extra, ownerPlayerId: ps.playerId,
+        ...(l.mods.bountyChance == null ? {} : { chance: l.mods.bountyChance }) };
       leaked.push({ enemyKey: l.enemyKey, mods: l.mods ? { ...l.mods } : null, lpr: l.lpr ?? 1, sourcePlayerId: ps.playerId, tag: l.tag ?? null, bounty });
     }
   }

@@ -32,6 +32,7 @@
 // "进入休整期时" / "回合开始时" = onRoundStart (research 01 §5 step 6).
 
 import { GEO } from '../../../../shared/constants.js';
+import { W_PENDING } from '../../../../shared/strategies.js';
 import { buffsOf, num, bandRecord, gameData } from '../support/index.js';
 import { metaBonds } from '../support/meta.js';
 import * as garrisons from '../garrisons.js';
@@ -78,6 +79,43 @@ function rollBond(ctx, bond, { anyTier = false } = {}) {
 // buff key → (params[], bandId) → hooks
 
 const K = {};
+
+K.custom_qingzhi_refresh = () => ({
+  onRoundStart(ctx) {
+    if (![6, 9, 12].includes(ctx.round) || ctx.counter('qingzhi:granted') === ctx.round) return;
+    ctx.setCounter('qingzhi:granted', ctx.round);
+    ctx.setCounter('qingzhi:pending', ctx.round);
+    ctx.grantFreeRefresh(1);
+  },
+  onRefresh(ctx, ev) {
+    if (ctx.counter('qingzhi:pending') !== ctx.round) return;
+    ctx.setCounter('qingzhi:pending', 0);
+    const base = { 6: 7, 9: 9, 12: 10 }[ctx.round];
+    const tier = Math.max(1, Math.min(6, base - ctx.shopLevel()));
+    for (let i = 0; i < ctx.gd.shopSlots(ctx.shopLevel()).chess; i++) {
+      const id = ctx.rollChess({ tier });
+      ev.slots[i] = id ? { kind: 'chess', id, basePrice: ctx.gd.chessPrice(id), sold: false,
+        frozen: !!ev.slots[i]?.frozen, qingzhiRound: ctx.round } : null;
+    }
+    ctx.setCounter('qingzhi:free_pick', ctx.round);
+    ctx.toast(`否极泰来：本次为${tier}阶特殊刷新，可免费选取一名干员`);
+  },
+  onPrice(ctx, ev) {
+    if (ev.slot?.qingzhiRound === ctx.round && ctx.counter('qingzhi:free_pick') === ctx.round) ctx.setPrice(0);
+  },
+  onBuy(ctx, ev) {
+    if (ev.slot?.qingzhiRound === ctx.round) ctx.setCounter('qingzhi:free_pick', 0);
+  },
+});
+
+K.custom_w_transfer = ([p]) => ({
+  onBattleResult(ctx, ev) {
+    if (ev.boss || ctx.round + 1 === ctx.gd.bossRound || ctx.round + 1 === ctx.gd.hiddenRound) return;
+    if (ctx.counter('band:w:rolled') === ctx.round) return;
+    ctx.setCounter('band:w:rolled', ctx.round);
+    ctx.setCounter(W_PENDING, ctx.rng.chance(num(p.chance, 0.5)) ? ctx.round + 1 : 0);
+  },
+});
 
 K.prep_finish_char_bond_add_layer = (ps) => ({
   onPrepEnd(ctx) {

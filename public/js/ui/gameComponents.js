@@ -222,7 +222,7 @@ export function BondGlyph({ bondId, class: cls, active }) {
 export function BandIcon({ bandId, class: cls, size = 'md' }) {
   const b = data.lookup('bands', bandId);
   return html`<span class=${cx('bandicon', `bandicon--${size}`, cls)} title=${b?.name || ''}>
-    <${Img} src=${bandIconUrl(data.get('assets'), bandId)} fallback=${html`<span class="bandicon__txt">${[...(b?.name || '?')][0]}</span>`} />
+    ${b?.iconBlank ? null : html`<${Img} src=${bandIconUrl(data.get('assets'), bandId)} fallback=${html`<span class="bandicon__txt">${[...(b?.name || '?')][0]}</span>`} />`}
   </span>`;
 }
 
@@ -242,6 +242,7 @@ export function RichTip({ text, children, placement = 'top' }) {
  */
 export function PlayerAvatar({ player, size = 'md', self = false, class: cls }) {
   const src = player?.bandId ? bandIconUrl(data.get('assets'), player.bandId) : null;
+  const blank = !!data.lookup('bands', player?.bandId)?.iconBlank;
   const glyph = [...(player?.name || '').trim()][0] || '?';
   const dead = player?.alive === false || player?.status === 'dead';
   const left = player?.status === 'left';
@@ -249,7 +250,7 @@ export function PlayerAvatar({ player, size = 'md', self = false, class: cls }) 
   return html`<span class=${cx('pavatar', `pavatar--${size}`, self && 'is-self', dead && 'is-dead', left && 'is-left', player?.isBot && 'is-bot',
       player?.connected === false && !player?.isBot && 'is-offline', cls)} style=${`--seat-hue:${hue}`}>
     <span class="pavatar__img">
-      <${Img} src=${src} fallback=${player?.isBot ? html`<${Icon} name="robot" class="pavatar__bot" />` : html`<span class="pavatar__glyph">${glyph}</span>`} />
+      ${blank ? null : html`<${Img} src=${src} fallback=${player?.isBot ? html`<${Icon} name="robot" class="pavatar__bot" />` : html`<span class="pavatar__glyph">${glyph}</span>`} />`}
     </span>
     ${dead ? html`<span class="pavatar__x" aria-label="已淘汰"><${Icon} name="close" /></span>` : null}
     ${left ? html`<span class="pavatar__door" aria-label="已离开"><${Icon} name="exit" /></span>` : null}

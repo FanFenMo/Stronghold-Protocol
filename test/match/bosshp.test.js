@@ -19,10 +19,10 @@ import { createBattleFromSpec } from '../../server/sim/spec.js';
 import { SharedBossPool } from '../../server/match/finalAssault.js';
 
 /** 4 AI seats, co-op, LP 400 (they reach R14), +`layers` on every active bond at the boss round's prep. */
-function toFinalAssault({ difficulty, seed, bossId, layers = 0 }) {
+function toFinalAssault({ difficulty, seed, bossId, layers = 0, bands = DATA.bands }) {
   const seats = [0, 1, 2, 3].map((i) => ({ seat: i, playerId: `ai_${i}`, name: `AI${i}`, isBot: true, connected: true }));
   // instant: false — the boss fields wait for the test to step them (server-run, real sim)
-  const h = makeMatch({ mode: 'coop', difficulty, seats, seed, captureFrames: false, instant: false });
+  const h = makeMatch({ mode: 'coop', difficulty, seats, seed, data: { ...DATA, bands }, captureFrames: false, instant: false });
   const m = h.m;
   m.bossId = bossId;
   m.start();
@@ -121,7 +121,9 @@ test('终极 Final Assault vs 假想敌：胄 (seeded bot match): both players\'
   // 死亡集群's "最大生命值2%" = the leader's shown max HP, the pool (DRONE_LINK_BASE 'pool' [ASSUMED]): 72 000 at 终极
   // Seed 4 pairs two 奥术 players with different layer counts, so either player's debuff is valid but their product is not.
   const pairOf = (m) => m.fields.filter((f) => f.battle).find((f) => f.players.length === 2 && f.players.every((pid) => f.battle.getPlayer(pid).bonds.arcaneShip?.active));
-  const h = toFinalAssault({ difficulty: 'ABYSS', seed: 4, bossId: 'boss_1' });
+  // This fixed seed describes the original strategy pool; additions must not change its two-奥术 precondition.
+  const bands = Object.fromEntries(Object.entries(DATA.bands).filter(([, b]) => b.sortId <= 40));
+  const h = toFinalAssault({ difficulty: 'ABYSS', seed: 4, bossId: 'boss_1', bands });
   const m = h.m;
   const fields = m.fields.filter((f) => f.battle);
   const bb = bondBb('arcaneShip');

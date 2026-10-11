@@ -17,6 +17,7 @@
 //   match    phase known; teamLp / boss pool within range; combat fields match the alive players
 
 import { PHASE, BOND_LAYER_CAP } from '../../shared/constants.js';
+import { isStrategyMedic } from '../../shared/strategies.js';
 import { FIELD, canPlace, placeClass, positionClass, parseKey } from './board.js';
 import { computeBonds } from './bondsMeta.js';
 
@@ -98,7 +99,7 @@ export function collectViolations(m, { limit = 25 } = {}) {
         if (!gd.token(p.id)) fail(`${id}: unknown token ${p.id}`);
         if (!(p.count >= 1)) fail(`${id}: token stack count ${p.count}`);
         // summons exist only while their owner is deployed (withdrawing / selling / merging it removes them)
-        if (!boardChessUids.has(p.ownerUid)) fail(`${id}: token ${p.uid} without a deployed owner (${p.ownerUid})`);
+        if (!boardChessUids.has(p.ownerUid) && !isStrategyMedic(p, ps.bandId)) fail(`${id}: token ${p.uid} without a deployed owner (${p.ownerUid})`);
       } else {
         fail(`${id}: piece of unknown kind ${p.kind}`);
       }

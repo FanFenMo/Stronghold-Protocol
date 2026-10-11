@@ -1,7 +1,7 @@
 export function applyAegirBandData(files) {
   const band = files.bands.band_clementia;
   const effect = files.effects[band.effectId];
-  band.desc = '每15秒，为在场所有我方干员刷新一次单次护盾：本次伤害低于3000时减半；达到3000时免疫本次伤害并流失1500生命。护盾不累计。';
+  band.desc = '【崇高牺牲】每15秒，为在场所有我方干员刷新一次减伤护盾。';
   band.descRaw = band.desc;
   band.buffs = [
     { key: 'env_gbuff_new_with_verify', bb: { interval: 15, damage_threshold: 3000, damage_scale: 0.5, hp_loss: 1500 }, bbStr: { key: 'act1autochess_band13_buff' } },
