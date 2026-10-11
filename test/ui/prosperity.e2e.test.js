@@ -62,7 +62,7 @@ test('繁盛：桌面与手机图标、当前数值、15人成员；浏览器和
         await page.click(`${selector} .bond`); await page.waitForSelector('.bpop__members');
         assert.equal(await page.$$eval('.bpop__member', els => els.length), 15);
         const text = await page.$eval('.bpop__sec--effect', e => e.textContent);
-        assert.match(text, /治疗效果\+60%/); assert.match(text, /覆盖9格/);
+        assert.match(text, /治疗效果\+60%/); assert.match(text, /40层时爆炸范围扩大至九格/);
         assert.doesNotMatch(text, /晕眩|÷|每50层/);
         assert.equal(await page.$eval('.bpop__disc img', e => getComputedStyle(e).filter), 'none');
         await page.waitForSelector('.pbanner--overlay', { hidden: true });

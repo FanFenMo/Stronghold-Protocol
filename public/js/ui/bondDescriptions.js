@@ -1,4 +1,4 @@
-import { prosperityHealBonus, prosperityBlastGrid } from '../../../shared/prosperity.js';
+import { prosperityHealBonus } from '../../../shared/prosperity.js';
 
 const highlight = (n, percent = false) => `<@bond.value>${Number((n * (percent ? 100 : 1)).toFixed(2))}${percent ? '%' : ''}</>`;
 
@@ -35,8 +35,8 @@ export function bondDescriptionClauses(bond, { layers = 0, tier = 0, active = fa
       add(`【拉特兰】干员开启技能时获得的弹药量+${value(0)}。`);
       add('每消耗1发弹药，全体【拉特兰】干员攻击力+4%，至多+200%。', 2); break;
     case 'egirShip':
-      add(`【阿戈尔】干员生命值+${value(0)}；开战吞噬身前干员，获得其阻挡数及基础攻击力的${highlight(bb.devour_base_atk_scale + bb.devour_atk_scale_per_layer * L, true)}，吞噬不叠层。`);
-      add(`前3名【阿戈尔】干员首次被击倒时立即复活；自身无可攻击目标时，可攻击存活被吞噬者自身格或身前一格内的1名敌人，每次传递保留${highlight(bb.relay_damage_per_hop, true)}伤害，中间干员死亡不切断传递。`, 2); break;
+      add(`【阿戈尔】干员生命值+${value(0)}；依次吞噬身前干员，获得其阻挡数及基础攻击力的${highlight(bb.devour_base_atk_scale + bb.devour_atk_scale_per_layer * L, true)}。`);
+      add(`前3名【阿戈尔】干员首次被击倒时立即复活；将存活的被吞噬者所在格或身前一格内的至多一名敌人视为自身攻击范围，每次传递削减${highlight(1 - bb.relay_damage_per_hop, true)}伤害。`, 2); break;
     case 'siracusaShip':
       add(`【叙拉古】干员部署后攻速+${value(0)}，持续${value(1)}秒。`);
       add(`部署后同时隐匿；隐匿期间及结束后10秒，攻击有3%概率造成${value(2)}点真实伤害并恐惧3秒。`, 2); break;
@@ -83,8 +83,8 @@ export function bondDescriptionClauses(bond, { layers = 0, tier = 0, active = fa
       add('所有精锐干员攻击力+30%。');
       add('所有精锐干员技力消耗−30%。', 2); break;
     case 'prosperityShip':
-      add(`【繁盛】干员治疗效果+${highlight(prosperityHealBonus(L), true)}，层数上限200。`);
-      add(`累计对其他干员的实际治疗；范围内有敌人时，每秒投掷生命球并清空计数，最多造成5000点群体真实伤害，并为范围内友方恢复伤害值50%的生命。爆炸覆盖${highlight(prosperityBlastGrid(L).length)}格；40层起扩大为九宫格，生命球不再次累计治疗。`, 2); break;
+      add(`【繁盛】干员治疗效果+${highlight(prosperityHealBonus(L), true)}，上限200层。`);
+      add('累计对其他干员的实际治疗；范围内有敌人时，每秒投掷生命球并清空计数，造成一次周围五格真实伤害，并为范围内友方恢复生命。40层时爆炸范围扩大至九格。', 2); break;
   }
   return clauses;
 }

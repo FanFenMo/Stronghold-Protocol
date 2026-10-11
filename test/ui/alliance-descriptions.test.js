@@ -36,8 +36,8 @@ test('layer gates, chance caps, prosperity blast size and small duration changes
   assert.deepEqual(clauses('swiftShip', 40).map(c => c.active), [true, true]);
   assert.match(text(clauses('swiftShip', 700)), /100%概率/);
   assert.match(text(clauses('sargonShip', 1)), /5.22.*秒/);
-  assert.match(text(clauses('prosperityShip', 39, 2)), /覆盖5格/);
-  assert.match(text(clauses('prosperityShip', 40, 2)), /覆盖9格/);
+  assert.match(text(clauses('prosperityShip', 39, 2)), /造成一次周围五格真实伤害/);
+  assert.match(text(clauses('prosperityShip', 40, 2)), /40层时爆炸范围扩大至九格/);
   assert.match(text(clauses('prosperityShip', 700, 2)), /治疗效果\+60%/);
   assert.doesNotMatch(text(clauses('prosperityShip', 100, 2)), /晕眩|÷/);
   assert.match(text(clauses('soloShip', 0)), /1名及以下/);
