@@ -79,32 +79,27 @@ function rollBond(ctx, bond, { anyTier = false } = {}) {
 // buff key → (params[], bandId) → hooks
 
 const K = {};
+const QINGZHI_REFRESH_BASE = { 6: 6, 8: 8, 10: 10, 12: 11 };
 
 K.custom_qingzhi_refresh = () => ({
   onRoundStart(ctx) {
-    if (![6, 9, 12].includes(ctx.round) || ctx.counter('qingzhi:granted') === ctx.round) return;
+    if (!QINGZHI_REFRESH_BASE[ctx.round] || ctx.counter('qingzhi:granted') === ctx.round) return;
     ctx.setCounter('qingzhi:granted', ctx.round);
     ctx.setCounter('qingzhi:pending', ctx.round);
     ctx.grantFreeRefresh(1);
   },
-  onRefresh(ctx, ev) {
+  onRefresh(ctx) {
     if (ctx.counter('qingzhi:pending') !== ctx.round) return;
     ctx.setCounter('qingzhi:pending', 0);
-    const base = { 6: 7, 9: 9, 12: 10 }[ctx.round];
+    const base = QINGZHI_REFRESH_BASE[ctx.round];
     const tier = Math.max(1, Math.min(6, base - ctx.shopLevel()));
-    for (let i = 0; i < ctx.gd.shopSlots(ctx.shopLevel()).chess; i++) {
-      const id = ctx.rollChess({ tier });
-      ev.slots[i] = id ? { kind: 'chess', id, basePrice: ctx.gd.chessPrice(id), sold: false,
-        frozen: !!ev.slots[i]?.frozen, qingzhiRound: ctx.round } : null;
+    const ids = [];
+    for (let i = 0; i < 3; i++) {
+      const id = ctx.rollChess({ tier, filter: (id) => !ids.includes(id) });
+      if (id) ids.push(id);
     }
-    ctx.setCounter('qingzhi:free_pick', ctx.round);
+    ctx.offerChess(ids, { tier });
     ctx.toast(`否极泰来：本次为${tier}阶特殊刷新，可免费选取一名干员`);
-  },
-  onPrice(ctx, ev) {
-    if (ev.slot?.qingzhiRound === ctx.round && ctx.counter('qingzhi:free_pick') === ctx.round) ctx.setPrice(0);
-  },
-  onBuy(ctx, ev) {
-    if (ev.slot?.qingzhiRound === ctx.round) ctx.setCounter('qingzhi:free_pick', 0);
   },
 });
 

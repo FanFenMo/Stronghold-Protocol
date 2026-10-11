@@ -41,7 +41,7 @@ test('real draft uses both supplied icons, leaves rolling logs blank; Touch medi
     const c = new Client(await browserFactory(), srv.base, 'new-strategies', { prefix: 'new-strategies' });
     try {
       await openDraft(c);
-      for (const [id, name, path] of [['band_qingzhi', '青枳', '/img/bands/qingzhi.png'], ['band_w', 'W', '/img/bands/w.png']]) {
+      for (const [id, name, path] of [['band_qingzhi', '青织', '/img/bands/qingzhi.png'], ['band_w', 'W', '/img/bands/w.png']]) {
         await c.page.$eval(`[data-band="${id}"]`, e => e.scrollIntoView({ block: 'center' }));
         await c.page.waitForFunction((id, path) => {
           const e = document.querySelector(`[data-band="${id}"] img`);
@@ -73,7 +73,7 @@ test('real draft uses both supplied icons, leaves rolling logs blank; Touch medi
     } finally { await c.close(); await srv.stop(); }
   });
 
-test('real R6 Qingzhi special refresh and first pick cost no funds; further choices show the normal price',
+test('real R6 Qingzhi refresh shows three free choices; picking one removes the other two',
   { skip: !enabled && 'SP_E2E=1 + Chrome required', timeout: 120000 }, async () => {
     const srv = await startRealServer({ fast: { startRound: 6, stage: 'act2autochess_m01' } });
     const c = new Client(await browserFactory(), srv.base, 'qingzhi', { prefix: 'new-strategies' });
@@ -81,21 +81,30 @@ test('real R6 Qingzhi special refresh and first pick cost no funds; further choi
       await openDraft(c); await choose(c, 'band_qingzhi');
       const before = await c.st(); assert.equal(before.round, 6);
       await c.click('.toolbtn', '刷新');
-      await c.page.waitForFunction(() => globalThis.__SP__.store.get().match.private.shop.slots
-        .filter(s => s?.kind === 'chess').every(s => s.price === 0));
+      await c.page.waitForFunction(() => globalThis.__SP__.store.get().match.private.shop.rewardOffer?.slots.length === 3);
       const slots = await c.page.evaluate(async () => {
         const { data } = await import('/js/data.js');
-        return globalThis.__SP__.store.get().match.private.shop.slots.filter(s => s?.kind === 'chess')
+        return globalThis.__SP__.store.get().match.private.shop.rewardOffer.slots
           .map(s => ({ id: s.id, tier: data.lookup('chess', s.id).tier, price: s.price }));
       });
-      assert.ok(slots.length); assert.ok(slots.every(s => s.tier === 6 && s.price === 0));
+      assert.equal(slots.length, 3); assert.ok(slots.every(s => s.tier === 5 && s.price === 0));
+      assert.equal(new Set(slots.map(s => s.id)).size, 3);
       assert.equal((await c.st()).funds, before.funds);
-      await c.click('.shopbar__cards button', null, { nth: 0 });
-      await c.click('.shopbar__cards button', null, { nth: 0 });
-      await c.page.waitForFunction(() => globalThis.__SP__.store.get().match.private.shop.slots.some(s => s?.sold));
+      await c.page.waitForSelector('.shopbar__rwcards button');
+      await c.shot('qingzhi-three-choices');
+      await c.click('.shopbar__rwcards button', null, { nth: 0 });
+      await c.click('.shopbar__rwcards button', null, { nth: 0 });
+      await c.page.waitForFunction(() => globalThis.__SP__.store.get().match.private.shop.rewardOffer === null);
+      await c.page.waitForSelector('.shopbar__rwcards', { hidden: true });
       assert.equal((await c.st()).funds, before.funds);
-      assert.equal(await c.page.evaluate(() => globalThis.__SP__.store.get().match.private.shop.slots
-        .filter(s => s?.kind === 'chess' && !s.sold).every(s => s.price > 0)), true);
+      const after = await c.page.evaluate(() => {
+        const p = globalThis.__SP__.store.get().match.private;
+        return { owned: [...p.hand, ...p.temp, ...p.board].filter(x => x?.kind === 'chess').map(x => x.id),
+          shop: p.shop.slots.filter(s => s?.kind === 'chess').map(s => ({ id: s.id, price: s.price })) };
+      });
+      assert.ok(after.owned.includes(slots[0].id));
+      assert.ok(slots.slice(1).every(s => !after.owned.includes(s.id) && !after.shop.some(x => x.id === s.id)));
+      assert.ok(after.shop.every(s => s.price > 0));
       assert.deepEqual(c.problems.filter(x => x.startsWith('pageerror:')), []);
       await c.page.waitForSelector('.pbanner--overlay', { hidden: true });
       await c.shot('qingzhi-special-refresh');

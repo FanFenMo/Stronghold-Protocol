@@ -726,7 +726,7 @@ test('official spot checks (hard-coded values from the zh_CN client data)', () =
   assert.deepEqual(bosses.boss_1.bloodPoint, { FUNNY: 247500, NORMAL: 675000, HARD: 1800000, ABYSS: 3600000 });
   assert.deepEqual(bosses.boss_10.bloodPoint, { FUNNY: 825000, NORMAL: 1012500, HARD: 3800000, ABYSS: 7600000 });
   assert.deepEqual([items.chess_item_1_01_e_a.name, items.chess_item_1_01_e_a.price, items.chess_item_1_01_e_a.params.atk], ['维式重锤', 1, 0.15]);
-  assert.deepEqual([bands.band_sarkazb.totalHp, bands.band_lisa.totalHp], [45, 20]);
+  assert.deepEqual([bands.band_sarkazb.totalHp, bands.band_lisa.totalHp], [45, 28]);
   assert.deepEqual(config.modes.mode_multi_abyss.rounds['15'].prepTime, 215);
   assert.equal(config.modes.mode_multi_abyss.enemyScale['6'].hp, 2.239488);   // 1.2^4 × 1.08
 });

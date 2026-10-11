@@ -65,20 +65,47 @@ test('Touch transforms at two deployed elites and back; unmarked ownerless token
   assert.equal(ps.move(orphan.uid, { area: 'board', row: 11, col: 4 }).error, 'BAD_TARGET');
 });
 
-for (const [round, level, tier] of [[6, 1, 6], [6, 6, 1], [9, 1, 6], [9, 6, 3], [12, 1, 6], [12, 6, 4]]) {
-  test(`青枳 R${round} level${level}: exactly tier${tier}, only one free refresh, automatic shop roll stays ordinary`, () => {
+for (const [round, level, tier] of [[6, 1, 5], [6, 6, 1], [8, 1, 6], [8, 6, 2], [10, 1, 6], [10, 6, 4], [12, 1, 6], [12, 6, 5]]) {
+  test(`青织 R${round} level${level}: three distinct tier${tier} choices, pick one free and discard the others`, () => {
     const h = prep(), ps = h.ps('p_0'), m = h.m; ps.bandId = 'band_qingzhi'; ps.shop.level = level;
     m.round = round; ps.startRound(round); m.dispatch(ps, 'onRoundStart', { round });
     assert.equal(ps.shop.freeRefreshes, 1);
     assert.ok(ps.shop.slots.filter(s => s?.kind === 'chess').every(s => DATA.chess[s.id].tier <= level));
-    const funds = ps.funds; ps.refresh();
+    const funds = ps.funds;
+    assert.deepEqual(ps.refresh(), { ok: true });
     assert.equal(ps.funds, funds);
-    assert.ok(ps.shop.slots.some(s => s?.kind === 'chess'));
-    assert.ok(ps.shop.slots.filter(s => s?.kind === 'chess').every(s => DATA.chess[s.id].tier === tier));
+    const offer = ps.privateView().shop.rewardOffer;
+    assert.equal(offer.label, '否极泰来');
+    assert.equal(offer.slots.length, 3);
+    assert.equal(new Set(offer.slots.map(s => s.id)).size, 3);
+    assert.ok(offer.slots.every(s => DATA.chess[s.id].tier === tier && s.price === 0));
     assert.equal(ps.shop.freeRefreshes, 0);
     assert.equal(ps.counters['qingzhi:pending'], 0);
+    const copies = offer.slots.map(s => m.pool.left(s.id));
+    assert.deepEqual(ps.pickReward(1), { ok: true });
+    assert.equal(ps.funds, funds);
+    assert.equal(ps.privateView().shop.rewardOffer, null);
+    assert.deepEqual(ps.allChess().map(p => p.id), [offer.slots[1].id]);
+    assert.deepEqual(offer.slots.map(s => m.pool.left(s.id)), [copies[0], copies[1] - 1, copies[2]]);
+    assert.equal(ps.pickReward(0).error, 'BAD_TARGET');
+    assert.ok(ps.shop.slots.filter(s => s?.kind === 'chess').every(s => ps.priceOf(s) > 0));
+    assert.deepEqual(ps.refresh(), { ok: true });
+    assert.equal(ps.funds, funds - m.gd.refreshPrice);
+    assert.equal(ps.privateView().shop.rewardOffer, null);
+    h.invariants();
   });
 }
+
+test('青织 has no special refresh in the former R9 or other unscheduled rounds', () => {
+  const h = prep(), ps = h.ps('p_0');
+  ps.bandId = 'band_qingzhi'; ps.funds = 50;
+  for (const round of [5, 7, 9, 11, 13]) {
+    h.m.round = round; ps.startRound(round); h.m.dispatch(ps, 'onRoundStart', { round });
+    assert.equal(ps.shop.freeRefreshes, 0);
+    assert.deepEqual(ps.refresh(), { ok: true });
+    assert.equal(ps.privateView().shop.rewardOffer, null);
+  }
+});
 
 for (const humans of [1, 2, 4]) {
   test(`W transfers exactly one ordinary enemy in a ${humans}-player match; spec requests cannot change the plan`, () => {
@@ -96,7 +123,8 @@ for (const humans of [1, 2, 4]) {
       assert.equal(count(list), n + 1); assert.equal(added.length, 1);
       assert.equal(added[0].enemyKey, plan.remove.enemyKey);
       assert.equal(added[0].mods.defMul, 0.7); assert.equal(added[0].mods.resMul, 0.7);
-      assert.equal(added[0].bounty.chance, 0.5);
+      assert.equal(added[0].bounty.chance, 0.2);
+      assert.equal(added[0].mods.bountyChance, 0.2);
     }
     const funds = ps.funds;
     m._normalOpts(ps); m.nextEnemiesFor(ps);
@@ -125,14 +153,14 @@ test('W never removes ducks, bounties or bosses, preserves multi-count timing, a
   assert.equal(ps.funds, before + 2);
 });
 
-test('W weakened enemy has 70% HP/ATK/DEF/RES/speed; successful kills pay only on the 50% roll and never twice', () => {
+test('W weakened enemy has 70% HP/ATK/DEF/RES/speed; successful kills pay only on the 20% roll and never twice', () => {
   const h = makeBattle({ defs: { enemies: { w_target: enemyRec({ key: 'w_target', hp: 1000, atk: 100, def: 100, res: 50, speed: 1 }) } } });
   h.step();
   for (const win of [true, false]) {
     const e = h.b.spawnEnemy('w_target', { pos: [10, 8], mods: { hpMul: .7, atkMul: .7, defMul: .7, resMul: .7, speedMul: .7 },
-      tag: 'w_transfer', ownerPlayerId: 'p1', bounty: { coins: 1, chance: .5, ownerPlayerId: 'p1' } });
+      tag: 'w_transfer', ownerPlayerId: 'p1', bounty: { coins: 1, chance: .2, ownerPlayerId: 'p1' } });
     assert.deepEqual([e.s.maxHp, e.s.atk, e.s.def, e.s.res, e.s.moveSpeed], [700, 70, 70, 35, .7]);
-    h.b.rng.chance = p => { assert.equal(p, .5); return win; };
+    h.b.rng.chance = p => { assert.equal(p, .2); return win; };
     const coins = h.b._pp('p1').coins; h.b.kill(e); h.b.kill(e);
     assert.equal(h.b._pp('p1').coins, coins + (win ? 1 : 0));
   }
@@ -153,7 +181,8 @@ test('new strategy source rebuild is idempotent, names and icons are correct, an
   const files = structuredClone({ bands: DATA.bands, effects: DATA.effects });
   applyStrategyData(files); const first = JSON.stringify(files); applyStrategyData(files);
   assert.equal(JSON.stringify(files), first);
-  assert.equal(files.bands.band_qingzhi.name, '青枳');
+  assert.equal(files.bands.band_qingzhi.name, '青织');
+  assert.equal(files.bands.band_lisa.totalHp, 28);
   const assets = JSON.parse(readFileSync(new URL('../../data/assets.json', import.meta.url)));
   applyStrategyAssets(assets); const once = JSON.stringify(assets); applyStrategyAssets(assets);
   assert.equal(JSON.stringify(assets), once);

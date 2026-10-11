@@ -81,11 +81,11 @@ test('bands.js wires all 43 bands: 30 prep handlers, battle parts, 鸭爵 global
   for (const id of ids) if (!meta.includes(id)) assert.equal(bandMetaHandler(id), null, id);
 });
 
-test('starting LP = totalHp for every band (歌利亚 坚不可摧 45, 铃兰 20)', () => {
+test('starting LP = totalHp for every band (歌利亚 坚不可摧 45, 铃兰 28)', () => {
   const { m } = setup();
   for (const [id, b] of Object.entries(DATA.bands)) assert.equal(m.gd.startLp(id), b.totalHp, id);
   assert.equal(m.gd.startLp('band_sarkazb'), 45);
-  assert.equal(m.gd.startLp('band_lisa'), 20);
+  assert.equal(m.gd.startLp('band_lisa'), 28);
   cover('band_sarkazb');
 });
 
@@ -673,7 +673,7 @@ test('Touch 外勤医疗: every player of a match with the band gets 预备干�
   cover('band_amedic');
 });
 
-test('青枳: free special refresh is manual, uses current shop level, and only the first pick is free', () => {
+test('青织: the first manual refresh uses the current shop level and discards the two unpicked choices', () => {
   const { ps, roundStart, m } = setup({ band: 'band_qingzhi' });
   ps.shop.level = 3;
   roundStart(6);
@@ -683,15 +683,17 @@ test('青枳: free special refresh is manual, uses current shop level, and only 
   ps.shop.level = 4;
   const before = ps.funds;
   assert.deepEqual(ps.refresh(), OK);
-  const slots = ps.shop.slots.filter(s => s?.kind === 'chess');
-  assert.ok(slots.length > 0);
-  assert.ok(slots.every(s => m.gd.chess(s.id).tier === 3), '7 minus the level at refresh time');
-  assert.ok(slots.every(s => ps.priceOf(s) === 0));
-  assert.deepEqual(ps.buy(0), OK);
-  assert.equal(ps.funds, before, 'refresh and first operator both free');
-  assert.ok(ps.shop.slots.filter(s => s?.kind === 'chess' && !s.sold).every(s => ps.priceOf(s) > 0));
+  const slots = ps.privateView().shop.rewardOffer.slots;
+  assert.equal(slots.length, 3);
+  assert.ok(slots.every(s => m.gd.chess(s.id).tier === 2), '6 minus the level at refresh time');
+  assert.ok(slots.every(s => s.price === 0));
+  assert.deepEqual(ps.pickReward(0), OK);
+  assert.equal(ps.funds, before, 'refresh and selected operator both free');
+  assert.equal(ps.privateView().shop.rewardOffer, null);
+  assert.equal(ps.pickReward(1).error, 'BAD_TARGET', 'unpicked choices cannot be bought');
   assert.deepEqual(ps.refresh(), OK);
   assert.equal(ps.funds, before - m.gd.refreshPrice, 'second refresh normal');
+  assert.equal(ps.privateView().shop.rewardOffer, null);
   cover('band_qingzhi');
 });
 

@@ -2,16 +2,17 @@ import { QINGZHI_BAND, W_BAND, ROLLING_BAND, TOUCH_BAND } from '../shared/strate
 import { contentHash } from './assets/manifest.mjs';
 
 const additions = [
-  [QINGZHI_BAND, 41, '青枳', '否极泰来',
-    '【否极泰来】第6、9、12回合各获得一次免费特殊刷新，可免费选取其中一名干员。干员阶数分别为7、9、10减去当前调度站等级，最高六阶。',
+  [QINGZHI_BAND, 41, '青织', '否极泰来',
+    '【否极泰来】第六，八，十，十二回合首次刷新变为特殊刷新三选一，免费获取其中之一，特殊刷新干员阶数分别为6-当前调度站等级/8-当前调度站等级/10-当前调度站等级/11-当前调度站等级',
     [{ key: 'custom_qingzhi_refresh', bb: {}, bbStr: {} }]],
   [W_BAND, 42, 'W', '隔岸观火',
-    '【隔岸观火】每回合结束时，有50%概率使下回合自身波次随机减少一名敌人，并获得2资金；实际队友各增加一名对应的削弱敌人，击败后有50%概率获得1资金。',
+    '【隔岸观火】每回合结束时均有50%概率下回合使自身波次随机少一名敌方目标且使自身获得两点资金，同时使我方其他三人各增加一只对应削弱的敌方目标，成功击败后有20%获得1资金',
     [{ key: 'custom_w_transfer', bb: { chance: 0.5 }, bbStr: {} }]],
   [ROLLING_BAND, 43, '滚木分队', '', '无效果。', []],
 ];
 
 export function applyStrategyData(files) {
+  files.bands.band_lisa.totalHp = 28;
   for (const [bandId, sortId, name, effectName, desc, buffs] of additions) {
     const effectId = `aceffect_${bandId}`;
     files.bands[bandId] = { bandId, sortId, name, iconId: bandId === ROLLING_BAND ? null : bandId.replace('band_', 'icon_'),

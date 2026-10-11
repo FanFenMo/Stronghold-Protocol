@@ -59,7 +59,7 @@ test('band draft (co-op): random order, one pick per turn, NOT_YOUR_TURN, one sk
   assert.equal(m.draftTurn(), first);
   assert.deepEqual(m.handle(first, { t: 'g.bandSkip' }).error, ERR.ALREADY, 'only one skip');
   assert.deepEqual(m.handle(first, { t: 'g.band', bandId: 'band_lisa' }), { ok: true });
-  assert.equal(h.ps(first).lp, 20);
+  assert.equal(h.ps(first).lp, 28);
   h.sched.advance(1);
   assert.equal(m.phase, PHASE.BATTLE_CHECK);
   m.dispose();

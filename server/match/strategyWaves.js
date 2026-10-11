@@ -28,13 +28,13 @@ export function planWTransfers(m, players) {
       const transferred = { ...copy(chosen), count: 1, interval: 0,
         mods: { ...chosen.mods },
         time: chosen.time + k * (chosen.interval || 0), tag: 'w_transfer',
-        bounty: { coins: 1, chance: 0.5, ownerPlayerId: other.playerId } };
+        bounty: { coins: 1, chance: 0.2, ownerPlayerId: other.playerId } };
       delete transferred.actionIndex;
       for (const attr of ['hpMul', 'atkMul', 'defMul', 'resMul', 'speedMul']) {
         transferred.mods[attr] = (transferred.mods[attr] ?? 1) * 0.7;
       }
       transferred.mods.bountyCoins = 1;
-      transferred.mods.bountyChance = 0.5;
+      transferred.mods.bountyChance = 0.2;
       plans.get(other.playerId).add.push(transferred);
     }
   }
