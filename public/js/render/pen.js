@@ -120,6 +120,7 @@ export function penEntries(list) {
     out.push({
       enemyKey: e.enemyKey, count, gate: e.gate === 'upper' ? 'upper' : 'lower', t: Number.isFinite(Number(e.t)) ? Number(e.t) : 0,
       fly: !!e.fly, boss: !!e.boss || e.tag === 'boss', elite: !!e.elite || !!e.boss || e.tag === 'boss', i,
+      ...(e.tag === 'w_transfer' ? { tag: e.tag } : {}),
     });
   });
   out.sort((a, b) => a.t - b.t || a.i - b.i);
@@ -128,7 +129,7 @@ export function penEntries(list) {
 
 /** Signature of a preview list (unchanged signature ⇒ the pen is left as it is). */
 export function penSignature(list) {
-  return penEntries(list).map((e) => `${e.enemyKey}:${e.count}:${e.gate[0]}:${e.t}:${e.fly ? 1 : 0}${e.elite ? 1 : 0}${e.boss ? 1 : 0}`).join('|');
+  return penEntries(list).map((e) => `${e.enemyKey}:${e.count}:${e.gate[0]}:${e.t}:${e.fly ? 1 : 0}${e.elite ? 1 : 0}${e.boss ? 1 : 0}${e.tag ? ':w_transfer' : ''}`).join('|');
 }
 
 /**
@@ -224,6 +225,7 @@ export function layoutPen(list, opts = {}) {
       key: `${idx}:${e.enemyKey}`, enemyKey: e.enemyKey, row: p.tile[0], col: p.tile[1],
       x: p.tile[1] + off[0] + jx, y: p.tile[0] + off[1] + jy,
       fly: e.fly, elite: e.elite, boss: e.boss, t: e.t, zone: p.zone,
+      ...(e.tag ? { tag: e.tag } : {}),
     };
   });
   return { figures, total, shown, sig };

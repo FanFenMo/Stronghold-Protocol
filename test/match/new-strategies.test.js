@@ -21,6 +21,60 @@ function prep(humans = 1) {
 }
 const count = xs => xs.reduce((n, s) => n + (s.count || 1), 0);
 
+for (const level of [1, 2, 3, 4, 5, 6]) {
+  for (const hit of [true, false]) {
+    test(`可露希尔 level${level}: a real elite merge ${hit ? 'upgrades' : 'keeps'} the free-choice tier with a six-tier cap`, () => {
+      const h = prep(), ps = h.ps('p_0'), m = h.m;
+      ps.bandId = 'band_closure'; ps.shop.level = level;
+      const baseId = Object.values(DATA.chess).find(c => c.visible && !c.isGolden && c.tier === 1
+        && (c.garrisonIds || []).every(g => DATA.garrisons[g].eventType === 'IN_BATTLE')
+        && ps.canUseChess(c.chessId) && m.pool.left(c.chessId) >= 3).chessId;
+      give(m, ps, baseId); give(m, ps, baseId);
+      let rolls = 0;
+      m.rngMeta.chance = chance => { assert.equal(chance, 0.2); rolls++; return hit; };
+      const funds = ps.funds, merges = ps.stats.merges;
+      const elite = ps.acquireChess(baseId, { source: 'effect' });
+      assert.ok(m.gd.isGolden(elite.id));
+      assert.equal(ps.stats.merges, merges + 1);
+      assert.equal(rolls, 1, 'one roll per elite merge');
+      const offer = ps.privateView().shop.rewardOffer;
+      const tier = Math.min(6, level + 1 + (hit ? 1 : 0));
+      assert.equal(offer.source, 'merge');
+      assert.equal(offer.tier, tier);
+      assert.equal(offer.slots.length, 3);
+      assert.equal(new Set(offer.slots.map(s => s.id)).size, 3);
+      assert.ok(offer.slots.every(s => DATA.chess[s.id].tier === tier && s.price === 0));
+      const copies = offer.slots.map(s => m.pool.left(s.id));
+      assert.deepEqual(ps.pickReward(1), { ok: true });
+      assert.equal(ps.funds, funds);
+      assert.equal(ps.privateView().shop.rewardOffer, null);
+      assert.deepEqual(offer.slots.map(s => m.pool.left(s.id)), [copies[0], copies[1] - 1, copies[2]]);
+      assert.equal(ps.pickReward(0).error, 'BAD_TARGET');
+      assert.equal(rolls, 1);
+      h.invariants();
+    });
+  }
+}
+
+test('可露希尔 changes only its owner\'s promotion reward, leaving other chess and item offers untouched', () => {
+  const h = prep(2), ps = h.ps('p_0'), other = h.ps('p_1'), m = h.m;
+  ps.bandId = 'band_closure'; ps.shop.level = 2; other.shop.level = 2;
+  let rolls = 0;
+  m.rngMeta.chance = chance => { assert.equal(chance, 0.2); rolls++; return true; };
+  const special = ps.pushRewardOffer('effect', { tier: 3 });
+  const teammate = other.pushRewardOffer('merge');
+  const itemId = Object.values(DATA.items).find(i => !i.isGolden && i.itemType === 'EQUIP').id;
+  const items = ps.pushItemOffer([itemId]);
+  assert.equal(special.tier, 3);
+  assert.equal(teammate.tier, 3);
+  assert.equal(items.slots[0].kind, 'item');
+  assert.equal(rolls, 0);
+  const promotion = ps.pushRewardOffer('merge');
+  assert.equal(promotion.tier, 4);
+  assert.equal(rolls, 1);
+  h.invariants();
+});
+
 test('Touch chooser deploys and faces the independent medic without using a slot; teammates retain automatic position', () => {
   const h = prep(2), m = h.m, ps = h.ps('p_0'), other = h.ps('p_1');
   ps.bandId = 'band_amedic';
@@ -183,10 +237,14 @@ test('new strategy source rebuild is idempotent, names and icons are correct, an
   assert.equal(JSON.stringify(files), first);
   assert.equal(files.bands.band_qingzhi.name, '青织');
   assert.equal(files.bands.band_lisa.totalHp, 28);
+  assert.equal(files.bands.band_closure.name, '可露希尔');
+  assert.equal(files.bands.band_closure.effectName, '意外收获');
+  assert.equal(files.bands.band_closure.desc, '【意外收获】每次干员精锐后有20%使选择干员阶数+1');
+  assert.deepEqual(files.bands.band_closure.buffs, [{ key: 'custom_closure_reward_upgrade', bb: { chance: 0.2 }, bbStr: {} }]);
   const assets = JSON.parse(readFileSync(new URL('../../data/assets.json', import.meta.url)));
   applyStrategyAssets(assets); const once = JSON.stringify(assets); applyStrategyAssets(assets);
   assert.equal(JSON.stringify(assets), once);
-  for (const id of ['band_qingzhi', 'band_w']) assert.ok(readFileSync(new URL(`../../public${assets.bands[id]}`, import.meta.url)).length > 1000);
+  for (const id of ['band_qingzhi', 'band_w', 'band_closure']) assert.ok(readFileSync(new URL(`../../public${assets.bands[id]}`, import.meta.url)).length > 1000);
   assert.equal(files.bands.band_rolling_logs.iconBlank, true);
   assert.equal(assets.bands.band_rolling_logs, undefined);
 });

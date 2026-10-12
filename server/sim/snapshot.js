@@ -43,6 +43,7 @@ export function unitInfo(u) {
     maxHp: Math.max(1, Math.round(u.s.maxHp)),
     motion: u.motion === 'FLY' ? 'FLY' : undefined,
     boss: u.isBoss ? true : undefined,
+    tag: u.side === 'enemy' && typeof u.tag === 'string' ? u.tag : undefined,
     // the unit's current model form (an enemy's content/enemies/helpers.js setForm, a 傀儡师's 替身 — render/units.js FORMS): a
     // view built mid-battle (fieldMeta — a watched teammate's field, 联防 observers, a reconnect) starts on that clip set
     form: typeof u.form === 'string' ? u.form : undefined,

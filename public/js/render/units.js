@@ -443,6 +443,7 @@ export class UnitView {
     this._offDt = 0;              // animation time skipped while culled
     this._far = false;            // small on screen (adaptive LOD, with hysteresis)
     this.isEnemy = info.side === 'enemy';
+    this.wTransfer = this.isEnemy && info.tag === 'w_transfer';
     this.isBoss = !!info.boss;
     // enemies: the official prefab's size factor (1 for operators, summons and enemies at the standard size)
     const def = this.isEnemy && ctx.lookupDef ? ctx.lookupDef(info) : null;
@@ -515,12 +516,20 @@ export class UnitView {
 
     const fx = fxAtlas();
     this.aura = null;
-    if (this.golden) {
+    if (this.golden || this.wTransfer) {
       this.aura = new P.Sprite(fx.tex.glow);
       this.aura.anchor.set(0.5, 0.62);
-      this.aura.tint = 0xffc94a;
+      this.aura.tint = this.wTransfer ? 0xe866ff : 0xffc94a;
       this.aura.blendMode = P.BLEND_MODES.ADD;
       this.root.addChild(this.aura);
+    }
+    this.transferRing = null;
+    if (this.wTransfer) {
+      this.transferRing = new P.Sprite(fx.tex.ring);
+      this.transferRing.anchor.set(0.5);
+      this.transferRing.tint = 0xff75ca;
+      this.transferRing.blendMode = P.BLEND_MODES.ADD;
+      this.root.addChild(this.transferRing);
     }
     this.body = new P.Container();
     this.root.addChild(this.body);
@@ -739,6 +748,14 @@ export class UnitView {
     // nothing shows until the first HUD update decides (a culled or prep view never draws bars)
     for (const b of [this.hpBg, this.hpGhost, this.hpFill, this.negFill, this.shieldBar, this.spBg, this.spFill, this.spGlow]) b.visible = false;
     this.chip = null;
+    this.transferLabel = null;
+    if (this.wTransfer) {
+      this.transferLabel = new P.Text('W', { fontFamily: 'Bender, Oxanium, sans-serif', fontSize: 20,
+        fontWeight: '700', fill: '#ff9cdd', stroke: '#271025', strokeThickness: 4 });
+      this.transferLabel.anchor.set(0.5);
+      this.transferLabel.visible = false;
+      h.addChild(this.transferLabel);
+    }
     // operators only: summon tokens have no tier (hand and field alike)
     if (!this.isEnemy && !this.isToken && this.info.kind !== 'device') {
       this.chip = new P.Sprite(tierChip(this.tier, this.golden));
@@ -1287,11 +1304,18 @@ export class UnitView {
       this.facingArrow.alpha = 0.9 * alpha;
     } else if (this.facingArrow) this.facingArrow.visible = false;
 
-    // elite aura
+    // Elite aura / W's transferred enemies: persistent, including fallback portraits and the preview pen.
     if (this.aura) {
       const k = 0.35 + 0.12 * Math.sin(t * 2.2 + this.bob);
       this.aura.alpha = k;
+      this.aura.visible = !this.wTransfer || this.alive;
       this.aura.scale.set((s * 1.3) / 128, (s * 1.9) / 128);
+    }
+    if (this.transferRing) {
+      const pulse = 1 + 0.08 * Math.sin(t * 3 + this.bob);
+      this.transferRing.visible = this.alive;
+      this.transferRing.alpha = 0.65 + 0.2 * Math.sin(t * 3 + this.bob);
+      this.transferRing.scale.set(s * 1.05 * pulse / 128, s * 0.4 * pulse / 128);
     }
 
     // head height: operators/tokens are uniform chibis; enemies vary (setup-pose bounds, when known; else the chibi
@@ -1407,6 +1431,11 @@ export class UnitView {
       ic.visible = true;
       ic.width = ic.height = isz;
       ic.position.set(x - ((icons.length - 1) * (isz + 2)) / 2 + i * (isz + 2), iy);
+    }
+    if (this.transferLabel) {
+      this.transferLabel.visible = this.alive;
+      this.transferLabel.scale.set(clamp(s / 90, 0.6, 1.1));
+      this.transferLabel.position.set(x0 + bw + isz * 0.5 + 4, cy);
     }
     // 狼影 pips under the bars (b.snap `wolves`), then the element gauge row under them (b.snap `elem`); redeploy ring above a
     // knocked-down operator (b.snap `down`)

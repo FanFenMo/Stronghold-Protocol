@@ -885,6 +885,7 @@ export async function createFieldView(host, options = {}) {
         tier: f.boss || rank === 'BOSS' ? 3 : f.elite || rank === 'ELITE' ? 2 : 1, golden: false,
         spine: rec?.spine || f.enemyKey, avatar: rec?.iconId || rec?.avatar || f.enemyKey,
         x: f.x, y: f.y, facing: -1, maxHp: 1, boss: !!f.boss, motion: f.fly ? 'FLY' : undefined,
+        tag: f.tag,
       };
       const v = new UnitView(ctx, info, { prep: true, lod: 'idle' });
       v.setWorld(f.x, f.y, heightAt(f.row, f.col));

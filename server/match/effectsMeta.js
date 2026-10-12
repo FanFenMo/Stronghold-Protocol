@@ -12,7 +12,7 @@
 //   global:<name>          runs for every player on every hook
 //
 // Hooks (handler methods; all optional, signature (ctx, ev)):
-//   onRoundStart onIncome onPrepStart onPrepEnd onGain onSold onRefresh onPrice onBuy onSpend onMerge onLevelUp
+//   onRoundStart onIncome onPrepStart onPrepEnd onGain onSold onRefresh onPrice onBuy onSpend onMerge onRewardOffer onLevelUp
 //   onBattleStart onBattleResult onChoicePick onEquip onArt onDestroy onLayers
 // Garrisons fire only on the hook of their eventType (SERVER_GAIN→onGain of the gained piece, SERVER_PREP_START→
 // onRoundStart, SERVER_PREP_FIN→onPrepEnd, SERVER_CHESS_SOLD→onSold of the sold piece, SERVER_PRICE→onPrice of the
@@ -44,7 +44,7 @@ import { registerBuiltins } from './builtinMeta.js';
 
 export const HOOKS = Object.freeze([
   'onRoundStart', 'onIncome', 'onPrepStart', 'onPrepEnd', 'onGain', 'onSold', 'onRefresh', 'onPrice', 'onBuy',
-  'onSpend', 'onMerge', 'onLevelUp', 'onBattleStart', 'onBattleResult', 'onChoicePick', 'onEquip', 'onArt',
+  'onSpend', 'onMerge', 'onRewardOffer', 'onLevelUp', 'onBattleStart', 'onBattleResult', 'onChoicePick', 'onEquip', 'onArt',
   'onDestroy', 'onLayers',
 ]);
 /** Non-hook members a handler object may carry. */

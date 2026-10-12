@@ -66,14 +66,14 @@ const slotOf = (id) => ({ kind: 'chess', id, basePrice: DATA.chess[id].tier === 
 // ---------------------------------------------------------------------------------------------------------------
 // data / wiring
 
-test('bands.js wires all 43 bands: 30 prep handlers, battle parts, 鸭爵 global and effectless squads', () => {
+test('bands.js wires all 44 bands: 31 prep handlers, battle parts, 鸭爵 global and effectless squads', () => {
   assert.equal(typeof bands.install, 'function');
   assert.equal(typeof bands.registerMeta, 'function');
   const ids = Object.keys(DATA.bands);
-  assert.equal(ids.length, 43);
+  assert.equal(ids.length, 44);
   const meta = ids.filter((id) => REG.has(`band:${id}`));
   const battle = ids.filter(hasBattlePart);
-  assert.equal(meta.length, 30);
+  assert.equal(meta.length, 31);
   assert.deepEqual(battle.sort(), ['band_amedic', 'band_amiya', 'band_chen', 'band_clementia', 'band_dusk', 'band_emperor', 'band_ermengard', 'band_humus', 'band_ioleta', 'band_mberry', 'band_qalaisa'].sort());
   assert.ok(REG.has('global:bands_ducklord'));
   const none = ids.filter((id) => !meta.includes(id) && !battle.includes(id));
@@ -714,6 +714,22 @@ test('W rolls once per non-boss round end; rolling logs has no hooks or buffs', 
   assert.equal(bandMetaHandler('band_rolling_logs'), null);
   assert.equal(hasBattlePart('band_rolling_logs'), false);
   cover('band_w', 'band_rolling_logs');
+});
+
+test('可露希尔: successive promotion rewards roll independently without changing earlier queued choices', () => {
+  const { ps, m } = setup({ band: 'band_closure' });
+  ps.shop.level = 3;
+  let rolls = 0;
+  m.rngMeta.chance = chance => { assert.equal(chance, 0.2); return ++rolls === 2; };
+  const first = ps.pushRewardOffer('merge');
+  const firstSlots = structuredClone(first.slots);
+  const second = ps.pushRewardOffer('merge');
+  assert.deepEqual(ps.offers.map(o => o.tier), [4, 5]);
+  assert.deepEqual(first.slots, firstSlots, 'an earlier offer keeps its own candidates');
+  assert.ok(second.slots.every(s => m.gd.tierOf(s.id) === 5));
+  ps.privateView(); ps.privateView();
+  assert.equal(rolls, 2, 'views never re-roll the chance');
+  cover('band_closure');
 });
 
 test('coverage: every band is exercised by a test above', () => {

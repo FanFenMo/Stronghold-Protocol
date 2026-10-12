@@ -1,6 +1,8 @@
 export const TOUCH_BAND = 'band_amedic';
 export const QINGZHI_BAND = 'band_qingzhi';
 export const W_BAND = 'band_w';
+export const CLOSURE_BAND = 'band_closure';
+export const KIRARA_REBATE = 'band:kirara:sell_rebate';
 export const ROLLING_BAND = 'band_rolling_logs';
 export const MEDIC_TOKEN = 'char_605_cmedic';
 export const TOUCH_TOKEN = 'char_613_acmedc';

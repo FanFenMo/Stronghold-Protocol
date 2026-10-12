@@ -672,7 +672,8 @@ export class PlayerState {
    */
   pushRewardOffer(source = 'merge', { tier = null, ids = null, label = null } = {}) {
     const ro = this.gd.rewardOffer();
-    const t = Number.isInteger(tier) ? tier : Math.min(this.shop.level + ro.tierOffset, ro.maxTier);
+    const t = this.m.dispatch(this, 'onRewardOffer', { kind: 'chess', source,
+      tier: Number.isInteger(tier) ? tier : Math.min(this.shop.level + ro.tierOffset, ro.maxTier) }).tier;
     // an offer never shows one operator twice, whoever built the list (user playtest #6 item 19)
     let list = Array.isArray(ids) ? [...new Set(ids)].filter((id) => this.gd.chess(id) && this.canUseChess(id)) : null;
     if (!list) {
