@@ -13,6 +13,6 @@ input:focus-visible { outline: 2px solid #4ed8af; outline-offset: 2px; }
 button { width: 100%; padding: 13px; font: inherit; font-weight: 700; background: #4ed8af; color: #06110d; border: 0; cursor: pointer; }
 button:hover { background: #59f4ca; }
 button:focus-visible { outline: 2px solid #f2f2f2; outline-offset: 3px; }
-button:disabled { opacity: .6; cursor: wait; }
+button:disabled { opacity: .6; cursor: default; }
 .hint { margin: 20px 0 0; color: #8a948f; font-size: 12px; }
 @media (max-height: 540px) { body { padding: 16px; } main { padding: 20px 28px; } .intro { margin-bottom: 12px; } }
