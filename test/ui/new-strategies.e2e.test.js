@@ -35,17 +35,17 @@ async function choose(c, id) {
   await c.waitFor(s => s.phase === 'PREP', 'prep');
 }
 
-test('real draft uses both supplied icons, leaves rolling logs blank; Touch medic moves by mouse without using a slot',
+test('real draft loads the custom strategy icons, leaves rolling logs blank; Touch medic moves by mouse without using a slot',
   { skip: !enabled && 'SP_E2E=1 + Chrome required', timeout: 120000 }, async () => {
     const srv = await startRealServer({ fast: { stage: 'act2autochess_m01' } });
     const c = new Client(await browserFactory(), srv.base, 'new-strategies', { prefix: 'new-strategies' });
     try {
       await openDraft(c);
-      for (const [id, name, path] of [['band_qingzhi', '青织', '/img/bands/qingzhi.png'], ['band_w', 'W', '/img/bands/w.png']]) {
+      for (const [id, name, path] of [['band_qingzhi', '青织', '/img/bands/qingzhi.png'], ['band_w', 'W', '/img/bands/w.png'], ['band_closure', '可露希尔', '/img/bands/closure.png']]) {
         await c.page.$eval(`[data-band="${id}"]`, e => e.scrollIntoView({ block: 'center' }));
         await c.page.waitForFunction((id, path) => {
           const e = document.querySelector(`[data-band="${id}"] img`);
-          return e?.complete && e.naturalWidth === 768 && e.src.endsWith(path);
+          return e?.complete && e.naturalWidth > 0 && e.naturalHeight === e.naturalWidth && e.src.endsWith(path);
         }, {}, id, path);
         assert.equal(await c.page.$eval(`[data-band="${id}"] .dband__name`, e => e.textContent), name);
       }
