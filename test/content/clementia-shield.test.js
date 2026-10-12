@@ -67,15 +67,18 @@ for (const kind of ['normal', 'unite', 'boss', 'hidden']) for (const def of [0, 
   });
 }
 
-test('devour consumes only one Clementia barrier even when multiple Aegir mark the same food', () => {
-  const h = devourField({ chain: true, foodHp: 10000 });
-  assert.equal(h.unit(4).hp, 3500);
-  assert.deepEqual(h.hooksOf('damaged').filter(c => c.target === h.unit(4)).map(c => c.amount), [1500, 5000]);
-  assert.equal(h.unit(1).s.atk, 1240);
-  assert.equal(h.unit(2).s.atk, 300);
-  assert.equal(h.unit(4).findBuff(key), null);
-  assert.equal(h.b.errorCount, 0);
-  checkInvariants(h.b);
+test('overlapping devour chains damage food once and consume one Clementia barrier', () => {
+  for (const kind of ['normal', 'unite', 'boss', 'hidden']) {
+    const h = devourField({ kind, chain: true, foodHp: 4000 });
+    assert.equal(h.unit(4).hp, 2500);
+    assert.ok(h.unit(4).alive);
+    assert.deepEqual(h.hooksOf('damaged').filter(c => c.target === h.unit(4)).map(c => c.amount), [1500]);
+    assert.equal(h.unit(1).s.atk, 1240);
+    assert.equal(h.unit(2).s.atk, 300);
+    assert.equal(h.unit(4).findBuff(key), null);
+    assert.equal(h.b.errorCount, 0);
+    checkInvariants(h.b);
+  }
 });
 
 test('shared-field devour uses the food owner\'s barrier, including a teammate whose band installs later', () => {

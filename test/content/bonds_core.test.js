@@ -318,7 +318,7 @@ test('阿戈尔: HP ×(1.35+0.01L); devour chain: 5000 physical HP loss, scaled 
   h.step(1);
   const [g1, g2, g3, f] = ['g1_a', 'g2_a', 'g3_a', 'fod_a'].map((id) => h.unit(id));
   const devours = tagged(h, 'bond:egir:devour');
-  assert.deepEqual(devours.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a'], ['g2_a', 'fod_a']]);
+  assert.deepEqual(devours.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a']]);
   // PRTS 盟约记录 "造成5000点物理流失"; PRTS 作战机制: a 物理流失 is reduced by the target's DEF
   for (const c of devours) close(c.amount, Math.max(5000 - c.target.s.def, 5000 * 0.05));
   close(g1.s.atk, 1000 + (1000 + 700) * 0.46, 1e-6, '10 layers: gain 46% of g2 + fodder base ATK');
@@ -326,7 +326,7 @@ test('阿戈尔: HP ×(1.35+0.01L); devour chain: 5000 physical HP loss, scaled 
   close(g3.s.atk, 1000);
   assert.equal(g1.s.blockCnt, 2 + 2 + 3);
   assert.equal(g2.s.blockCnt, 2 + 3);
-  close(f.hp, 20000 - 2 * (5000 - 900), 1e-6, '物理流失: less DEF 900 (DEF-free until 0.1.1)');
+  close(f.hp, 20000 - (5000 - 900), 1e-6, 'one physical HP loss after DEF 900');
   const Lnow = L; // devour no longer grants layers
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, Lnow);
   h.step(2);
@@ -357,7 +357,7 @@ test('阿戈尔 devour ATK remains a final addition: zero layers transfer 40% of
   checkInvariants(h.b);
 });
 
-test('阿戈尔 devour: 物理流失 ignores the marker’s damage bonuses and the target’s shields; a fallen marker’s marks still resolve (GitHub #165 point 3); kill → marker', () => {
+test('阿戈尔 devour: physical HP loss ignores damage bonuses and shields; a fallen intermediate node does not break the longest chain', () => {
   const list = [
     ['g1_a', ['egirShip', 'kjeragShip']], ['g2_a', ['egirShip'], { stats: { maxHp: 3000 } }], ['g3_a', ['egirShip']],
     ['fod_a', ['preciShip'], { tier: 2, stats: { maxHp: 20000, def: 500 } }],
@@ -375,31 +375,28 @@ test('阿戈尔 devour: 物理流失 ignores the marker’s damage bonuses and t
   assert.ok(!g2.alive, 'g2 devoured');
   assert.ok(h.hooksOf('kill').some((c) => c.victim === g2 && c.killer === g1), 'kill credited to the marker');
   const dv = tagged(h, 'bond:egir:devour');
-  // PRTS 盟约记录: only the knocked-out TARGET's pending marks are cancelled — g2, knocked out by the first mark, still
-  // resolves its own (until 0.1.3 a marker off the field gave no further mark)
-  assert.deepEqual(dv.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a'], ['g2_a', 'fod_a']], 'g2’s own mark on the fodder resolves');
-  close(f.hp, 20000 - 2 * (5000 - 500), 1e-6, '5000 less its DEF 500, twice: no ×1.25, shield untouched');
+  assert.deepEqual(dv.map((c) => [c.source.defId, c.target.defId]), [['g1_a', 'g2_a'], ['g1_a', 'fod_a']], 'the longest chain continues through the fallen g2');
+  close(f.hp, 20000 - (5000 - 500), 1e-6, 'one loss after DEF 500: no ×1.25, shield untouched');
   assert.equal(f.buffs.find((b) => b.key === 'test:shield')?.shield, 3000);
   close(g1.s.atk, 1000 + (1000 + 1000) * 0.4, 1e-6, '40% of the base ATK of everything it marked stays');
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);
 });
 
-test('阿戈尔 devour, A → B → C with B devoured first (GitHub #165 point 3, PR #176): C still takes B\'s 5000 and the kill is B\'s', () => {
+test('阿戈尔 devour, A → B → C: C takes only A\'s hit and survives after B falls', () => {
   const list = [
     ['A_a', ['egirShip']], ['B_a', ['egirShip'], { stats: { maxHp: 3000 } }], ['g3_a', ['egirShip']],
     ['C_a', ['preciShip'], { tier: 2, stats: { maxHp: 9000, def: 0 } }],
   ];
-  // A (10,3) → B (10,4, 3000 × 1.35 HP: knocked out by A's mark) → C (10,5, 9000 HP, DEF 0: A's mark leaves 4000, B's
-  // knocks it out); g3 faces an empty tile. Marks: A → B, A → C (through B), B → C.
+  // A's longest chain knocks B out and leaves C at 4000 HP. B's overlapping shorter chain deals no damage.
   const units = [{ chessId: 'A_a', row: 10, col: 3 }, { chessId: 'B_a', row: 10, col: 4 }, { chessId: 'C_a', row: 10, col: 5 }, { chessId: 'g3_a', row: 12, col: 3 }];
   const h = makeBattle({ defs: defsOf(list), units, bonds: { egirShip: bondOn(3, 0, null, [3, 5]) }, hooks: ['damaged', 'kill'], captureNoisy: true });
   h.step(1);
   const [A, B, C] = ['A_a', 'B_a', 'C_a'].map((id) => h.unit(id));
-  assert.deepEqual(tagged(h, 'bond:egir:devour').map((c) => [c.source.defId, c.target.defId]), [['A_a', 'B_a'], ['A_a', 'C_a'], ['B_a', 'C_a']]);
-  assert.ok(!B.alive && !C.alive, 'B falls to A\'s mark, C to B\'s (until 0.1.3 B\'s mark was dropped: C stood at 4000 HP)');
-  // PRTS 盟约记录 "单位被【吞噬】击杀时，击杀来源始终为对应标记的付与来源"
-  assert.deepEqual(h.hooksOf('kill').map((c) => [c.victim.defId, c.killer?.defId]), [['B_a', 'A_a'], ['C_a', 'B_a']], 'the kill credit is the mark\'s marker, down or not');
+  assert.deepEqual(tagged(h, 'bond:egir:devour').map((c) => [c.source.defId, c.target.defId]), [['A_a', 'B_a'], ['A_a', 'C_a']]);
+  assert.ok(!B.alive && C.alive);
+  assert.equal(C.hp, 4000);
+  assert.deepEqual(h.hooksOf('kill').map((c) => [c.victim.defId, c.killer?.defId]), [['B_a', 'A_a']], 'kill credit belongs to the retained chain source');
   close(A.s.atk, 1000 + (1000 + 1000) * 0.4, 1e-6, 'A: 40% of the base ATK of B and C');
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);
@@ -507,7 +504,7 @@ test('阿戈尔 5 + the devour chain (GitHub #33, #105, #140): the eaten members
   }
 });
 
-test('阿戈尔 5: a member devoured by several 阿戈尔 spends one slot at most — its pending marks are cancelled once it is knocked out', () => {
+test('阿戈尔 5: overlapping chains hit a member once and use a revive slot only if that hit knocks it out', () => {
   // A (10,3) → B (10,4) → X (10,5) and C (11,5, facing DOWN) → X: three marks on X; D (12,8) faces an empty tile
   const list = [['A_a', ['egirShip']], ['B_a', ['egirShip']], ['X_a', ['egirShip']], ['C_a', ['egirShip']], ['D_a', ['egirShip']]];
   const defs = defsOf(list.map(([id, b]) => [id, b, { stats: { maxHp: 3000 } }]));
@@ -520,7 +517,7 @@ test('阿戈尔 5: a member devoured by several 阿戈尔 spends one slot at mos
   const [a, b, x, c, d] = ['A_a', 'B_a', 'X_a', 'C_a', 'D_a'].map((id) => h.unit(id));
   const kos = (u) => h.hooksOf('death').filter((e) => e.unit === u && e.reason === 'killed').length;
   const revived = (u) => h.hooksOf('deploy').filter((e) => e.unit === u && !e.initial).length;
-  // marked by A (through B), by B and by C; A's mark knocks it out, B's and C's are cancelled
+  // A's longest chain knocks X out; overlapping chains from B and C deal no damage.
   assert.deepEqual(tagged(h, 'bond:egir:devour').map((e) => [e.source.defId, e.target.defId]), [['A_a', 'B_a'], ['A_a', 'X_a']]);
   for (const u of [b, x]) assert.ok(u.alive && kos(u) === 1 && revived(u) === 1, `${u.defId}: one knock-out, one slot`);
   close(x.hp, x.s.maxHp, 1e-6, 'X at full HP: no second mark');
@@ -531,14 +528,15 @@ test('阿戈尔 5: a member devoured by several 阿戈尔 spends one slot at mos
   assert.ok(!c.alive, 'C: none left');
   assert.ok(a.alive && kos(a) === 0, 'A never knocked out');
   checkInvariants(h.b);
-  // X with more HP survives A's and B's marks and falls to C's: still one knock-out, one slot
+  // X with more HP survives the single hit, so only B uses a revive slot.
   const tough = defsOf(list.map(([id, bd]) => [id, bd, { stats: { maxHp: id === 'X_a' ? 8000 : 3000 } }]));
   const t = makeBattle({ defs: tough, units, bonds: { egirShip: bondOn(5, 0, null, [3, 5]) }, hooks: ['damaged', 'death', 'deploy'], captureNoisy: true, autoFinish: false, timeLimit: 60 });
   t.step(1);
   const tx = t.unit('X_a');
-  assert.deepEqual(tagged(t, 'bond:egir:devour').map((e) => [e.source.defId, e.target.defId]), [['A_a', 'B_a'], ['A_a', 'X_a'], ['B_a', 'X_a'], ['C_a', 'X_a']]);
-  assert.equal(t.hooksOf('death').filter((e) => e.unit === tx && e.reason === 'killed').length, 1, 'X knocked out once, by the third mark');
-  assert.ok(tx.alive && t.eventsOf('fx').filter((e) => e[1] === 'revive').length === 2, 'B and X: two slots');
+  assert.deepEqual(tagged(t, 'bond:egir:devour').map((e) => [e.source.defId, e.target.defId]), [['A_a', 'B_a'], ['A_a', 'X_a']]);
+  assert.equal(t.hooksOf('death').filter((e) => e.unit === tx && e.reason === 'killed').length, 0, 'X survives without using a revive');
+  close(tx.hp, tx.s.maxHp - 5000);
+  assert.ok(tx.alive && t.eventsOf('fx').filter((e) => e[1] === 'revive').length === 1, 'only B uses a slot');
   checkInvariants(t.b);
 });
 
@@ -630,7 +628,7 @@ test('阿戈尔 5 slots in 联防 and on the boss field: a member entering down 
   checkInvariants(hb.b);
 });
 
-test('阿戈尔 devour, a unit back during the pass: a marker revived by the 5-tier revive still gives its marks; a target revived in place (埃芒加德) or redeployed (不屈) takes none', () => {
+test('阿戈尔 devour: revived intermediate nodes keep stat gains and overlapping chains never hit a target again', () => {
   // g1 (10,3) → g2 (10,4, 3000 × 1.35 HP: knocked out by g1's mark, revived) → g3 (10,5) → fodder (10,6); g4 / g5 face empty tiles
   const list = [
     ['g1_a', ['egirShip']], ['g2_a', ['egirShip'], { stats: { maxHp: 3000 } }], ['g3_a', ['egirShip'], { stats: { maxHp: 20000 } }],
@@ -644,10 +642,10 @@ test('阿戈尔 devour, a unit back during the pass: a marker revived by the 5-t
   h.step(1);
   const [g2, f] = ['g2_a', 'fod_a'].map((id) => h.unit(id));
   assert.ok(g2.alive && h.hooksOf('deploy').some((c) => c.unit === g2 && !c.initial), 'g2 knocked out and revived');
-  // every mark resolves whatever became of its marker (DESIGN §24.7): g2, back at once, still devours g3 and the fodder
+  // The longest chain deals one hit per target; shorter markers retain their stat gains after revival.
   assert.deepEqual(tagged(h, 'bond:egir:devour').map((c) => [c.source.defId, c.target.defId]),
-    [['g1_a', 'g2_a'], ['g1_a', 'g3_a'], ['g1_a', 'fod_a'], ['g2_a', 'g3_a'], ['g2_a', 'fod_a'], ['g3_a', 'fod_a']]);
-  close(f.hp, 20000 - 3 * 5000, 1e-6, 'the fodder: g1, g2 and g3');
+    [['g1_a', 'g2_a'], ['g1_a', 'g3_a'], ['g1_a', 'fod_a']]);
+  close(f.hp, 20000 - 5000, 1e-6, 'the fodder is hit only by g1');
   close(g2.s.atk, 1000 + (1000 + 1000) * 0.4, 1e-6, 'g2 keeps the scaled ATK gained at marking');
   assert.equal(h.b.getPlayer('p1').bonds.egirShip.layers, 0, 'devour grants no layers');
   checkInvariants(h.b);

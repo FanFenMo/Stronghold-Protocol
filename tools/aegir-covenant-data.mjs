@@ -9,7 +9,7 @@ export function applyAegirCovenantData(bond, effect) {
     Object.assign(bb, rules);
   }
   const desc = '【阿戈尔】干员生命值随盟约层数提升。\n'
-    + '战斗开始时吞噬身前干员，获得其阻挡数和基础攻击力的40%＋每层0.6%，100层为100%；吞噬不再叠层。\n'
+    + '战斗开始时吞噬身前干员，获得其阻挡数和基础攻击力的40%＋每层0.6%，100层为100%；吞噬不再叠层。重叠吞噬链仅保留最长一条造成伤害，同长度按原标记顺序选择，每名目标仅承受一次吞噬。\n'
     + '5名：前3名【阿戈尔】干员首次被击倒时立刻复活。\n'
     + '5名：自身无可攻击目标时，可攻击吞噬链中存活干员自身格或身前一格内的1名敌人；每次传递保留80%伤害，中间干员死亡不切断传递。';
   for (const key of ['desc', 'descRaw', 'effectDesc', 'effectDescRaw']) bond[key] = desc;
@@ -20,6 +20,7 @@ export function applyAegirCovenantData(bond, effect) {
     + ' Devour relay: when a member has no local attack target, it attacks one eligible enemy on a living devoured operator\'s tile or its facing-front tile. Final attack damage is multiplied by 0.8 per original hop; dead intermediate operators do not break or shorten the chain.';
   bond.spec.algorithm[2] = 'The marker gains each marked operator\'s block count and base ATK * (0.4 + 0.006 * L), using Aegir layers at devour time; ATK is a final addition after ATK percentages.';
   bond.spec.algorithm = bond.spec.algorithm.slice(0, 4);
+  bond.spec.algorithm[3] = 'After every player finishes marking, retain the longest non-overlapping devour chains, breaking equal-length ties by marking order. Resolve retained chains in their original order, from first food to last: each target takes one 5000-point physical HP loss after DEF, bypassing ordinary shields, dodge and damage multipliers. Kill credit belongs to the retained chain marker. All markers keep their original stat gains and relay chains; knocked-out or redeployed targets are skipped.';
   bond.spec.formulas.layersPerDevoured = '0';
   bond.spec.formulas.devourAtkScale = '0.4 + 0.006 * L';
   delete bond.spec.formulas.burnPerHalfSecond;

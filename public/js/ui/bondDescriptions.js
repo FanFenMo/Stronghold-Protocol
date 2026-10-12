@@ -35,7 +35,7 @@ export function bondDescriptionClauses(bond, { layers = 0, tier = 0, active = fa
       add(`【拉特兰】干员开启技能时获得的弹药量+${value(0)}。`);
       add('每消耗1发弹药，全体【拉特兰】干员攻击力+4%，至多+200%。', 2); break;
     case 'egirShip':
-      add(`【阿戈尔】干员生命值+${value(0)}；依次吞噬身前干员，获得其阻挡数及基础攻击力的${highlight(bb.devour_base_atk_scale + bb.devour_atk_scale_per_layer * L, true)}。`);
+      add(`【阿戈尔】干员生命值+${value(0)}；依次吞噬身前干员，获得其阻挡数及基础攻击力的${highlight(bb.devour_base_atk_scale + bb.devour_atk_scale_per_layer * L, true)}。重叠吞噬链仅保留最长一条造成伤害，每名目标仅承受一次吞噬。`);
       add(`前3名【阿戈尔】干员首次被击倒时立即复活；将存活的被吞噬者所在格或身前一格内的至多一名敌人视为自身攻击范围，每次传递削减${highlight(1 - bb.relay_damage_per_hop, true)}伤害。`, 2); break;
     case 'siracusaShip':
       add(`【叙拉古】干员部署后攻速+${value(0)}，持续${value(1)}秒。`);

@@ -357,11 +357,11 @@ const egirReviveScan = (a, b) => boardCol(a) - boardCol(b) || a.tileR - b.tileR 
 
 /**
  * The battle-start devour window, shared by every player's 阿戈尔 on the field: `passes` = devour passes still to run
- * (one per player with the bond active, counted at install), `depth` > 0 while one resolves, `flush` = the 5-tier
- * players' revive batches, run once the last pass is over.
+ * (one per player with the bond active, counted at install), `chains` = all players' damage candidates, `depth` > 0
+ * while marking or resolving, `flush` = the 5-tier players' revive batches, run after damage is resolved.
  */
 function egirStart(battle) {
-  return S.battleStore(battle, 'bonds:egir:start', () => ({ passes: 0, depth: 0, flush: [] }));
+  return S.battleStore(battle, 'bonds:egir:start', () => ({ passes: 0, depth: 0, chains: [], flush: [] }));
 }
 
 /**
@@ -382,17 +382,12 @@ function egirDownAtStart(battle, u) {
  * ATK and block count of everything it marked — the ATK as a 最终加算 (`atkFinal`, PRTS 盟约记录 "该付与来源获得所有标记单位
  * 的基础攻击力（最终加算）和阻挡数"): added after its percentages, so its skill's ATK +% does not scale it (it was `atkFlat`
  * until 0.1.3: 1000 base ATK, +100 %, +2000 devoured gave 6000 instead of 4000; GitHub #165 point 2, PR #176, the owner's
- * decision of 2026-10-06, DESIGN §24.7). Then each mark makes its target lose damage_value HP as a
- * 物理流失 (PRTS 盟约记录: "造成5000点物理流失", 修正 "【吞噬】的物理流失来源为被付与目标自身；单位被【吞噬】击杀时，击杀来源始终为
- * 对应标记的付与来源"; PRTS 作战机制: a 物理流失 "会受到目标当前防御力…影响而相应衰减") — less the target's DEF as a physical hit
- * (its own source: no DEF ignore), then battle.loseHp: no shields, dodge or damage multipliers (DEF-free until 0.1.1); the
- * kill is credited to the marker — in marking order. One 物理流失 per mark ("每个标记令目标受到一次5000点物理流失"): a member
- * in a chain loses one to every 阿戈尔 behind it (DESIGN §25.22.5: an elite 斯卡蒂 behind two of them, 7513 HP at 60
- * layers, loses 2 × 4751). A target knocked out during the pass has its remaining marks cancelled, also when it is back at
- * once (不屈's 立刻重新部署, 埃芒加德 / M3茧甲; the 5-tier revive waits for the last pass, installEgir): PRTS 盟约记录 "目标首次被
- * 击倒后解除自身被付与但还未触发的【吞噬】效果". Only the target's state cancels a mark: a marker knocked out by an earlier
- * mark still resolves its own, credited to it (PRTS names only the target; "击杀来源始终为对应标记的付与来源") — GitHub #165
- * point 3, PR #176, the owner's decision of 2026-10-06; until 0.1.3 a marker off the field gave no further mark.
+ * decision of 2026-10-06, DESIGN §24.7). All players finish marking before damage: overlapping chains retain only the
+ * longest one, with marking order breaking ties. Each retained chain resolves from its first food to its last, once per
+ * target; every marker keeps its original stat gains and attack-relay chain. Damage remains damage_value physical HP
+ * loss: mitigate by the target's DEF, then battle.loseHp, bypassing ordinary shields, dodge and damage multipliers.
+ * The retained chain's marker receives kill credit even if it or an earlier node was knocked out. A target already
+ * knocked out or redeployed before its turn is skipped; the 5-tier revive waits until all retained chains finish.
  * Not modelled: the 流失's own source (PRTS: the target itself) — the hooks see the marker as the source, as for the
  * credit (an open question, DESIGN §24.7).
  * 联防: the operators down since the end of their own combat (forced out by Battle.start) mark, are marked and resolve
@@ -425,7 +420,7 @@ function devour(battle, pid, bb, members) {
   };
   const markedBy = new Map(); // marker → [targets]
   const chains = devourChains(battle);
-  const marks = [];
+  const damageChains = egirStart(battle).chains;
   for (const m of order) {
     const mine = [];
     const seen = new Set([m]);
@@ -447,25 +442,31 @@ function devour(battle, pid, bb, members) {
     chains.set(m, depths); // original chain survives deaths and later movement; only its living blockers can relay
     if (!mine.length) continue;
     let atk = 0, block = 0;
-    for (const t of mine) { atk += num(t.base.atk, 0); block += num(t.base.blockCnt, 0); marks.push([m, t]); }
+    for (const t of mine) { atk += num(t.base.atk, 0); block += num(t.base.blockCnt, 0); }
     const mods = {};
     if (atk > 0) mods.atkFinal = atk * atkScale; // 最终加算 (units.js _recalc)
     if (block > 0) mods.blockCnt = block;
     if (Object.keys(mods).length) S.passiveBuff(battle, m, 'bond:egir:devour', mods);
+    damageChains.push({ playerId: pid, source: m, targets: mine, amount: num(bb.damage_value, 0), order: damageChains.length });
   }
-  const amount = num(bb.damage_value, 0);
-  const devoured = new Set();
-  // a target knocked out during the pass = off the field, or in another deployment than when the marks were placed (items
-  // deploymentOf: 不屈 and the 复活 of 埃芒加德 / M3茧甲 redeploy it at once; the 5-tier revive did until 0.2.0) — a
-  // revived member was standing again when its pending marks used to knock it out a second time and spend every revive
-  // at t = 0 (GitHub #33)
+}
+
+function resolveDevour(battle) {
+  const candidates = egirStart(battle).chains.splice(0);
+  const occupied = new Set();
+  const selected = [];
+  for (const chain of candidates.sort((a, b) => b.targets.length - a.targets.length || a.order - b.order)) {
+    const nodes = [chain.source, ...chain.targets];
+    if (nodes.some(u => occupied.has(u))) continue;
+    for (const u of nodes) occupied.add(u);
+    selected.push(chain);
+  }
+  // Choose by length, then settle independent chains in their original marking order.
+  selected.sort((a, b) => a.order - b.order);
   const dep = new Map();
-  for (const [, t] of marks) if (!dep.has(t)) dep.set(t, items.deploymentOf(t));
+  for (const { targets } of selected) for (const t of targets) dep.set(t, items.deploymentOf(t));
   const knocked = (t) => !t.alive || items.deploymentOf(t) !== dep.get(t);
-  for (const [m, t] of marks) {
-    // every mark resolves whatever became of its marker — knocked out by an earlier mark (and revived or not), or down
-    // since its own combat (downAtStart); a mark on a unit knocked out during the pass, or lying down since the 联防
-    // start, resolves nothing (`knocked`: it is off the field)
+  for (const { playerId, source: m, targets, amount } of selected) for (const t of targets) {
     if (knocked(t)) continue;
     S.fxOn(battle, 'devour', t, 'bond:egirShip', 'devour', { from: m.id });
     if (amount > 0) {
@@ -474,10 +475,7 @@ function devour(battle, pid, bb, members) {
       const c = battle.emit('egirDevourDamage', { source: m, credit: m, target: t, amount: dmg.amount, dmg });
       battle.loseHp(t, c.amount, { source: m, tags: ['bond:egir:devour'] });
     }
-    if (!devoured.has(t)) {
-      devoured.add(t);
-      battle.emit('egirDevour', { playerId: pid, source: m, target: t });
-    }
+    battle.emit('egirDevour', { playerId, source: m, target: t });
   }
 }
 
@@ -528,6 +526,7 @@ function installEgir(battle, pid, bb, members) {
     start.depth++;
     try {
       devour(battle, pid, bb, members);
+      if (start.passes === 1) resolveDevour(battle);
     } finally {
       start.depth--;
       if (--start.passes <= 0) for (const flush of start.flush.splice(0)) flush();
