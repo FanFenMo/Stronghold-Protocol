@@ -30,9 +30,9 @@ export function applyStrategyData(files) {
   touch.desc = touch.descRaw = '【外勤医疗】所有玩家场地出现一名<预备干员-医疗>；场上至少有两名精锐干员时替换为<Touch>。选择该策略的玩家可自行部署自己场地的医疗单位，不占部署位。';
   files.effects[touch.effectId].desc = files.effects[touch.effectId].descRaw = touch.desc;
   const kirara = files.bands.band_kirara;
-  const rebate = { key: 'custom_kirara_sell_rebate', bb: { chance: 0.25, coin: 1 }, bbStr: {} };
+  const rebate = { key: 'custom_kirara_sell_rebate', bb: { chance: 0.25 }, bbStr: {} };
   for (const record of [kirara, files.effects[kirara.effectId]]) {
-    record.desc = record.descRaw = '【通关奖励】每使用20资金，获得一名不高于当前调度中心等级的随机干员；每次出售干员有25%概率使下回合额外获得1资金。';
+    record.desc = record.descRaw = '【通关奖励】每使用20资金，获得一名不高于当前调度中心等级的随机干员；出售干员时有25%概率原价售出（伪随机：未触发时概率逐次提高，触发后重置）。';
     record.buffs = [...record.buffs.filter((b) => b.key !== rebate.key), structuredClone(rebate)];
   }
 }

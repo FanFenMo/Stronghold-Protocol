@@ -46,39 +46,11 @@ import { kjeragColdWind } from '../devices.js';
 import * as items from '../items.js';
 import { FORCED_EXIT } from '../../constants.js';
 import { msg } from '../../../../shared/i18n.js';
+import { prdConstant } from '../../rng.js';
+
+export { prdConstant } from '../../rng.js';
 
 const num = S.num;
-
-const PRD = new Map();
-/**
- * Pseudo-random-distribution constant C for a nominal probability p: attempt n since the last proc succeeds with
- * min(1, C·n), and the long-run proc rate equals p (3 % → C ≈ 0.00139, research 02 §3.7).
- */
-export function prdConstant(p) {
-  if (!(p > 0)) return 0;
-  if (p >= 1) return 1;
-  if (PRD.has(p)) return PRD.get(p);
-  const rate = (c) => {
-    let exp = 0, notYet = 1;
-    const nMax = Math.ceil(1 / c) + 1;
-    for (let n = 1; n <= nMax && notYet > 0; n++) {
-      const pn = Math.min(1, n * c);
-      exp += n * notYet * pn;
-      notYet *= 1 - pn;
-    }
-    return exp > 0 ? 1 / exp : 1;
-  };
-  let lo = 0, hi = p;
-  for (let i = 0; i < 50; i++) {
-    const mid = (lo + hi) / 2;
-    if (rate(mid) < p) lo = mid; else hi = mid;
-  }
-  const c = (lo + hi) / 2;
-  PRD.set(p, c);
-  return c;
-}
-
-
 
 /** Injection point for tests (lendItemEffects stub); null ⇒ items.js export. */
 export const deps = { lendItemEffects: null };

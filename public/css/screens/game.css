@@ -339,9 +339,6 @@
 .effect--band { border-color: var(--mint-800); }
 .effect--team { border-color: rgba(78, 216, 175, .6); }
 .effect__n { position: absolute; right: -.05rem; bottom: -.05rem; min-width: .2rem; font-size: calc(.12 * var(--t)); line-height: 1.4; text-align: center; background: var(--gold); color: #1d1400; padding: 0 .03rem; }
-.effect--rebate { border-color: var(--gold); box-shadow: 0 0 .12rem rgba(255, 198, 0, .35); }
-.effect__label { position: absolute; right: calc(100% + .08rem); padding: .04rem .08rem; white-space: nowrap;
-  background: rgba(8, 11, 10, .9); border: 1px solid rgba(255, 198, 0, .45); color: var(--gold); font-size: calc(.13 * var(--t)); }
 .efftip { display: flex; flex-direction: column; gap: .04rem; max-width: 3.6rem; }
 .efftip b { font-size: calc(.17 * var(--t)); color: var(--mint-400); }
 .efftip__kind { font-size: calc(.12 * var(--t)); color: var(--text-dim); }
