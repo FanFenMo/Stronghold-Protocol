@@ -816,6 +816,13 @@ test('independent re-derivation of every chess and enemy stat from the raw offic
   const swapped = new Set(Object.values(act.effectBuffInfoDataDict).flat().filter((b) => b.key === 'round_start_all_player_change_enemy_2')
     .flatMap((b) => b.blackboard.filter((kv) => kv.key === 'enemylist').flatMap((kv) => kv.valueStr.split(','))));
   assert.equal(swapped.size, 4);
+  // Local balance: the TIMES faction and its spawned hit-count units are 5% slower; 沉沙 gets another 5%.
+  const slowedTimes = new Set([
+    'enemy_1195_sfyin', 'enemy_1195_sfyin_2', 'enemy_1196_msfyin', 'enemy_1196_msfyin_2',
+    'enemy_1197_sfshu', 'enemy_1197_sfshu_2', 'enemy_1198_msfshu', 'enemy_1198_msfshu_2',
+    'enemy_1199_sfjin', 'enemy_1200_msfjin', 'enemy_1207_sfji', 'enemy_1208_msfji',
+    'enemy_1288_duskls', 'enemy_1288_duskls_2', 'enemy_1292_duskld', 'enemy_9010_acpupp',
+  ]);
   for (const e of Object.values(enemies)) {
     const base = db.get(e.key).find((l) => l.level === 0).enemyData;
     const o = ov.get(e.key);
@@ -833,6 +840,7 @@ test('independent re-derivation of every chess and enemy stat from the raw offic
       lpr: swapped.has(e.key) ? 1 : pick((x) => x.lifePointReduce, 1), massLevel: pick((x) => x.attributes?.massLevel, 0),
       motion: pick((x) => x.motion, 'WALK'),
     };
+    if (slowedTimes.has(e.key)) exp.moveSpeed *= e.key === 'enemy_1207_sfji' ? 0.9025 : 0.95;
     for (const [key, v] of Object.entries(exp)) {
       const got = e.stats[key];
       assert.ok(typeof v === 'number' ? Math.abs(v - got) < 1e-6 : v === got, `${e.key} ${e.name}: ${key} ${got} vs official ${v}`);
