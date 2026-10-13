@@ -153,14 +153,14 @@ function inputLoadout(unit) {
 }
 
 /** Put a def on a not-yet-deployed ally (the fields Battle._makeAlly takes from the def). */
-function swapDef(unit, def) {
+function swapDef(unit, def, operatorAtk = 1) {
   const st = def.stats;
   unit.def = def;
   unit.defId = def.id;
   unit.name = def.name;
   unit.rangeGrid = def.rangeGrid;
   Object.assign(unit.base, {
-    maxHp: st.maxHp, atk: st.atk, def: st.def, res: st.res, aspd: st.aspd, bat: st.bat, blockCnt: st.blockCnt,
+    maxHp: st.maxHp, atk: st.atk * (unit.kind === 'op' ? operatorAtk : 1), def: st.def, res: st.res, aspd: st.aspd, bat: st.bat, blockCnt: st.blockCnt,
     spRecovery: st.spRecovery, tauntLevel: st.tauntLevel, massLevel: st.massLevel, hpRecoveryPerSec: st.hpRecoveryPerSec,
     cost: st.cost, respawnTime: st.respawnTime,
   });
@@ -183,7 +183,7 @@ export function syncUnitLoadout(battle, unit) {
     // an entry without loadout fields only needs a look when the def carries a non-default loadout
     if (!Object.keys(lo).length && !(unit.def.loadout && unit.def.loadout.isDefault === false)) return;
     const want = battle.data.getChess(unit.def.id, lo);
-    if (want && want !== unit.def && want.id === unit.def.id) swapDef(unit, want);
+    if (want && want !== unit.def && want.id === unit.def.id) swapDef(unit, want, battle.ultimate.operatorAtk);
   } else if (unit.kind === 'token' && unit.ownerUnit && unit.ownerUnit.kind === 'op' && typeof battle.data.getToken === 'function') {
     // an explicit inline def of the input entry (Battle `_tokenDef(id, owner, inp.def)`) is never replaced
     if (inputEntry(unit)?.def) return;

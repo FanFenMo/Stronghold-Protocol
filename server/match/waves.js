@@ -1,6 +1,6 @@
 // server/match/waves.js — per-match enemy setup and per-round spawn generation: the OFFICIAL generator decoded from
-// the client (`RandomEnemyGenerater`, research 08 §2; DESIGN §14 "Corrections from research 08/09"). No custom balance:
-// counts, kinds, timing and stat scaling are the official ones.
+// the client (`RandomEnemyGenerater`, research 08 §2; DESIGN §14 "Corrections from research 08/09"). The baseline
+// keeps the official counts, kinds, timing and scales; ultimate n6 inserts one extra round per chosen faction.
 //
 // Per match (setupMatchWaves):
 //   * stage: weighted (stages[id].weight) among mode.stages that are active with weight > 0 — official mode data:
@@ -206,6 +206,16 @@ export function setupMatchWaves(gd, rng) {
   const typeSlots = makeTypeSchedule(gd, srng, chosen);
   const picks = [null];
   for (let r = 1; r <= typeSlots.length; r++) picks.push(pickRoundEntry(gd, srng, typeSlots[r - 1], r));
+  if (gd.ultimate.extraRounds) {
+    // Preserve R1–13 and the original leaders' choices, insert one new round per chosen faction.
+    const extraTypes = chosen.slice();
+    srng.shuffle(extraTypes);
+    const at = gd.bossRound - gd.ultimate.extraRounds - 1;
+    const extraPicks = extraTypes.map((type, i) => pickRoundEntry(gd, srng, type, at + i + 1));
+    typeSlots.splice(at, 0, ...extraTypes);
+    picks.splice(at + 1, 0, ...extraPicks);
+    for (let r = at + 1; r < picks.length; r++) if (picks[r]) picks[r] = { ...picks[r], round: r };
+  }
   Object.defineProperty(factions, 'schedule', { value: Object.freeze({ typeSlots: typeSlots.slice(), picks }), enumerable: false });
   return { stageId, factions, bossId, hiddenBossId, typeSlots, picks };
 }

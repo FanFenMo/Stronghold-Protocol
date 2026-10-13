@@ -115,8 +115,8 @@ export class BattleSpawns {
       id: ++this._idSeq, side: 'enemy', kind: 'enemy', def, defId: def.key ?? enemyKey, name: def.name,
       x: start[1], y: start[0], motion: def.motion,
       base: {
-        maxHp: def.maxHp * (m.hpMul ?? 1), atk: def.atk * (m.atkMul ?? 1), def: def.def * (m.defMul ?? 1), res: def.res * (m.resMul ?? 1),
-        aspd: def.aspd, bat: def.bat, blockCnt: 0, moveSpeed: def.moveSpeed * (m.speedMul ?? 1), spRecovery: 0,
+        maxHp: def.maxHp * m.hpMul * this.ultimate.enemyHp, atk: def.atk * m.atkMul * this.ultimate.enemyAtk, def: def.def * (m.defMul ?? 1), res: def.res * (m.resMul ?? 1),
+        aspd: def.aspd, bat: def.bat, blockCnt: 0, moveSpeed: def.moveSpeed * m.speedMul * this.ultimate.enemySpeed, spRecovery: 0,
         tauntLevel: def.tauntLevel, massLevel: def.massLevel, hpRecoveryPerSec: def.hpRecoveryPerSec, rangeRadius: def.rangeRadius,
       },
     });

@@ -13,6 +13,7 @@ import { groupEnemies, factionTypes, briefingBondTip } from './gameLogic.js';
 import { matchInfoModel } from './matchInfo.js';
 import { factionIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
+import { UltimateDifficultySummary } from './ultimateDifficulty.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const TAG = { boss: '领袖', bounty: '悬赏', escort: '护卫', w_transfer: 'W 增援' };
@@ -76,6 +77,7 @@ function InfoTab({ pub, priv, onChess, bandId = null, bandOwner = null }) {
         <${RichText} text=${band.descRaw || band.desc} class="iband__desc" /></div>
     </div>` : null}
     ${stage ? html`<p class="istage"><${Icon} name="rook" />战场：<b>${stage.name || stage.id}</b></p>` : null}
+    <${UltimateDifficultySummary} pub=${pub} />
     <h4 class="ihead">本局禁用干员情况 <small class="num">${banned.length}</small></h4>
     <div class="ibonds">
       ${withBans.length ? withBans.map((b) => html`<span key=${b.bondId} class=${cx('ibond', disabled.has(b.bondId) && 'is-off')} title=${briefingBondTip(b.name, stateOf(b.bondId), perBond.get(b.bondId) || 0)}>

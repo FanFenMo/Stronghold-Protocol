@@ -77,7 +77,8 @@ export function bossPoolHp(gd, bossId, aliveCount) {
     const cfg = gd.config.bossHpScale && typeof gd.config.bossHpScale === 'object' ? gd.config.bossHpScale : {};
     share = gd.isSolo ? (Number.isFinite(scale.solo) ? scale.solo : Number.isFinite(cfg.solo) ? cfg.solo : 0.25) : 1;
   }
-  return Math.max(1, Math.round(base * share * tune));
+  const difficultyHp = (gd.ultimate?.enemyHp ?? 1) * (gd.ultimate?.bossHp ?? 1);
+  return Math.max(1, Math.round(base * share * tune * difficultyHp));
 }
 
 /**

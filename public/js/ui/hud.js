@@ -30,6 +30,7 @@ import { html, Button, Icon, PingPill, Countdown, Tooltip, MicroLabel, Difficult
 import { Sprite, LpTower, GIcon, LocalSprite } from './gameComponents.js';
 import { localAsset } from '../data.js';
 import { serverNow } from '../store.js';
+import { UltimateLevelTag } from './ultimateDifficulty.js';
 import { isCombatPhase, isBossPhase, prepCapsuleLabel, bossFrac, bossPctText, fmtNum, shopBlockReason } from './gameLogic.js';
 import { overtimeState, overtimeDrainPerSec, remainAt } from './matchStatus.js';
 
@@ -336,7 +337,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
       <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label="离开" title="离开 / 暂离" class="gtop__exit tapx" />
       <div class="gtop__meta">
         <${PingPill} ms=${conn?.ping} online=${conn?.status === 'online'} />
-        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+        ${pub?.difficulty ? html`<span class="difficulty-depth-line"><${DifficultyTag} difficulty=${pub.difficulty} size="sm" /><${UltimateLevelTag} difficulty=${pub.difficulty} level=${pub.ultimateLevel} /></span>` : null}
       </div>
     </div>
 

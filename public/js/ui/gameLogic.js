@@ -1642,6 +1642,7 @@ export function normalizeResult(res, pub) {
     // older payloads without it: a clear implies it was reached)
     hiddenReached: typeof r.hiddenReached === 'boolean' ? (r.hiddenReached || !!r.hiddenCleared) : !!r.hiddenCleared,
     difficulty: r.difficulty || pub?.difficulty || null,
+    ultimateLevel: r.ultimateLevel ?? pub?.ultimateLevel ?? 0,
     modeId: r.modeId || pub?.modeId || null,
     bossId: r.bossId ?? pub?.bossId ?? null,
     hiddenBossId: r.hiddenBossId ?? pub?.hiddenBossId ?? null,
