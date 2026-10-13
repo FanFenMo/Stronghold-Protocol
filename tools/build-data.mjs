@@ -42,6 +42,7 @@ import { extendedGrid } from '../shared/loadoutRecord.js';
 import { FULL_RANK, atRank, stripPotential } from '../shared/potential.js';
 import { applyCustomData } from './custom-data.mjs';
 import { applyExpandedRoster } from './expanded-roster-data.mjs';
+import { timesEnemySpeedMultipliers } from './enemy-balance-data.mjs';
 
 // ===== CLI & IO ==================================================================================
 
@@ -2429,6 +2430,8 @@ function bandSwapEnemyKeys(act) {
 function buildEnemies(ctx) {
   const { ac, act, handbook } = ctx;
   const swapKeys = bandSwapEnemyKeys(act);
+  const speedMultipliers = timesEnemySpeedMultipliers(act.enemyInfoDict.TIMES,
+    key => ac.randomEnemyAttributeDict[key]?.extraEnemyKeyList || []);
   const c = ac.constData;
   const hpF = c.enemyMaxHpFactor ?? 1, atkF = c.enemyAtkFactor ?? 5, defF = c.enemyDefFactor ?? 3, resF = c.enemyMagicResistanceFactor ?? 3;
   const globalOverrides = new Map();
@@ -2470,7 +2473,8 @@ function buildEnemies(ctx) {
     const rawRangeRadius = cleanNum(mv(data.rangeRadius, 0));
     const stats = {
       maxHp: mv(at.maxHp, 0), atk: mv(at.atk, 0), def: mv(at.def, 0), res: cleanNum(mv(at.magicResistance, 0)),
-      moveSpeed: cleanNum(mv(at.moveSpeed, 1)), bat: cleanNum(mv(at.baseAttackTime, 1)), aspd: cleanNum(mv(at.attackSpeed, 100)),
+      moveSpeed: cleanNum(mv(at.moveSpeed, 1) * (speedMultipliers.get(key) ?? 1)),
+      bat: cleanNum(mv(at.baseAttackTime, 1)), aspd: cleanNum(mv(at.attackSpeed, 100)),
       rangeRadius: effectiveRangeRadius(applyWay, rawRangeRadius),
       rawRangeRadius,
       blockCnt: at.blockCnt?.m_defined ? at.blockCnt.m_value : 1,

@@ -361,6 +361,8 @@ blackboards (transitively). Level = `randomEnemyAttributeDict[key].level` (0 for
 | `attackAnim` | `{"clip":"Attack","dur":1,"hit":0.533}` (`enemy_1019_jshoot` 隐形弩手) | the enemy's attack clip — the one the client plays for its attacks (data/assets.json `anims.attack.loop` of its model, not an Idle stand-in) —, its length (s) and first strike frame (`hits`, the OnAttack event; absent when the clip has none). An unblocked ranged enemy stands for this clip at each attack (sim/ai.js `attackStand`, GitHub #58). 213 keys; absent = no attack clip known (御4, 寒霜, the 岁 relics …: the sim keeps `ATTACK_PAUSE`). Not in the game tables: `tools/build-data.mjs enemyAttackAnim` reads the committed asset manifest (tools/fetch-assets.mjs, from the Spine skeletons) |
 | `attackMoves` | `true` | **「不停止移动」 attackers only**: the handbook ability text says it attacks on the move (“十字路口”量产型's 四向攻击) — it never stops to attack (sim/ai.js `attackStand`). No enemy of the mode has it (build-data `attacksOnTheMove`) |
 
+本地平衡调整：TIMES（频次）敌人及其生成的子单位基础移速乘以 `0.95`；沉沙（`enemy_1207_sfji`）再乘以 `0.95`，相对原值合计降低 9.75%，从 `1.3` 调整为 `1.17325`。规则由 `tools/enemy-balance-data.mjs` 提供，并在 `tools/build-data.mjs` 读取原始移速时应用，不改变其他敌人类型的移速。
+
 ## 10. `factions.json` — special enemies (特训敌人)
 
 | Key | Example | Meaning |
