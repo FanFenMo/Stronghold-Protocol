@@ -385,7 +385,8 @@ export class GameData {
       const next = this.mode.enemyScale?.[String(last + 1)];
       if (previous && next) {
         const steps = Math.min(r, this.bossRound) - last;
-        e = { hp: previous.hp * (next.hp / previous.hp) ** steps, atk: previous.atk * (next.atk / previous.atk) ** steps, speed: next.speed };
+        // Official growth steps are HP ×1.2 / ATK ×1.1; the co-op R14 HP table is a plateau.
+        e = { hp: previous.hp * 1.2 ** steps, atk: previous.atk * 1.1 ** steps, speed: next.speed };
       }
     }
     if (!e || typeof e !== 'object') return { hpMul: 1, atkMul: 1, speedMul: 1 };

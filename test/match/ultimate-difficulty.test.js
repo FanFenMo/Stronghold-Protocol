@@ -58,6 +58,8 @@ test('n6 inserts exactly one round per chosen faction and moves leader templates
         assert.ok(added.factions.includes(wave.pick.type));
         assert.ok(gd.enemyScale(r).hpMul > gd.enemyScale(r - 1).hpMul);
         assert.ok(gd.enemyScale(r).atkMul > gd.enemyScale(r - 1).atkMul);
+        assert.ok(Math.abs(gd.enemyScale(r).hpMul / base.enemyScale(13).hpMul - 1.2 ** (r - 13)) < 1e-8);
+        assert.ok(Math.abs(gd.enemyScale(r).atkMul / base.enemyScale(13).atkMul - 1.1 ** (r - 13)) < 1e-8);
       }
       const leader = buildBossWave(gd, createRng(seed), added, 17, { bossId: added.bossId, solo: gd.isSolo });
       const hidden = buildBossWave(gd, createRng(seed), added, 18, { bossId: added.hiddenBossId, solo: gd.isSolo });
