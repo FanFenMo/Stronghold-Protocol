@@ -95,6 +95,7 @@ export class FxSim {
       }
       // `key`: one zone the sim re-sends as it moves / grows (an update in place, never a second layer — zones.js)
       case 'zone': this.zone(at.x, at.y, at.z, r, col, Math.max(0.6, dur || 1.5), spec.tex, false, ex.key != null ? String(ex.key) : null); break;
+      case 'poisonTile': this.tileFlash([[Math.round(at.y), Math.round(at.x)]], col, dur, true, ex.key); break;
       case 'wall': {
         // a line of burning tiles through the anchor tile along `axis` ('col' | 'row', from the sim event)
         const rect = this.ctx.fieldRect ? this.ctx.fieldRect() : null;

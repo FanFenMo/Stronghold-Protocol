@@ -21,6 +21,8 @@ import { LoadoutButton } from './loadout.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
+import { UltimateDifficultyPicker } from '../ui/ultimateDifficulty.js';
+import { isUltimateLevel, ultimateAvailable, ultimateRules } from '../../../shared/ultimateDifficulty.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
 export const MODE_TEXT = {
@@ -86,7 +88,7 @@ const MODE_CARDS = [
  * @param {string} difficulty
  * @returns {{ code: string, desc: string, effects: string[], rounds: number, hidden: boolean, stageNote: string }}
  */
-export function difficultyInfo(roomMode, difficulty) {
+export function difficultyInfo(roomMode, difficulty, ultimateLevel = 0) {
   const fallback = MODE_TEXT[roomMode === 'solo' ? 'single' : 'multi'][difficulty] || { code: '', desc: '', effects: [] };
   // modeIdFor() lower-cases the difficulty: never call it with a value the server did not validate.
   const m = DIFFICULTIES.includes(difficulty) ? getMode(modeIdFor(roomMode, difficulty)) : null;
@@ -98,7 +100,7 @@ export function difficultyInfo(roomMode, difficulty) {
     code: typeof m?.code === 'string' ? m.code : fallback.code,
     desc: typeof m?.desc === 'string' ? m.desc : fallback.desc,
     effects,
-    rounds,
+    rounds: rounds + (difficulty === 'ABYSS' ? ultimateRules(ultimateLevel).extraRounds : 0),
     hidden: difficulty !== 'FUNNY',
     stageNote: stageNote(Array.isArray(m?.stages) && m.stages.length ? m.stages : STAGE_POOL[difficulty]),
   };
@@ -240,6 +242,11 @@ export function LobbyScreen() {
     const d = loadPref('lobby.difficulty', 'FUNNY');
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
   });
+  const [ultimateLevel, setUltimateLevel] = useState(() => {
+    const n = loadPref('lobby.ultimateLevel', 0);
+    return isUltimateLevel(n) ? n : 0;
+  });
+  const [ultimatePreview, setUltimatePreview] = useState(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
@@ -252,6 +259,9 @@ export function LobbyScreen() {
 
   const pickMode = (m) => { setRoomMode(m); savePref('lobby.mode', m); };
   const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
+  const pickUltimateLevel = (n) => { setUltimateLevel(n); savePref('lobby.ultimateLevel', n); };
+  const available = difficulty !== 'ABYSS' || ultimateAvailable(ultimatePreview ?? ultimateLevel);
+  const selectingLevel = difficulty === 'ABYSS' && ultimatePreview != null && ultimatePreview !== ultimateLevel;
 
   const run = async (kind, fn) => {
     if (inFlight.current) return;
@@ -263,7 +273,7 @@ export function LobbyScreen() {
       if (alive.current) setBusy(null);
     }
   };
-  const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty }));
+  const create = () => available && !selectingLevel && run('create', () => net.request('room.create', { mode: roomMode, difficulty, ultimateLevel: difficulty === 'ABYSS' ? ultimateLevel : 0 }));
   const join = (c = code) => {
     // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to
     // `undefined` — codeArg keeps an event target out of the key and falls back to the input field
@@ -352,10 +362,11 @@ export function LobbyScreen() {
         <div class="diff-list">
           ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
+        ${difficulty === 'ABYSS' ? html`<${UltimateDifficultyPicker} value=${ultimateLevel} onChange=${pickUltimateLevel} onPreviewChange=${setUltimatePreview} disabled=${!!busy} />` : null}
         <div class="create-box">
           <${Tooltip} block=${true} text=${online ? null : '正在连接服务器…'}>
-            <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online} onClick=${create}>
-              ${roomMode === 'solo' ? '开始独立模拟' : '创建同盟'}
+            <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" loading=${busy === 'create'} disabled=${!online || !available || selectingLevel} onClick=${create}>
+              ${!available ? '未完待续' : roomMode === 'solo' ? '开始独立模拟' : '创建同盟'}
             <//>
           <//>
           <div class="create-box__hint">

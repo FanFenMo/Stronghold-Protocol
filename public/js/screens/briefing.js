@@ -15,6 +15,7 @@ import { actions } from '../ui/gameActions.js';
 import { factionTypes, sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
 import { enemyIconUrl, factionIconUrl } from '../ui/assetUrls.js';
 import { useStore } from '../store.js';
+import { UltimateDifficultySummary } from '../ui/ultimateDifficulty.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -65,7 +66,7 @@ export function BriefingScreen() {
           </div>
           <div class="brief-boss__text">
             <h2 class="brief-boss__name">${boss?.name || bossEnemy?.name || '未知领袖'}</h2>
-            <span class="brief-boss__when">第 <b class="num">${mode?.bossRound ?? pub.lastRound ?? 14}</b> 回合 · 最终攻势</span>
+            <span class="brief-boss__when">第 <b class="num">${pub.bossRound ?? mode?.bossRound ?? pub.lastRound ?? 14}</b> 回合 · 最终攻势</span>
             ${Array.isArray(boss?.abilities) && boss.abilities.length ? html`<ul class="brief-boss__abil">
               ${boss.abilities.slice(0, 3).map((a, i) => html`<li key=${i}><${RichText} text=${a} /></li>`)}
             </ul>` : null}
@@ -84,6 +85,7 @@ export function BriefingScreen() {
         </div>
       </section>
       <section class="brief__right">
+        <${UltimateDifficultySummary} pub=${pub} />
         <${MatchInfo} model=${info} />
       </section>
     </main>

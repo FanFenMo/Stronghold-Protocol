@@ -4,15 +4,16 @@
 // unknown ids. Tunables come from data/config.json with the documented defaults (research 00-INDEX §2–§8) when a
 // key is missing, so a partial data set (tests, data being regenerated) still yields a working match.
 //
-// No custom balance (DESIGN §14 corrections, research 08 §6): enemy numbers are the official ones — the PRTS
-// per-round enemyScale table of data/config.json, the leader pool = bloodPoint. data/tuning.json only overrides result
-// titles:
+// The baseline keeps the official PRTS per-round enemyScale table and bloodPoint leader pool (including ultimate n0).
+// Higher ultimate levels add the rules in shared/ultimateDifficulty.js; n6 continues the final-round growth.
+// data/tuning.json only overrides result titles:
 //   titles[titleId]                                                { stat?, rule? } merged over config.titles
 // (the former enemyHpMul / enemyAtkMul / enemySpeedMul / bossHpMul / flyPlaceholders knobs were removed; a tuning file
 // that still carries them is ignored).
 
 import { getConfig, getMode } from '../data.js';
 import { isShopItem } from '../sim/simdata.js';
+import { ultimateLevelFor, ultimateRules } from '../../shared/ultimateDifficulty.js';
 import { atPotential } from '../../shared/potential.js';
 
 const own = (map, id) => (map && typeof map === 'object' && typeof id === 'string' && Object.hasOwn(map, id) && map[id] && typeof map[id] === 'object' ? map[id] : null);
@@ -63,11 +64,13 @@ export class GameData {
    * @param {Readonly<Record<string, any>>} data server/data.js getData() (may be partial)
    * @param {string} modeId e.g. 'mode_multi_hard'
    */
-  constructor(data, modeId) {
+  constructor(data, modeId, ultimateLevel = 0) {
     this.raw = data && typeof data === 'object' ? data : {};
     this.config = getConfig(this.raw) || {};
     this.modeId = modeId;
     this.mode = getMode(modeId, this.raw) || {};
+    this.ultimateLevel = ultimateLevelFor(this.difficulty, ultimateLevel);
+    this.ultimate = ultimateRules(this.ultimateLevel);
     this.economy = this.config.economy && typeof this.config.economy === 'object' ? this.config.economy : {};
     const chess = this.raw.chess && typeof this.raw.chess === 'object' ? this.raw.chess : {};
     this._chess = chess;
@@ -135,7 +138,7 @@ export class GameData {
     let base = boss && boss.bloodPoint && Number.isFinite(boss.bloodPoint[diff]) ? boss.bloodPoint[diff] : null;
     if (base == null && boss && boss.bloodPoint) base = Object.values(boss.bloodPoint).find((v) => Number.isFinite(v)) ?? null;
     if (base == null) base = 500000;
-    return Math.max(1, Math.round(base * this.bossPoolShare(aliveCount)));
+    return Math.max(1, Math.round(base * this.bossPoolShare(aliveCount) * this.ultimate.enemyHp * this.ultimate.bossHp));
   }
 
   /**
@@ -212,8 +215,8 @@ export class GameData {
     const arr = Array.isArray(this.economy.income) ? this.economy.income : DEFAULTS.income;
     const cap = numOr(this.economy.incomeCap, DEFAULTS.incomeCap);
     const v = arr[round];
-    if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
-    return Math.max(0, Math.min(cap, 3 + round));
+    const base = typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : Math.max(0, Math.min(cap, 3 + round));
+    return Math.max(0, base - (round >= 5 ? this.ultimate.incomePenalty : 0));
   }
 
   chessPrice(id) {
@@ -287,16 +290,22 @@ export class GameData {
   get isSolo() { return this.mode.type === 'SINGLE' || /^mode_single_/.test(this.modeId || ''); }
   get difficulty() { return this.mode.difficulty || (this.modeId ? String(this.modeId).split('_').pop().toUpperCase() : 'NORMAL'); }
   get lastRound() {
-    if (Number.isInteger(this.mode.lastRound) && this.mode.lastRound > 0) return this.mode.lastRound;
-    return this.modeId === 'mode_single_funny' ? 9 : 14;
+    const base = Number.isInteger(this.mode.lastRound) && this.mode.lastRound > 0 ? this.mode.lastRound : this.modeId === 'mode_single_funny' ? 9 : 14;
+    return base + this.ultimate.extraRounds;
   }
-  get bossRound() { return Number.isInteger(this.mode.bossRound) && this.mode.bossRound > 0 ? this.mode.bossRound : this.lastRound; }
-  get hiddenRound() { return Number.isInteger(this.mode.hiddenRound) && this.mode.hiddenRound > 0 ? this.mode.hiddenRound : null; }
+  get bossRound() { return Number.isInteger(this.mode.bossRound) && this.mode.bossRound > 0 ? this.mode.bossRound + this.ultimate.extraRounds : this.lastRound; }
+  get hiddenRound() { return Number.isInteger(this.mode.hiddenRound) && this.mode.hiddenRound > 0 ? this.mode.hiddenRound + this.ultimate.extraRounds : null; }
   get maxShopLevel() { return posIntOr(this.mode.maxShopLevel, DEFAULTS.maxShopLevel); }
 
   roundCfg(r) {
     const rounds = this.mode.rounds;
-    return rounds && typeof rounds === 'object' && rounds[String(r)] && typeof rounds[String(r)] === 'object' ? rounds[String(r)] : null;
+    // Added ordinary rounds reuse the final ordinary template; leader templates move together.
+    const extra = this.ultimate.extraRounds;
+    let source = r;
+    if (extra && r >= this.bossRound) source = r - extra;
+    else if (extra && r >= this.bossRound - extra) source = this.bossRound - extra - 1;
+    const rc = rounds && typeof rounds === 'object' && rounds[String(source)] && typeof rounds[String(source)] === 'object' ? rounds[String(source)] : null;
+    return rc && source !== r && r < this.bossRound ? { ...rc, isSpPrepare: false } : rc;
   }
 
   spRounds() { return Array.isArray(this.mode.spRounds) ? this.mode.spRounds.filter((n) => Number.isInteger(n)) : []; }
@@ -369,7 +378,16 @@ export class GameData {
 
   /** Official enemy multipliers of round r (config enemyScale: the PRTS table + 终极 speed ×1.15 from R3). */
   baseEnemyScale(r) {
-    const e = this.mode.enemyScale && this.mode.enemyScale[String(r)];
+    let e = this.mode.enemyScale && this.mode.enemyScale[String(r)];
+    if (this.ultimate.extraRounds && r >= this.bossRound - this.ultimate.extraRounds) {
+      const last = this.bossRound - this.ultimate.extraRounds - 1;
+      const previous = this.mode.enemyScale?.[String(last)];
+      const next = this.mode.enemyScale?.[String(last + 1)];
+      if (previous && next) {
+        const steps = Math.min(r, this.bossRound) - last;
+        e = { hp: previous.hp * (next.hp / previous.hp) ** steps, atk: previous.atk * (next.atk / previous.atk) ** steps, speed: next.speed };
+      }
+    }
     if (!e || typeof e !== 'object') return { hpMul: 1, atkMul: 1, speedMul: 1 };
     return {
       hpMul: Math.max(0.01, numOr(e.hp, 1)),

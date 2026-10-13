@@ -142,10 +142,14 @@ export class FxZones {
   }
 
   /** Flash a set of tiles ([[r,c]]) on the ground (telegraphed boxes, blast tiles). */
-  tileFlash(tiles, tint, dur, warn = false) {
+  tileFlash(tiles, tint, dur, warn = false, key = null) {
     if (!Array.isArray(tiles) || !tiles.length) return;
-    this.tileFlashes.push({ tiles: tiles.slice(0, 60), tint, dur: Math.max(0.2, dur), t: 0, warn });
-    if (this.tileFlashes.length > 12) this.tileFlashes.shift();
+    const current = key != null ? this.tileFlashes.find((f) => f.key === key) : null;
+    if (current) { current.t = 0; current.dur = Math.max(0.2, dur); return; }
+    this.tileFlashes.push({ tiles: tiles.slice(0, 60), tint, dur: Math.max(0.2, dur), t: 0, warn, key });
+    // Keyed poison tiles are bounded by the field size and share one visual across their layers.
+    const ordinary = this.tileFlashes.filter((f) => f.key == null);
+    if (ordinary.length > 12) this.tileFlashes.splice(this.tileFlashes.indexOf(ordinary[0]), 1);
   }
 
   _updateTileFlashes(dt) {

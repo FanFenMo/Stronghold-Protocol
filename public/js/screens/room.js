@@ -23,6 +23,8 @@ import { LoadoutButton } from './loadout.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
 import { difficultyInfo } from './lobby.js';
+import { UltimateDifficultyPicker, UltimateLevelTag } from '../ui/ultimateDifficulty.js';
+import { ultimateAvailable } from '../../../shared/ultimateDifficulty.js';
 
 /**
  * Seats padded to the room's capacity (co-op 4, solo 1), each null or a seat record.
@@ -192,6 +194,7 @@ export function RoomScreen() {
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
   const [busy, setBusy] = useState(null);
+  const [ultimatePreview, setUltimatePreview] = useState(null);
   const alive = useRef(true);
   const inFlight = useRef(false); // synchronous guard against double clicks (state updates are async)
   useEffect(() => () => { alive.current = false; }, []);
@@ -201,7 +204,9 @@ export function RoomScreen() {
   const coop = room.mode !== 'solo';
   const facts = roomFacts(room, me.playerId);
   const myReady = !!facts.mine?.ready;
-  const info = difficultyInfo(room.mode, room.difficulty);
+  const info = difficultyInfo(room.mode, room.difficulty, room.ultimateLevel);
+  const available = room.difficulty !== 'ABYSS' || ultimateAvailable(room.ultimateLevel ?? 0);
+  const selectingLevel = facts.isHost && room.difficulty === 'ABYSS' && ultimatePreview != null && ultimatePreview !== (room.ultimateLevel ?? 0);
 
   const run = async (kind, fn) => {
     if (inFlight.current) return;
@@ -225,7 +230,8 @@ export function RoomScreen() {
     const ok = await confirmDialog({ title: '移出同盟', text: `确定将「${name || '博士'}」移出同盟吗？对方可以凭同盟密钥重新加入。`, okText: '移出', danger: true });
     if (ok) run(`kick${seat}`, () => net.request('room.kick', { seat, playerId }));
   };
-  const setDifficulty = (difficulty) => run('diff', () => net.request('room.setDifficulty', { difficulty }));
+  const setDifficulty = (difficulty, ultimateLevel = 0) => run('diff', () => net.request('room.setDifficulty', { difficulty, ultimateLevel }));
+  const setUltimateLevel = (n) => setDifficulty('ABYSS', n);
   // spectator seats: the host frees one; a spectator takes a free player seat with room.join of this room
   const removeSpectator = (playerId) => run(`rs${playerId}`, () => net.request('room.removeSpectator', { playerId }));
   const sit = () => run('sit', () => net.request('room.join', { code: room.code }));
@@ -252,6 +258,8 @@ export function RoomScreen() {
 
   const statusLine = !online
     ? html`<span class="t-orange"><${Icon} name="wifiOff" />连接中断，正在重连…</span>`
+    : !available
+      ? html`<span class="t-orange">n${room.ultimateLevel} · 未完待续，请选择 n0–n8</span>`
     : facts.spectating
       ? html`<span class="t-lo"><${Icon} name="eye" />观战中 · 不占博士席位，模拟开始后可切换观看各位博士</span>`
     : !coop
@@ -264,7 +272,7 @@ export function RoomScreen() {
         ? html`<span class="t-mint">已就绪 · 等待创建者开始模拟</span>`
         : html`<span class="t-lo">准备就绪后，创建者即可开始模拟</span>`;
 
-  return html`<div class="screen room-screen">
+  return html`<div class=${`screen room-screen${room.difficulty === 'ABYSS' ? ' room-screen--ultimate' : ''}`}>
     <header class="topbar">
       <div class="topbar__left">
         <${Tooltip} text="离开同盟" placement="bottom">
@@ -278,7 +286,7 @@ export function RoomScreen() {
       </div>
       <div class="topbar__center">
         <${MicroLabel} tone="mint">${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}<//>
-        <h1 class="topbar__title">${coop ? '同盟模拟' : '独立模拟'}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" /></h1>
+        <h1 class="topbar__title">${coop ? '同盟模拟' : '独立模拟'}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" /><${UltimateLevelTag} difficulty=${room.difficulty} level=${room.ultimateLevel} /></h1>
       </div>
       <div class="topbar__right">
         ${coop ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>仅限 1 名博士</span></div>`}
@@ -300,6 +308,8 @@ export function RoomScreen() {
       </aside>`}
     </main>
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
+    ${room.difficulty === 'ABYSS' ? html`<${UltimateDifficultyPicker} compact=${true} value=${room.ultimateLevel ?? 0}
+      onChange=${facts.isHost ? setUltimateLevel : undefined} onPreviewChange=${facts.isHost ? setUltimatePreview : undefined} disabled=${!facts.isHost || !!busy || !online} />` : null}
 
     <footer class="room-bar">
       <div class="room-bar__left">
@@ -321,7 +331,7 @@ export function RoomScreen() {
         <${LoadoutButton} from="room" size="lg" class="room-loadout" />
         ${facts.isHost
           ? html`<${Tooltip} text=${facts.canStart ? null : '仍有博士未准备就绪'}>
-              <${Button} variant="primary" size="xl" icon="play" loading=${busy === 'start'} disabled=${!facts.canStart || !online} onClick=${start}>开始模拟<//>
+              <${Button} variant="primary" size="xl" icon="play" loading=${busy === 'start'} disabled=${!facts.canStart || !online || !available || selectingLevel || busy === 'diff'} onClick=${start}>${available ? '开始模拟' : '未完待续'}<//>
             <//>`
           : facts.spectating
             ? html`<${Button} variant="secondary" size="xl" icon="eye" disabled=${true}>观战中<//>`

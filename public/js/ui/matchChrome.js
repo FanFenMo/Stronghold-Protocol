@@ -13,6 +13,7 @@ import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, createStore, isSpectating } from '../store.js';
 import { GIcon } from './gameComponents.js';
 import { GuideButton } from './guide.js';
+import { UltimateLevelTag } from './ultimateDifficulty.js';
 
 /**
  * Exit dialog lines. 放弃模拟 (g.leave → room.leave) ends the run on the server as 'abandoned' and returns to the
@@ -127,7 +128,7 @@ export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
       <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label="离开" title="离开" />
       <div class="stephead__meta">
         <${PingPill} ms=${conn.ping} online=${conn.status === 'online'} />
-        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}
+        ${pub?.difficulty ? html`<span class="difficulty-depth-line"><${DifficultyTag} difficulty=${pub.difficulty} /><${UltimateLevelTag} difficulty=${pub.difficulty} level=${pub.ultimateLevel} /></span>` : null}
       </div>
     </div>
     <div class="stephead__center">
