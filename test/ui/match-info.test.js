@@ -192,7 +192,7 @@ test('draftInfoStatus: the dialog repeats the turn and its seconds (warning at �
 test('the briefing, the strategy draft and the in-game 本局信息 tab all read ui/matchInfo.js (no second copy to drift)', () => {
   const brief = read('public/js/screens/briefing.js');
   assert.match(brief, /import \{ MatchInfo, matchInfoModel \} from '\.\.\/ui\/matchInfo\.js';/);
-  assert.match(brief, /<section class="brief__right">\s*<\$\{MatchInfo\} model=\$\{info\} \/>\s*<\/section>/);
+  assert.match(brief, /<section class="brief__right">\s*<\$\{UltimateDifficultySummary\} pub=\$\{pub\} \/>\s*<\$\{MatchInfo\} model=\$\{info\} \/>\s*<\/section>/);
   assert.match(brief, /const info = matchInfoModel\(pub, \{ bonds: gd\.list\('bonds'\), chess: gd\.chess, mode \}\);/);
   assert.doesNotMatch(brief, /brief-legend|brief-banned|function BondRow|bannedPerBond|disabledBondSets/, 'no own copy of the blocks');
   const draft = read('public/js/screens/bandDraft.js');
