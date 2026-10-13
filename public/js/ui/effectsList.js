@@ -6,14 +6,12 @@ import { html, Tooltip, MicroLabel } from './components.js';
 import { Img, RichText, GIcon } from './gameComponents.js';
 import { effectIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
-import { KIRARA_REBATE } from '../../../shared/strategies.js';
 
 const KIND = { band: '策略', choice: '机变', team: '团队增益', item: '道具', garrison: '特质' };
 
 /** @param {{ effects: any[] }} props */
 export function EffectsList({ effects }) {
-  const list = (Array.isArray(effects) ? effects : []).filter((e) => e && (e.name || e.desc))
-    .sort((a, b) => Number(b.id === KIRARA_REBATE) - Number(a.id === KIRARA_REBATE));
+  const list = (Array.isArray(effects) ? effects : []).filter((e) => e && (e.name || e.desc));
   if (!list.length) return null;
   const m = data.get('assets');
   return html`<div class="effects" aria-label="生效中的效果">
@@ -22,10 +20,9 @@ export function EffectsList({ effects }) {
         <b>${e.name || '效果'}</b><span class="efftip__kind">${KIND[e.iconKind] || ''}${e.counterText ? ` · ${e.counterText}` : e.counter != null ? ` · ${e.counter}` : ''}</span>
         <${RichText} as="p" text=${e.desc || ''} />
       </div>`}>
-      <span class=${`effect effect--${e.iconKind || 'x'}${e.id === KIRARA_REBATE ? ' effect--rebate' : ''}`}>
+      <span class=${`effect effect--${e.iconKind || 'x'}`}>
         <${Img} src=${effectIconUrl(m, e)} fallback=${html`<${GIcon} name="bolt" />`} />
-        ${e.counter != null && e.counter !== '' ? html`<b class="effect__n num">${e.id === KIRARA_REBATE ? '+' : ''}${e.counter}</b>` : null}
-        ${e.id === KIRARA_REBATE ? html`<span class="effect__label">下回合资金 <b class="num">+${e.counter}</b></span>` : null}
+        ${e.counter != null && e.counter !== '' ? html`<b class="effect__n num">${e.counter}</b>` : null}
       </span>
     <//>`)}
   </div>`;

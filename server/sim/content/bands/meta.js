@@ -32,7 +32,8 @@
 // "进入休整期时" / "回合开始时" = onRoundStart (research 01 §5 step 6).
 
 import { GEO } from '../../../../shared/constants.js';
-import { W_PENDING, KIRARA_REBATE } from '../../../../shared/strategies.js';
+import { W_PENDING } from '../../../../shared/strategies.js';
+import { prdConstant } from '../../rng.js';
 import { buffsOf, num, bandRecord, gameData } from '../support/index.js';
 import { metaBonds } from '../support/meta.js';
 import * as garrisons from '../garrisons.js';
@@ -118,24 +119,19 @@ K.custom_closure_reward_upgrade = ([p]) => ({
   },
 });
 
-K.custom_kirara_sell_rebate = ([p]) => ({
-  onSold(ctx) {
-    if (!ctx.rng.chance(num(p.chance, 0.25))) return;
-    const coins = int(p.coin, 1);
-    const total = (ctx.effect(KIRARA_REBATE)?.counter || 0) + coins;
-    ctx.addPendingFunds(coins);
-    ctx.addEffect({ id: KIRARA_REBATE, name: '通关奖励 · 出售返利',
-      desc: `下回合额外获得${total}资金。`, counter: total, battle: false,
-      iconKind: 'band', iconId: ctx.gd.band(ctx.bandId()).iconId });
-    ctx.toast(`通关奖励：出售返利触发，下回合额外获得${coins}资金（累计${total}）`);
-  },
-  onIncome(ctx) {
-    const rebate = ctx.effect(KIRARA_REBATE);
-    if (!rebate) return;
-    ctx.removeEffect(KIRARA_REBATE);
-    ctx.toast(`通关奖励：出售返利${rebate.counter}资金已到账`);
-  },
-});
+K.custom_kirara_sell_rebate = ([p]) => {
+  const c = prdConstant(num(p.chance, 0.25));
+  const key = 'band:kirara:sell_attempts';
+  return {
+    onSold(ctx, ev) {
+      const n = ctx.incCounter(key, 1);
+      if (!ctx.rng.chance(Math.min(1, c * n))) return;
+      ctx.setCounter(key, 0);
+      ev.gain = ctx.gd.chessPrice(ev.piece.id);
+      ctx.toast(`通关奖励：干员原价售出，获得${ev.gain}资金`);
+    },
+  };
+};
 
 K.prep_finish_char_bond_add_layer = (ps) => ({
   onPrepEnd(ctx) {

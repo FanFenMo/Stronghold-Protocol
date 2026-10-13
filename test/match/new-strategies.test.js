@@ -75,6 +75,58 @@ test('可露希尔 changes only its owner\'s promotion reward, leaving other che
   h.invariants();
 });
 
+for (const golden of [false, true]) {
+  test(`绮良 ${golden ? 'elite' : 'normal'} sale: misses carry across rounds and stay per player; a proc pays the original price immediately and resets`, () => {
+    const h = prep(2), m = h.m, ps = h.ps('p_0'), other = h.ps('p_1');
+    ps.bandId = other.bandId = 'band_kirara';
+    const id = Object.values(DATA.chess).find(c => c.visible && c.isGolden === golden && c.tier === 3
+      && (c.garrisonIds || []).every(g => DATA.garrisons[g].eventType === 'IN_BATTLE')
+      && ps.canUseChess(c.chessId) && m.pool.left(m.gd.baseIdOf(c.chessId)) >= (golden ? m.gd.goldenCopies : 1)).chessId;
+    const rolls = [];
+    m.rngMeta.chance = chance => { rolls.push(chance); return 0.15 < chance; };
+    const sell = who => {
+      const piece = give(m, who, id), funds = who.funds;
+      assert.deepEqual(who.sell(piece.uid), { ok: true });
+      return who.funds - funds;
+    };
+    assert.equal(sell(ps), m.gd.sellPrice(id));
+    m.round = 2; ps.startRound(2); other.startRound(2);
+    assert.equal(sell(other), m.gd.sellPrice(id), 'the other player starts with its own initial probability');
+    assert.equal(sell(ps), m.gd.chessPrice(id), 'second attempt after a miss pays the full price now');
+    assert.equal(sell(ps), m.gd.sellPrice(id), 'a proc resets the next attempt to the initial probability');
+    assert.equal(sell(other), m.gd.chessPrice(id), 'the other player keeps its own missed attempt');
+    assert.equal(rolls.length, 5);
+    assert.ok(rolls[0] < 0.15 && rolls[2] > 0.15);
+    assert.equal(rolls[1], rolls[0]); assert.equal(rolls[3], rolls[0]); assert.equal(rolls[4], rolls[2]);
+    assert.equal(ps.pendingFunds, 0); assert.equal(other.pendingFunds, 0);
+    assert.ok(!ps.privateView().effects.some(e => e.id === 'band:kirara:sell_rebate'));
+    h.invariants();
+  });
+}
+
+test('绮良 sale PRD: rejected sales do not roll; repeated misses reach a guaranteed proc and then reset', () => {
+  const h = prep(), m = h.m, ps = h.ps('p_0');
+  ps.bandId = 'band_kirara';
+  const id = Object.values(DATA.chess).find(c => c.visible && !c.isGolden && c.tier === 3
+    && (c.garrisonIds || []).every(g => DATA.garrisons[g].eventType === 'IN_BATTLE')
+    && ps.canUseChess(c.chessId) && m.pool.left(c.chessId) > 0).chessId;
+  const rolls = [];
+  m.rngMeta.chance = chance => { rolls.push(chance); return 0.999 < chance; };
+  assert.equal(ps.sell(-1).error, 'BAD_TARGET');
+  assert.equal(rolls.length, 0);
+  for (let attempt = 1; attempt <= 13; attempt++) {
+    const piece = give(m, ps, id), funds = ps.funds;
+    assert.deepEqual(ps.sell(piece.uid), { ok: true });
+    assert.equal(ps.funds - funds, attempt === 12 ? m.gd.chessPrice(id) : m.gd.sellPrice(id));
+  }
+  assert.equal(rolls.length, 13);
+  for (let i = 1; i < 12; i++) assert.ok(rolls[i] > rolls[i - 1]);
+  assert.equal(rolls[11], 1);
+  assert.equal(rolls[12], rolls[0]);
+  assert.equal(ps.pendingFunds, 0);
+  h.invariants();
+});
+
 test('Touch chooser deploys and faces the independent medic without using a slot; teammates retain automatic position', () => {
   const h = prep(2), m = h.m, ps = h.ps('p_0'), other = h.ps('p_1');
   ps.bandId = 'band_amedic';
@@ -241,6 +293,13 @@ test('new strategy source rebuild is idempotent, names and icons are correct, an
   assert.equal(files.bands.band_closure.effectName, '意外收获');
   assert.equal(files.bands.band_closure.desc, '【意外收获】每次干员精锐后有20%使选择干员阶数+1');
   assert.deepEqual(files.bands.band_closure.buffs, [{ key: 'custom_closure_reward_upgrade', bb: { chance: 0.2 }, bbStr: {} }]);
+  const kirara = files.bands.band_kirara;
+  assert.match(kirara.desc, /每使用20资金/);
+  assert.match(kirara.desc, /25%概率原价售出.*伪随机/);
+  assert.equal(kirara.desc, files.effects[kirara.effectId].desc);
+  assert.deepEqual(kirara.buffs.find(b => b.key === 'custom_kirara_sell_rebate'),
+    { key: 'custom_kirara_sell_rebate', bb: { chance: 0.25 }, bbStr: {} });
+  assert.ok(kirara.buffs.some(b => b.key === 'band_coin_cost_gain_random_char_by_shop_level'));
   const assets = JSON.parse(readFileSync(new URL('../../data/assets.json', import.meta.url)));
   applyStrategyAssets(assets); const once = JSON.stringify(assets); applyStrategyAssets(assets);
   assert.equal(JSON.stringify(assets), once);
