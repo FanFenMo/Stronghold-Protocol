@@ -247,7 +247,7 @@ export function reinforcementPool(gd, elite) {
 
 function addUltimateReinforcement(gd, rng, factions, round, wave, solo = true) {
   if (!gd.ultimate.extraEnemy || round < 6 || round === gd.middleBossRound) return wave;
-  const schedule = factions?.schedule ?? factions;
+  const schedule = factions?.schedule ?? factions?.factions?.schedule ?? factions;
   const elite = gd.ultimate.eliteReinforcement && round >= 13;
   const pool = reinforcementPool(gd, elite);
   const key = schedule?.reinforcements?.[round] ?? pool[Math.floor(rng() * pool.length)];

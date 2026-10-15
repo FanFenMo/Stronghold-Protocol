@@ -142,6 +142,8 @@ test('reinforcements are shared, scaled, visible and unpaid; middle boss is excl
       assert.equal(adds.length, count, `n${level} R${r}`);
       assert.deepEqual(wave.spawns, build().spawns);
       if (!count) continue;
+      const fromSetup = boss ? buildBossWave(gd, createRng(99), setup, r, { bossId: id, solo: false }) : buildNormalWave(gd, createRng(99), setup, r);
+      assert.deepEqual(fromSetup.spawns, wave.spawns, 'setup and faction inputs share the preselected reinforcement');
       const elite = level >= 15 && r >= 13;
       assert.ok(reinforcementPool(gd, elite).includes(adds[0].enemyKey));
       for (const s of adds) {
