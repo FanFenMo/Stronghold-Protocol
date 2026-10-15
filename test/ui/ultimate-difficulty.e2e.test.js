@@ -72,6 +72,7 @@ test('n16 picker, two announced bosses and Node/browser combat parity on desktop
           render(h(UltimateDifficultyPicker, { value: 16 }), document.getElementById('app'));
         });
         await page.waitForSelector('.udepth__effects li');
+        assert.equal(await page.$eval('.udepth', el => getComputedStyle(el).display), 'grid');
         assert.equal(await page.$$eval('.udepth__effects li', els => els.length), 16);
         assert.equal(await page.$$eval('.is-locked', els => els.length), 0);
         const effects = await page.$eval('.udepth__brief', el => el.textContent);
