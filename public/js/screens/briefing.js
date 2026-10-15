@@ -12,7 +12,7 @@ import { StepHeader, ExitModal } from '../ui/matchChrome.js';
 import { MatchInfo, matchInfoModel } from '../ui/matchInfo.js';
 import { LoadoutButton } from './loadout.js';
 import { actions } from '../ui/gameActions.js';
-import { factionTypes, sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
+import { factionTypes, sortedPlayers, phaseTotalSeconds, matchLeaders } from '../ui/gameLogic.js';
 import { enemyIconUrl, factionIconUrl } from '../ui/assetUrls.js';
 import { useStore } from '../store.js';
 import { UltimateDifficultySummary } from '../ui/ultimateDifficulty.js';
@@ -34,8 +34,10 @@ export function BriefingScreen() {
   const readyN = players.filter((p) => p.ready).length;
   const mode = gd.config?.modes?.[pub.modeId];
   const info = matchInfoModel(pub, { bonds: gd.list('bonds'), chess: gd.chess, mode });
-  const boss = pub.bossId ? gd.boss(pub.bossId) : null;
-  const bossEnemy = boss ? gd.enemy(boss.enemyKey) : null;
+  const leaders = matchLeaders(pub).map(leader => {
+    const boss = gd.boss(leader.id);
+    return { ...leader, boss, bossEnemy: boss ? gd.enemy(boss.enemyKey) : null };
+  });
   const stage = pub.stageId ? gd.stage(pub.stageId) : null;
   // the mode's battlefield pool (config.json modes[].stages): 标准 is always 战场#01, 险境+ draw one at random
   const poolN = Array.isArray(mode?.stages) ? mode.stages.length : 0;
@@ -56,8 +58,8 @@ export function BriefingScreen() {
     <${StepHeader} step=${1} of=${2} title="确认本局信息" micro="BRIEFING // INFO CHECK" pub=${pub}
       total=${phaseTotalSeconds(pub, gd.config)} onExit=${() => setExit(true)} />
     <main class="brief__main">
-      <section class="brief__left">
-        <div class="brief-boss brackets">
+      <section class=${cx('brief__left', leaders.length > 1 && 'brief__left--leaders')}>
+        ${leaders.map(({ boss, bossEnemy, round, label }) => html`<div class="brief-boss brackets" key=${round}>
           <${MicroLabel} tone="gold">ENEMY LEADER // 敌方领袖</${MicroLabel}>
           <div class="brief-boss__art">
             <div class="brief-boss__ring" aria-hidden="true"></div>
@@ -66,12 +68,12 @@ export function BriefingScreen() {
           </div>
           <div class="brief-boss__text">
             <h2 class="brief-boss__name">${boss?.name || bossEnemy?.name || '未知领袖'}</h2>
-            <span class="brief-boss__when">第 <b class="num">${pub.bossRound ?? mode?.bossRound ?? pub.lastRound ?? 14}</b> 回合 · 最终攻势</span>
+            <span class="brief-boss__when">第 <b class="num">${round}</b> 回合 · ${label}</span>
             ${Array.isArray(boss?.abilities) && boss.abilities.length ? html`<ul class="brief-boss__abil">
               ${boss.abilities.slice(0, 3).map((a, i) => html`<li key=${i}><${RichText} text=${a} /></li>`)}
             </ul>` : null}
           </div>
-        </div>
+        </div>`)}
         <div class="brief-stage">
           <span class="brief-stage__k"><${MicroLabel}>BATTLEFIELD</${MicroLabel}>${pool ? html`<span class="brief-stage__pool">${pool}</span>` : null}</span>
           <span class="brief-stage__name"><${Icon} name="rook" />${stage?.name || pub.stageId || '—'}</span>

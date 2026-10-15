@@ -74,3 +74,70 @@ test('BattleSpec keeps the level through JSON and both simulation constructions 
   assert.equal(remote.allyUnits[0].base.atk, h.unit(1).base.atk);
   assert.deepEqual(remote.ultimate, h.b.ultimate);
 });
+
+test('n9 HP and n10 dual defense apply once, including summons and unite carry', () => {
+  for (const n of [8, 9, 10, 15, 16]) {
+    const h = field(n), e = h.spawn('enemy_test', { mods: { hpMul: 2, defMul: 3, resMul: 2 } });
+    assert.ok(Math.abs(e.base.maxHp - 2000 * 1.15 * (n >= 9 ? 1.2 : 1)) < 1e-8);
+    const def = field(n, { kind: 'unite' }).spawn('enemy_test', { mods: e.mods });
+    assert.deepEqual(def.base, e.base);
+  }
+  const h = field(10, { defs: { enemies: { enemy_test: enemyRec({ def: 100, res: 20 }) } } });
+  const e = h.spawn('enemy_test');
+  assert.ok(Math.abs(e.base.def - 110) < 1e-8); assert.equal(e.base.res, 22);
+});
+
+test('n13 attack and n14 defense reduce final operator attributes without stacking on redeploy', () => {
+  for (const level of [12, 13, 14, 16]) {
+    const h = field(level); h.b.start(); const u = h.unit(1);
+    h.b.addBuff(u, { key: 'test:stats', persist: true, mods: { atkFlat: 100, atkPct: 1, defFlat: 100, defPct: 1 } });
+    assert.equal(u.s.atk, 1100 * (level >= 13 ? 0.9 : 1));
+    assert.equal(u.s.def, 600 * (level >= 14 ? 0.9 : 1));
+    h.b.emit('deploy', { unit: u, initial: false });
+    assert.equal(u.s.atk, 1100 * (level >= 13 ? 0.9 : 1));
+  }
+});
+
+test('middle boss and escorts reuse R14 stats at half HP and 80% ATK; n16 buffs only leaders', () => {
+  for (const n of [12, 16]) {
+    const h = field(n, { round: 12 });
+    const escort = h.spawn('enemy_test');
+    assert.ok(Math.abs(escort.base.maxHp - 1000 * 1.15 * 1.2 * 0.5) < 1e-8);
+    assert.ok(Math.abs(escort.base.atk - 200 * 1.1 * 0.8) < 1e-8);
+    const boss = h.spawn('enemy_test', { tag: 'boss' });
+    assert.ok(Math.abs(boss.base.atk - escort.base.atk * (n === 16 ? 1.5 : 1)) < 1e-8);
+  }
+});
+
+test('n16 reflects exactly 5% of actual HP loss through shields and stops after R19', () => {
+  for (const round of [12, 19, 20, 21]) {
+    const h = field(16, { round }); h.b.start(); const u = h.unit(1);
+    h.b.addBuff(u, { key: 'shield', shield: 1e6 });
+    const e = h.spawn('enemy_test', { pos: [10, 5] });
+    const dealt = h.b.dealDamage(u, e, { amount: 1e5, type: 'phys', canDodge: false });
+    assert.equal(u.hp, 10000 - (round <= 19 ? dealt * 0.05 : 0), 'overkill uses HP actually lost, not requested damage');
+    const before = u.hp;
+    h.b.loseHp(h.spawn('enemy_test'), 100, { source: u });
+    assert.equal(u.hp, before, 'HP drain cannot trigger reflection');
+    assert.equal(h.b.errorCount, 0);
+  }
+});
+
+test('n16 bosses have 30-hit true-only shields, restored every 60 game seconds', () => {
+  const h = field(16, { kind: 'boss', round: 20, timeLimit: Infinity });
+  h.b.start(); const u = h.unit(1);
+  for (const ally of h.b.allyUnits) ally.profile.noAttack = true;
+  const e = h.spawn('enemy_test', { tag: 'boss', mods: { hpMul: 1000 } });
+  e.profile.noAttack = true; e.base.moveSpeed = 0; e.markDirty();
+  const hit = type => h.b.dealDamage(u, e, { amount: 10, type, canDodge: false });
+  assert.ok(hit('phys') > 0); assert.ok(hit('arts') > 0); assert.ok(hit('elemental') > 0);
+  for (let i = 0; i < 30; i++) assert.equal(hit('true'), 0);
+  assert.equal(hit('true'), 10);
+  h.run(59.9); assert.equal(hit('true'), 10);
+  h.run(0.2); assert.equal(e.findBuff('ultimate:trueShield').shieldHits, 30);
+  assert.equal(hit('true'), 0);
+  h.run(60); assert.equal(e.findBuff('ultimate:trueShield').shieldHits, 30, 'refresh replaces remaining charges');
+  assert.equal(hit('true'), 0);
+  assert.ok(h.b.dealDamage(u, h.spawn('enemy_test'), { amount: 10, type: 'true' }) > 0);
+  assert.equal(h.b.errorCount, 0);
+});

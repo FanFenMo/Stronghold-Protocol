@@ -329,7 +329,7 @@ export function applyHpLoss(battle, source, target, amount, dmg) {
     const shown = dmg.type === 'element' ? dmg.element : dmg.type === 'elemental' ? (dmg.element || 'true') : dmg.type;
     battle._ev(['dmg', target.id, Math.round(amount), shown]);
   }
-  if (battle._hooks.damaged) battle.emit('damaged', { source: hs, target, amount, type: dmg ? dmg.type : 'true', dmg, credit: source });
+  if (battle._hooks.damaged) battle.emit('damaged', { source: hs, target, amount, dealt, type: dmg ? dmg.type : 'true', dmg, credit: source });
   if (target.side === 'ally' && target.skill && dmg && !dmg.noSp && dmg.type !== 'element') battle._skills.onDamaged(target);
   const dead = target.bossPool ? target.bossPool.hp <= 0 : target.hp <= 0;
   if (dead && target.alive) battle.kill(target, source);

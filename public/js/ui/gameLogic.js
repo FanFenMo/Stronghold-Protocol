@@ -77,6 +77,14 @@ export const isCombatPhase = (phase) => COMBAT_PHASES.has(phase);
 export const showDeadPill = (alive, phase) => !alive && !COMBAT_PHASES.has(phase) && phase !== PHASE.SETTLE;
 export const isBossPhase = (phase) => phase === PHASE.FINAL_ASSAULT || phase === PHASE.HIDDEN_CORE;
 
+/** Both announced leaders are visible throughout the match, including before the intermediate encounter. */
+export function matchLeaders(pub) {
+  return [
+    ...(pub?.middleBossId ? [{ id: pub.middleBossId, round: pub.middleBossRound, label: '中间 BOSS' }] : []),
+    { id: pub?.bossId, round: pub?.bossRound ?? pub?.lastRound ?? 14, label: '最终攻势' },
+  ];
+}
+
 /**
  * Camera of the own prep board (research 09 §1.2 "Final Assault, right side", DESIGN §15): in the prep of a boss round
  * (最终攻势 / 隐秘核心: `pub.round` is `bossRound` or `hiddenRound`) the pieces stand on the player's half of the shared
@@ -90,7 +98,7 @@ export const isBossPhase = (phase) => phase === PHASE.FINAL_ASSAULT || phase ===
 export function prepCamera(pub, myId) {
   const normal = { kind: 'prep', opts: { rect: { ...GEO.NORMAL_RECT }, side: 'L' } };
   const r = pub?.round;
-  if (!Number.isInteger(r) || r <= 0 || !(r === pub.bossRound || r === pub.hiddenRound)) return normal;
+  if (!Number.isInteger(r) || r <= 0 || !(r === pub.bossRound || r === pub.hiddenRound || r === pub.middleBossRound)) return normal;
   const alive = (Array.isArray(pub.players) ? pub.players : []).filter((p) => isObj(p) && p.alive !== false)
     .sort((a, b) => int(a.seat, 99) - int(b.seat, 99));
   const idx = alive.findIndex((p) => p.playerId === myId);

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, MicroLabel } from './components.js';
 import { ULTIMATE_LEVELS, ULTIMATE_MAX_LEVEL, ultimateAvailable, ultimateEffects } from '../../../shared/ultimateDifficulty.js';
 
-const LEVEL_NAMES = ['原始模拟', '攻势增幅', '生命强化', '毒性残留', '疾行敌潮', '战力压制', '持久作战', '领袖强化', '资金紧缩'];
+const LEVEL_NAMES = ['原始模拟', '攻势增幅', '生命强化', '毒性残留', '疾行敌潮', '战力压制', '持久作战', '领袖强化', '资金紧缩',
+  '生命再造', '双重坚壁', '随机增援', '纵深作战', '攻击抑制', '防御削弱', '精英增援', '终极威胁'];
 const clampLevel = (n) => Math.max(0, Math.min(ULTIMATE_MAX_LEVEL, n));
 
 // The red becomes darker and more saturated with depth; the selected text stays light.

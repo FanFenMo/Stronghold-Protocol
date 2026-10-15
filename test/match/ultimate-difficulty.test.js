@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameData } from '../../server/match/gamedata.js';
-import { setupMatchWaves, buildNormalWave, buildBossWave } from '../../server/match/waves.js';
+import { setupMatchWaves, buildNormalWave, buildBossWave, reinforcementPool, previewOf } from '../../server/match/waves.js';
 import { bossPoolHp } from '../../server/match/finalAssault.js';
 import { createRng } from '../../server/sim/rng.js';
 import { Lobby, Room } from '../../server/lobby.js';
@@ -85,7 +85,7 @@ test('n7 scales both shared leaders by n2 × n7 once; n8 deducts only base incom
   assert.equal(normal.bossRound, 14);
 });
 
-test('room level changes synchronize and cancel ready; n9–n16 cannot start', () => {
+test('room level changes synchronize and cancel ready; n9–n16 can start', () => {
   const room = new Room('TEST', 'coop', 'ABYSS', 0);
   room.hostId = 'host';
   room.seats[0] = { seat: 0, playerId: 'host', name: 'Host', isBot: false, connected: true, ready: false };
@@ -94,16 +94,83 @@ test('room level changes synchronize and cancel ready; n9–n16 cannot start', (
   lobby.roomOf = () => room;
   const states = [];
   lobby.broadcastState = (r) => states.push(r.toState());
+  lobby.startMatch = r => ({ ok: true, level: r.ultimateLevel });
   lobby.setDifficulty({ playerId: 'host' }, { difficulty: 'ABYSS', ultimateLevel: 8 });
   assert.equal(room.seats[1].ready, false);
   assert.equal(states.at(-1).ultimateLevel, 8);
   assert.equal(lobby.setDifficulty({ playerId: 'guest' }, { difficulty: 'ABYSS', ultimateLevel: 0 }).error, ERR.NOT_HOST);
   for (let n = 9; n <= 16; n++) {
     lobby.setDifficulty({ playerId: 'host' }, { difficulty: 'ABYSS', ultimateLevel: n });
-    assert.equal(lobby.start({ playerId: 'host' }).error, ERR.BAD_MSG);
+    room.seats[1].ready = true;
+    assert.deepEqual(lobby.start({ playerId: 'host' }), { ok: true, level: n });
   }
   lobby.setDifficulty({ playerId: 'host' }, { difficulty: 'NORMAL' });
   assert.equal(room.ultimateLevel, 0);
+});
+
+test('n9 and n16 shared boss pools include each cumulative HP multiplier exactly once', () => {
+  for (const mode of ['mode_single_abyss', 'mode_multi_abyss']) {
+    const base = new GameData(DATA, mode), n9 = new GameData(DATA, mode, 9), n16 = new GameData(DATA, mode, 16);
+    for (const id of ['boss_1', 'boss_8']) {
+      const original = base.bossPoolHp(id);
+      assert.equal(n9.bossPoolHp(id), Math.round(original * 1.15 * 1.2 * 1.2));
+      assert.equal(n16.bossPoolHp(id), Math.round(original * 1.15 * 1.2 * 1.2 * 2));
+      assert.equal(bossPoolHp(n16, id, 4, 12), Math.round(original * 1.15 * 1.2 * 1.2));
+      assert.equal(n16.bossPoolHp(id, 4, 12), bossPoolHp(n16, id, 4, 12));
+    }
+    assert.equal(n16.bossRound, 20); assert.equal(n16.hiddenRound, 21);
+    assert.equal(n16.roundCfg(12).bossTemplates.boss_1, base.roundCfg(14).bossTemplates.boss_1);
+    assert.deepEqual(n16.enemyScale(12), base.enemyScale(14));
+    for (let r = 14; r <= 19; r++) {
+      assert.equal(n16.roundCfg(r).template, base.roundCfg(13).template);
+      assert.ok(n16.enemyScale(r).hpMul > n16.enemyScale(r - 1).hpMul);
+      assert.ok(n16.enemyScale(r).atkMul > n16.enemyScale(r - 1).atkMul);
+    }
+  }
+});
+
+test('reinforcements are shared, scaled, visible and unpaid; middle boss is excluded', () => {
+  for (const level of [11, 12, 15, 16]) {
+    const gd = new GameData(DATA, 'mode_multi_abyss', level);
+    const setup = setupMatchWaves(gd, createRng(42));
+    assert.deepEqual(setup, setupMatchWaves(gd, createRng(42)));
+    for (let r = 1; r <= gd.hiddenRound; r++) {
+      const boss = gd.isBossRound(r), id = r === 12 && gd.middleBossRound ? setup.middleBossId : r === gd.hiddenRound ? setup.hiddenBossId : setup.bossId;
+      const build = () => boss ? buildBossWave(gd, createRng(7), setup.factions, r, { bossId: id, solo: false }) : buildNormalWave(gd, createRng(7), setup.factions, r);
+      const wave = build(), adds = wave.spawns.filter(s => s.tag === 'ultimate_extra');
+      const count = r >= 6 && r !== gd.middleBossRound ? (boss ? 2 : 1) : 0;
+      assert.equal(adds.length, count, `n${level} R${r}`);
+      assert.deepEqual(wave.spawns, build().spawns);
+      if (!count) continue;
+      const elite = level >= 15 && r >= 13;
+      assert.ok(reinforcementPool(gd, elite).includes(adds[0].enemyKey));
+      for (const s of adds) {
+        assert.equal(s.count, 1); assert.equal(s.bounty, undefined);
+        assert.equal(s.mods.hpMul, gd.enemyScale(r).hpMul * (elite ? 1.1 : 1));
+        assert.equal(s.mods.atkMul, gd.enemyScale(r).atkMul);
+        assert.equal(s.enemyKey, adds[0].enemyKey);
+        assert.ok(previewOf(wave.spawns).some(p => p.enemyKey === s.enemyKey));
+      }
+      if (boss) assert.notEqual(wave.routes[adds[0].routeIndex].end[1] < 10, wave.routes[adds[1].routeIndex].end[1] < 10);
+    }
+  }
+});
+
+for (const clientCombat of [false, true]) test(`n12 middle boss returns to R13; only R20 unlocks hidden (client=${clientCombat})`, () => {
+  const h = makeMatch({ mode: 'coop', difficulty: 'ABYSS', ultimateLevel: 12, humans: 3, fake: true, clientCombat,
+    script: () => ({ bossDps: 1e9 }) }).start();
+  assert.ok(h.drive(() => h.m.phase === PHASE.PREP && h.m.round === 12));
+  const pub = h.m.publicView();
+  assert.ok(pub.middleBossId); assert.equal(pub.middleBossRound, 12); assert.equal(pub.bossRound, 20);
+  assert.equal(h.m.wave, null); assert.equal(h.m.bossWaves.length, 2);
+  for (const ps of h.m.players.values()) { ps.bondCountBonus.yanShip = 3; ps.layers.yanShip = 601; ps.recompute(); }
+  assert.ok(h.drive(() => h.m.phase === PHASE.PREP && h.m.round === 13));
+  assert.equal(h.m.hiddenReached, false); assert.equal(h.m.teamLp, null); assert.equal(h.m.bossPool, null);
+  assert.ok(h.drive(() => h.m.phase === PHASE.PREP && h.m.round === 20));
+  assert.ok(h.drive(() => h.m.phase === PHASE.PREP && h.m.round === 21));
+  assert.ok(h.drive(() => h.ended != null));
+  assert.equal(h.m.lastResultMsg.hiddenCleared, true); assert.equal(h.m.lastResultMsg.roundsPassed, 21);
+  assert.equal(h.m.errorCount, 0); h.m.dispose();
 });
 
 test('n6 match flow reaches ordinary R14–16, leader R17 and eligible hidden R18', () => {

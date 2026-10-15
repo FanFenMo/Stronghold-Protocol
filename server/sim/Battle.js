@@ -48,6 +48,7 @@ import { TICK, ROWS, COLS, DP_DEFAULTS, MAX_HOOK_DEPTH, AUTO_OP_COOLDOWN } from 
 import { GEO } from '../../shared/constants.js';
 import { ultimateLevelFor, ultimateRules } from '../../shared/ultimateDifficulty.js';
 import { installUltimatePoison } from './ultimatePoison.js';
+import { installUltimateCombat } from './ultimateCombat.js';
 import { createRng } from './rng.js';
 import { Grid } from './grid.js';
 import { ProjectileSystem } from './projectiles.js';
@@ -178,6 +179,7 @@ export class Battle {
     this._safe(() => installContent(this, { mode: this.contentMode, extra: opts.extraContent }), 'installContent');
     for (const u of this.allyUnits) if (!u.kit) this._setupUnit(u);
     installUltimatePoison(this);
+    installUltimateCombat(this);
     if (typeof opts.setup === 'function') this._safe(() => opts.setup(this), 'opts.setup');
   }
 

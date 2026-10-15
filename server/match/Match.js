@@ -331,6 +331,7 @@ export class Match {
     this.stage = this.stageId ? this.gd.stage(this.stageId) : null;
     this.factions = setup.factions;
     this.bossId = setup.bossId;
+    this.middleBossId = setup.middleBossId ?? null;
     this.hiddenBossId = setup.hiddenBossId;
     const bans = drawDisabledBonds(this.gd, this.rngSetup);
     this.disabledBonds = bans.drawn;
@@ -898,6 +899,8 @@ export class Match {
       drawnDisabledBonds: this.disabledBonds.slice(),
       bannedChess: this.bannedChess.slice(),
       bossId: this.bossId,
+      middleBossId: this.middleBossId,
+      middleBossRound: this.gd.middleBossRound,
       hiddenBossId: this.hiddenBossId,
       bossRound: this.gd.bossRound,
       hiddenRound: this.gd.hiddenRound,
@@ -1215,7 +1218,7 @@ export class Match {
     const units = [];
     // the flags of the battle it previews: a normal round gains IN_BATTLE layers from its start (a <战斗开始时> layer gain
     // raises bond stats at t = 0 there too); the Final Assault / Hidden Core fight without (previewed as a normal field)
-    const bossRound = this.round === this.gd.bossRound || this.round === this.gd.hiddenRound;
+    const bossRound = this.gd.isBossRound(this.round);
     const b = this.newBattle({
       seed: deriveSeed(this.seed, `preview:${this.round}:${ps.seat}`), kind: 'normal', modeId: this.modeId, round: this.round,
       stageId: this.stageId, rect: { ...GEO.NORMAL_RECT }, timeLimit: 60, players, spawns: [], routes: this.wave ? this.wave.routes : [],
@@ -1542,7 +1545,7 @@ export class Match {
     // round start: its recompute() checks the board on the field the player deploys on this round (deployFieldOf reads
     // the boss pairing), so R14 → R15 never re-checks a boss-field board against the normal field (user playtest #5
     // item 7). rngWaves is used only here, so the order leaves every random stream unchanged.
-    const isBoss = r === this.gd.bossRound || r === this.gd.hiddenRound;
+    const isBoss = this.gd.isBossRound(r);
     if (isBoss) {
       this._planBossWaves();
     } else {
@@ -1564,7 +1567,7 @@ export class Match {
   /** The boss round's fields (seat pairs of the alive players) and their templates, generated for the prep preview. */
   _planBossWaves() {
     const r = this.round;
-    const bossId = r === this.gd.hiddenRound && r !== this.gd.bossRound ? this.hiddenBossId : this.bossId;
+    const bossId = r === this.gd.middleBossRound ? this.middleBossId : r === this.gd.hiddenRound && r !== this.gd.bossRound ? this.hiddenBossId : this.bossId;
     this.bossWaves = pairPlayers(this.alivePlayers()).map((g) => ({
       players: g.map((p) => p.playerId),
       wave: buildBossWave(this.gd, this.rngWaves, this.factions, r, { bossId, solo: this.isSolo || g.length === 1 }),
@@ -1884,7 +1887,9 @@ export class Match {
     for (const ps of alive) this.dispatch(ps, 'onPrepEnd', { round: this.round });
     for (const ps of alive) ps.endPrep();
     const r = this.round;
-    if (r === this.gd.bossRound) {
+    if (r === this.gd.middleBossRound) {
+      this.startFinalAssault(false);
+    } else if (r === this.gd.bossRound) {
       this.hiddenLayerSum = alive.reduce((s, p) => s + p.activatedLayers(), 0);
       this.startFinalAssault(false);
     } else if (r === this.gd.hiddenRound) {
@@ -3011,17 +3016,18 @@ export class Match {
     const alive = this.alivePlayers();
     if (!alive.length) { this.finish({ victory: false, reason: 'eliminated' }); return; }
     this.phase = hidden ? PHASE.HIDDEN_CORE : PHASE.FINAL_ASSAULT;
+    this._finalEnding = null;
     this.lastResults = new Map();
     if (!hidden) {
       this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
       for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
     }
-    const bossId = hidden ? this.hiddenBossId : this.bossId;
+    const bossId = this.round === this.gd.middleBossRound ? this.middleBossId : hidden ? this.hiddenBossId : this.bossId;
     // BOSS_HIT tickers ("对敌方领袖造成的伤害超过20% / 50% / 80%"): the player's damage to THIS leader over its pool —
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
     // rounds, so it would credit the Final Assault's damage to the hidden leader ("隐藏boss还没打就出了50%播报").
     const hitSteps = new Map();
-    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length), {
+    const pool = new SharedBossPool(bossPoolHp(this.gd, bossId, alive.length, this.round), {
       onHit: (pid, dmg) => {
         const ps = this.players.get(pid);
         if (!ps) return;
@@ -3228,6 +3234,17 @@ export class Match {
     this.overtimeAt = 0;
     this.markPublic();
     this.runner = null;
+    if (this.round === this.gd.middleBossRound) {
+      this.later(this.scaled(DELAYS.SETTLE), () => {
+        if (!victory) { this.finish({ victory: false, reason: 'defeat' }); return; }
+        this.bossPool = null;
+        this.teamLp = null;
+        this._finalEnding = null;
+        for (const ps of this.alivePlayers()) ps.lpAtFinal = null;
+        this.startRound(this.round + 1);
+      });
+      return;
+    }
     if (!hidden) {
       const eligible = victory && !!this.hiddenBossId && hiddenEligible(this.gd, { layerSum: this.hiddenLayerSum, teamLp: this.teamLp });
       this.later(this.scaled(DELAYS.SETTLE), () => {

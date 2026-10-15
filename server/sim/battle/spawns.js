@@ -111,11 +111,16 @@ export class BattleSpawns {
     const mm = (v, pos = false) => { const n = fin(v, 1); return n < 0 || (pos && n <= 0) ? 1 : n; };
     const m0 = opts.mods || {};
     const m = { hpMul: mm(m0.hpMul, true), atkMul: mm(m0.atkMul), defMul: mm(m0.defMul), resMul: mm(m0.resMul), speedMul: mm(m0.speedMul) };
+    const middle = this.round === this.ultimate.middleBossRound;
+    const boss = opts.tag === 'boss';
+    const bossDef = boss ? this.ultimate.bossDef : 1;
     const e = new Unit({
       id: ++this._idSeq, side: 'enemy', kind: 'enemy', def, defId: def.key ?? enemyKey, name: def.name,
       x: start[1], y: start[0], motion: def.motion,
       base: {
-        maxHp: def.maxHp * m.hpMul * this.ultimate.enemyHp, atk: def.atk * m.atkMul * this.ultimate.enemyAtk, def: def.def * (m.defMul ?? 1), res: def.res * (m.resMul ?? 1),
+        maxHp: def.maxHp * m.hpMul * this.ultimate.enemyHp * (middle ? 0.5 : 1),
+        atk: def.atk * m.atkMul * this.ultimate.enemyAtk * (middle ? 0.8 : 1) * (boss ? this.ultimate.bossAtk : 1),
+        def: def.def * m.defMul * this.ultimate.enemyDef * bossDef, res: def.res * m.resMul * this.ultimate.enemyDef * bossDef,
         aspd: def.aspd, bat: def.bat, blockCnt: 0, moveSpeed: def.moveSpeed * m.speedMul * this.ultimate.enemySpeed, spRecovery: 0,
         tauntLevel: def.tauntLevel, massLevel: def.massLevel, hpRecoveryPerSec: def.hpRecoveryPerSec, rangeRadius: def.rangeRadius,
       },

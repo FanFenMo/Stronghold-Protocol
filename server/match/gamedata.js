@@ -132,13 +132,14 @@ export class GameData {
    * @param {number} [aliveCount] alive players at the Final Assault / Hidden Core start (co-op)
    * @returns {number}
    */
-  bossPoolHp(bossId, aliveCount) {
+  bossPoolHp(bossId, aliveCount, round = this.bossRound) {
     const boss = this.boss(bossId);
     const diff = this.difficulty;
     let base = boss && boss.bloodPoint && Number.isFinite(boss.bloodPoint[diff]) ? boss.bloodPoint[diff] : null;
     if (base == null && boss && boss.bloodPoint) base = Object.values(boss.bloodPoint).find((v) => Number.isFinite(v)) ?? null;
     if (base == null) base = 500000;
-    return Math.max(1, Math.round(base * this.bossPoolShare(aliveCount) * this.ultimate.enemyHp * this.ultimate.bossHp));
+    const middle = round === this.middleBossRound ? 0.5 : 1;
+    return Math.max(1, Math.round(base * this.bossPoolShare(aliveCount) * this.ultimate.enemyHp * this.ultimate.bossHp * this.ultimate.bossHpFinal * middle));
   }
 
   /**
@@ -295,6 +296,8 @@ export class GameData {
   }
   get bossRound() { return Number.isInteger(this.mode.bossRound) && this.mode.bossRound > 0 ? this.mode.bossRound + this.ultimate.extraRounds : this.lastRound; }
   get hiddenRound() { return Number.isInteger(this.mode.hiddenRound) && this.mode.hiddenRound > 0 ? this.mode.hiddenRound + this.ultimate.extraRounds : null; }
+  get middleBossRound() { return this.ultimate.middleBossRound; }
+  isBossRound(r) { return r === this.bossRound || r === this.hiddenRound || r === this.middleBossRound; }
   get maxShopLevel() { return posIntOr(this.mode.maxShopLevel, DEFAULTS.maxShopLevel); }
 
   roundCfg(r) {
@@ -302,7 +305,8 @@ export class GameData {
     // Added ordinary rounds reuse the final ordinary template; leader templates move together.
     const extra = this.ultimate.extraRounds;
     let source = r;
-    if (extra && r >= this.bossRound) source = r - extra;
+    if (r === this.middleBossRound) source = this.bossRound - extra;
+    else if (extra && r >= this.bossRound) source = r - extra;
     else if (extra && r >= this.bossRound - extra) source = this.bossRound - extra - 1;
     const rc = rounds && typeof rounds === 'object' && rounds[String(source)] && typeof rounds[String(source)] === 'object' ? rounds[String(source)] : null;
     return rc && source !== r && r < this.bossRound ? { ...rc, isSpPrepare: false } : rc;
@@ -378,8 +382,11 @@ export class GameData {
 
   /** Official enemy multipliers of round r (config enemyScale: the PRTS table + 终极 speed ×1.15 from R3). */
   baseEnemyScale(r) {
+    // The intermediate encounter uses the original R14 boss and escort attributes.
+    const middle = r === this.middleBossRound;
+    if (middle) r = this.bossRound - this.ultimate.extraRounds;
     let e = this.mode.enemyScale && this.mode.enemyScale[String(r)];
-    if (this.ultimate.extraRounds && r >= this.bossRound - this.ultimate.extraRounds) {
+    if (this.ultimate.extraRounds && r >= this.bossRound - this.ultimate.extraRounds && !middle) {
       const last = this.bossRound - this.ultimate.extraRounds - 1;
       const previous = this.mode.enemyScale?.[String(last)];
       const next = this.mode.enemyScale?.[String(last + 1)];

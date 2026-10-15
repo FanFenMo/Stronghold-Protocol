@@ -35,6 +35,10 @@
 /* ---- briefing layout ---- */
 .brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-columns: 6.2rem 1fr; gap: .36rem; padding: .3rem .5rem .1rem; }
 .brief__left { display: flex; flex-direction: column; gap: .2rem; min-height: 0; }
+.brief__left--leaders { overflow-y: auto; padding-right: .06rem; }
+.brief__left--leaders .brief-boss { flex: none; grid-template-columns: 1.25rem 1fr; }
+.brief__left--leaders .brief-boss__art { width: 1.25rem; height: 1.25rem; }
+.brief__left--leaders .brief-boss__name { font-size: calc(.26 * var(--t)); }
 .brief__right { display: flex; flex-direction: column; gap: .2rem; min-height: 0; overflow: auto; padding-right: .06rem; }
 
 .brief-boss {

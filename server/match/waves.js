@@ -208,16 +208,57 @@ export function setupMatchWaves(gd, rng) {
   for (let r = 1; r <= typeSlots.length; r++) picks.push(pickRoundEntry(gd, srng, typeSlots[r - 1], r));
   if (gd.ultimate.extraRounds) {
     // Preserve R1–13 and the original leaders' choices, insert one new round per chosen faction.
-    const extraTypes = chosen.slice();
-    srng.shuffle(extraTypes);
+    const extraTypes = [];
+    while (extraTypes.length < gd.ultimate.extraRounds) {
+      const cycle = chosen.length ? chosen.slice() : ['SPECIAL'];
+      srng.shuffle(cycle);
+      extraTypes.push(...cycle.slice(0, gd.ultimate.extraRounds - extraTypes.length));
+    }
     const at = gd.bossRound - gd.ultimate.extraRounds - 1;
     const extraPicks = extraTypes.map((type, i) => pickRoundEntry(gd, srng, type, at + i + 1));
     typeSlots.splice(at, 0, ...extraTypes);
     picks.splice(at + 1, 0, ...extraPicks);
     for (let r = at + 1; r < picks.length; r++) if (picks[r]) picks[r] = { ...picks[r], round: r };
   }
-  Object.defineProperty(factions, 'schedule', { value: Object.freeze({ typeSlots: typeSlots.slice(), picks }), enumerable: false });
-  return { stageId, factions, bossId, hiddenBossId, typeSlots, picks };
+  const middleBossId = gd.middleBossRound ? weightedPick(createRng(deriveSeed(srng.state(), 'waves:middleBoss')), bw) : null;
+  if (gd.middleBossRound) picks[gd.middleBossRound] = { ...picks[gd.bossRound], round: gd.middleBossRound };
+  const reinforcements = {};
+  if (gd.ultimate.extraEnemy) {
+    const rrng = createRng(deriveSeed(srng.state(), 'waves:reinforcements'));
+    const normal = reinforcementPool(gd, false), elite = reinforcementPool(gd, true);
+    for (let r = 6; r <= (gd.hiddenRound ?? gd.bossRound); r++) {
+      if (r === gd.middleBossRound) continue;
+      const pool = gd.ultimate.eliteReinforcement && r >= 13 ? elite : normal;
+      reinforcements[r] = pool[Math.floor(rrng() * pool.length)];
+    }
+  }
+  Object.defineProperty(factions, 'schedule', { value: Object.freeze({ typeSlots: typeSlots.slice(), picks, reinforcements }), enumerable: false });
+  return { stageId, factions, bossId, hiddenBossId, typeSlots, picks, ...(middleBossId ? { middleBossId } : {}) };
+}
+
+/** N11 draws from all regular enemy factions; N15 uses only the second bounty draft's 2–6 coin targets. */
+export function reinforcementPool(gd, elite) {
+  if (elite) return [...new Set((gd.choices.cards?.bounty ?? [])
+    .filter(c => c.draftPool === 'boss' && c.coin >= 2 && c.coin <= 6 && gd.enemy(c.enemyKey))
+    .map(c => c.enemyKey))].sort();
+  return [...new Set(entryList(gd).flatMap(e => [e.key, ...(e.N ?? []).map(x => typeof x === 'string' ? x : x.key)]))]
+    .filter(key => key !== ACLOON && gd.enemy(key)?.rank === 'NORMAL' && !gd.enemy(key).tokenOnly && !gd.inactiveEnemies.has(key)).sort();
+}
+
+function addUltimateReinforcement(gd, rng, factions, round, wave, solo = true) {
+  if (!gd.ultimate.extraEnemy || round < 6 || round === gd.middleBossRound) return wave;
+  const schedule = factions?.schedule ?? factions;
+  const elite = gd.ultimate.eliteReinforcement && round >= 13;
+  const pool = reinforcementPool(gd, elite);
+  const key = schedule?.reinforcements?.[round] ?? pool[Math.floor(rng() * pool.length)];
+  const fly = isFlyKey(gd, key), scale = scaleFor(gd, round);
+  for (const side of solo ? [null] : ['L', 'R']) {
+    const routeIndex = routeByMotion(wave.routes, fly, side);
+    wave.spawns.push({ time: 4, enemyKey: key, routeIndex, count: 1, interval: 0, tag: 'ultimate_extra',
+      mods: { hpMul: scale.hpMul * (elite ? 1.1 : 1), atkMul: scale.atkMul, speedMul: scale.speedMul, slot: classOf(gd, key) },
+      preview: previewInfo(gd, key, wave.routes[routeIndex], false, !solo || gd.isBossRound(round)) });
+  }
+  return wave;
 }
 
 /**
@@ -374,7 +415,7 @@ export function buildNormalWave(gd, rng, factions, round) {
   if (!tpl) return { templateId, spawns: [], routes: [], extraRoutes: [], timeLimit, overrides: {}, pick: null, entries: { ground: null, fly: null }, actions: [] };
   const pick = roundPick(gd, rng, factions, round);
   const { spawns, actions } = templateSpawns(gd, tpl, round, pick);
-  return {
+  return addUltimateReinforcement(gd, rng, factions, round, {
     templateId,
     spawns,
     routes: Array.isArray(tpl.routes) ? tpl.routes : [],
@@ -384,7 +425,7 @@ export function buildNormalWave(gd, rng, factions, round) {
     pick,
     entries: entriesView(gd, pick),
     actions,
-  };
+  });
 }
 
 /**
@@ -405,7 +446,7 @@ export function buildBossWave(gd, rng, factions, round, { bossId, solo }) {
   if (!tpl) return { templateId, spawns: [], routes: [], extraRoutes: [], timeLimit: Infinity, overrides: {}, pick: null, entries: { ground: null, fly: null }, actions: [] };
   const pick = roundPick(gd, rng, factions, round);
   const { spawns, actions } = templateSpawns(gd, tpl, round, pick);
-  return {
+  return addUltimateReinforcement(gd, rng, factions, round, {
     templateId,
     spawns,
     routes: Array.isArray(tpl.routes) ? tpl.routes : [],
@@ -415,7 +456,7 @@ export function buildBossWave(gd, rng, factions, round, { bossId, solo }) {
     pick,
     entries: entriesView(gd, pick),
     actions,
-  };
+  }, solo);
 }
 
 /** Boss-field column that splits the left (L) and the right (R) player's half (the goals are at cols 2–3 / 17). */

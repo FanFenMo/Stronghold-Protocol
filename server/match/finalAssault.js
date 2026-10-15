@@ -63,7 +63,7 @@ export function pairPlayers(alive) {
 }
 
 /** Shared boss HP for a boss id with `aliveCount` alive players (GameData.bossPoolShare; omitted ⇒ a full team). */
-export function bossPoolHp(gd, bossId, aliveCount) {
+export function bossPoolHp(gd, bossId, aliveCount, round = gd.bossRound) {
   const boss = gd.boss(bossId);
   const diff = gd.difficulty;
   let base = boss && boss.bloodPoint && Number.isFinite(boss.bloodPoint[diff]) ? boss.bloodPoint[diff] : null;
@@ -77,7 +77,8 @@ export function bossPoolHp(gd, bossId, aliveCount) {
     const cfg = gd.config.bossHpScale && typeof gd.config.bossHpScale === 'object' ? gd.config.bossHpScale : {};
     share = gd.isSolo ? (Number.isFinite(scale.solo) ? scale.solo : Number.isFinite(cfg.solo) ? cfg.solo : 0.25) : 1;
   }
-  const difficultyHp = (gd.ultimate?.enemyHp ?? 1) * (gd.ultimate?.bossHp ?? 1);
+  const difficultyHp = (gd.ultimate?.enemyHp ?? 1) * (gd.ultimate?.bossHp ?? 1) * (gd.ultimate?.bossHpFinal ?? 1)
+    * (round === gd.middleBossRound ? 0.5 : 1);
   return Math.max(1, Math.round(base * share * tune * difficultyHp));
 }
 

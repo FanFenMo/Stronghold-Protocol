@@ -9,7 +9,7 @@
 
 import { html, Icon, Tabs, MicroLabel } from './components.js';
 import { Img, UnitThumb, BondGlyph, BandIcon, RichText, GIcon } from './gameComponents.js';
-import { groupEnemies, factionTypes, briefingBondTip } from './gameLogic.js';
+import { groupEnemies, factionTypes, briefingBondTip, matchLeaders } from './gameLogic.js';
 import { matchInfoModel } from './matchInfo.js';
 import { factionIconUrl } from './assetUrls.js';
 import { data } from '../data.js';
@@ -30,7 +30,7 @@ function EnemiesTab({ pub, priv, onEnemy }) {
   const types = factionTypes(pub?.factions);
   const f = data.get('factions')?.types || {};
   const total = rows.reduce((s, r) => s + r.count, 0);
-  const boss = pub?.bossId ? data.lookup('bosses', pub.bossId) : null;
+  const leaders = matchLeaders(pub).map(leader => ({ ...leader, boss: data.lookup('bosses', leader.id) })).filter(leader => leader.boss);
   return html`<div class="edrawer__body">
     <div class="edrawer__sum">
       <span>第 <b class="num">${pub?.round ?? '-'}</b> 回合 · 即将迎击 <b class="num t-orange">${total}</b> 名敌人</span>
@@ -52,11 +52,11 @@ function EnemiesTab({ pub, priv, onEnemy }) {
         <b class="erow__count num">×${r.count}</b>
       </button>`)}
     </div>` : html`<p class="edrawer__empty"><${GIcon} name="target" />暂无敌方情报</p>`}
-    ${boss ? html`<div class="eboss">
+    ${leaders.map(({ boss, round, label }) => html`<div class="eboss" key=${round}>
       <${UnitThumb} kind="enemy" id=${boss.enemyKey} size="md" />
       <div><${MicroLabel} tone="gold">ENEMY LEADER // 敌方领袖</${MicroLabel}><b>${boss.name}</b>
-        <span class="t-lo">第 ${data.get('config')?.modes?.[pub.modeId]?.bossRound ?? pub.lastRound ?? 14} 回合 · 最终攻势</span></div>
-    </div>` : null}
+        <span class="t-lo">第 ${round} 回合 · ${label}</span></div>
+    </div>`)}
   </div>`;
 }
 
