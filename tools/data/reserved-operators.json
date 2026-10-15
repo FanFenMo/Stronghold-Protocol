@@ -1,0 +1,12 @@
+[
+  { "name": "石英", "charId": "char_4063_quartz" },
+  { "name": "星源", "charId": "char_135_halo" },
+  { "name": "星极", "charId": "char_274_astesi" },
+  { "name": "响石", "charId": "char_4214_cairn" },
+  {
+    "name": "谬因",
+    "charId": "char_4229_aphris",
+    "aliases": ["缪因"],
+    "tokens": [{ "name": "中继器", "charId": "token_10070_aphris_pc" }]
+  }
+]
