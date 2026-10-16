@@ -155,6 +155,13 @@ export function applyColumbiaAssets(assets) {
   assets.bondStates = { ...assets.bondStates, [ID]: {
     inactive: '/img/bonds/columbia-inactive.png', active: '/img/bonds/columbia-active.png',
   } };
+  // 六件科技装备的图标。这些是本项目自己的原创素材（不是游戏素材），所以放在
+  // public/img/items/ —— 该目录不在 .gitignore 里，与 public/img/bonds/* 同一存放方式；
+  // 而 public/assets/ 是被忽略的（游戏素材约定）。
+  assets.items = assets.items && typeof assets.items === 'object' ? assets.items : {};
+  for (const it of COLUMBIA_TECH_ITEMS) {
+    assets.items[`trap_columbia_${it.key}`] = `/img/items/columbia-${it.key}.png`;
+  }
   if (assets.stats) assets.stats.bonds = Object.keys(assets.bonds).length;
   if (assets.hash) {
     const { version, hash, generator, stats, ...body } = assets;
