@@ -129,9 +129,9 @@ test('chess: every non-DIY chess has stats, range, classification and a resolvab
   assert.equal(chess.chess_char_1_01_a.targetPriority, 'fly');
 });
 
-test('bonds: 24 bonds with valid members, thresholds and effects', () => {
-  assert.equal(Object.keys(bonds).length, 24);
-  assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 8);
+test('bonds: 25 bonds with valid members, thresholds and effects', () => {
+  assert.equal(Object.keys(bonds).length, 25);
+  assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 9);
   const modes = new Set(['BOARD', 'BOARD_AND_DECK', 'BOARD_ALL_CHESS']);
   for (const b of Object.values(bonds)) {
     assert.ok(modes.has(b.countMode), `${b.bondId}: countMode ${b.countMode}`);
@@ -163,9 +163,9 @@ test('garrisons: all referenced exist; 43 distinct effect keys', () => {
   }
 });
 
-test('items: 115 item chess with valid effects, bonds and golden links', () => {
-  assert.equal(Object.keys(items).length, 115);
-  assert.equal(Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden).length, 56);
+test('items: 121 item chess with valid effects, bonds and golden links', () => {
+  assert.equal(Object.keys(items).length, 121);
+  assert.equal(Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden).length, 62);
   assert.equal(Object.values(items).filter((i) => i.itemType === 'MAGIC').length, 3);
   for (const it of Object.values(items)) {
     assert.ok(effects[it.effectId], `${it.id}: effect ${it.effectId}`);

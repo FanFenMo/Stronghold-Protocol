@@ -41,6 +41,7 @@ import { statusKey, composeUnitRecord, standInRecord, unitForm } from '../shared
 import { extendedGrid } from '../shared/loadoutRecord.js';
 import { FULL_RANK, atRank, stripPotential } from '../shared/potential.js';
 import { applyCustomData } from './custom-data.mjs';
+import { applyColumbiaMemberTags } from './columbia-data.mjs';
 import { applyExpandedRoster } from './expanded-roster-data.mjs';
 import { timesEnemySpeedMultipliers } from './enemy-balance-data.mjs';
 
@@ -4088,6 +4089,9 @@ async function main() {
   const custom = JSON.parse(await readFile(join(ROOT, 'tools/data/custom-operators.json'), 'utf8'));
   applyCustomData(files, custom);
   applyExpandedRoster(files, custom, (ranks, id) => withPotentialData(ranks, id, errors));
+  // 哥伦比亚的成员标记必须在这里补一次：applyExpandedRoster 会重建 chess_external_* 记录并覆盖 bonds，
+  // 只跑 applyCustomData 的话，外援成员（谬因、霍尔海雅）的 columbiaShip 会被抹掉。幂等。
+  applyColumbiaMemberTags(files);
   let total = 0;
   const sizes = {};
   const texts = {};

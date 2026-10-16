@@ -62,7 +62,7 @@ test('matchInfoModel: the two greyed kinds, the briefing order, banned operators
   assert.equal(m.stateOf('sargonShip'), 'drawn');
   assert.equal(m.stateOf('yanShip'), null);
   // bondOrder, then identifier: 调和 (bondOrder 1) leads the add-on row as in the official briefing
-  assert.deepEqual(m.core.map((b) => b.name), ['炎', '萨尔贡', '维多利亚', '谢拉格', '拉特兰', '阿戈尔', '叙拉古', '卡西米尔']);
+  assert.deepEqual(m.core.map((b) => b.name), ['炎', '萨尔贡', '维多利亚', '谢拉格', '拉特兰', '阿戈尔', '叙拉古', '卡西米尔', '哥伦比亚']);
   assert.equal(m.addon[0].name, '调和');
   assert.equal(m.core.length + m.addon.length, Object.keys(DATA.bonds).length, 'every bond, once');
   assert.ok(m.core.every((b) => b.isCore) && m.addon.every((b) => !b.isCore));
