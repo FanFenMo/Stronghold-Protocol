@@ -806,7 +806,10 @@ test('independent re-derivation of every chess and enemy stat from the raw offic
     }
     n++;
   }
-  assert.equal(n, 258);
+  // 254 = 官方 charChessDataDict 的 266 条，减去 8 条 isDiy 的「甄选干员」（char_5_diy1/2、char_6_diy1/2 各 a/b），
+  // 再减去 tools/prosperity-data.mjs 的 RETIRED_CHESS —— 繁盛特意删除的 4 条（char_4_15 与 char_5_09 的 a/b）。
+  // 这个断言长期没被执行过：它依赖 .cache/gamedata，缓存不存在时整条测试被 skip，所以期望值一直停留在删除之前。
+  assert.equal(n, 254);
 
   const db = new Map(raw('levels/enemydata/enemy_database.json').enemies.map((e) => [e.Key, e.Value]));
   const ov = new Map((raw('levels/activities/act1autochess/level_autochess_enemy_data.json').enemyDbRefs || [])

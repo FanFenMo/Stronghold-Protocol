@@ -8,6 +8,7 @@ import { makeMatch, give, giveItem, DATA, legalTileFor } from '../match/harness.
 import { createRegistry } from '../../server/match/effectsMeta.js';
 import { lendItemEffects, itemGrants, PRIO_REVIVE } from '../../server/sim/content/items/battle.js';
 import { unitBonds } from '../../server/sim/content/support/index.js';
+import { COLUMBIA_BOND, COLUMBIA_TECH_ITEMS, columbiaTechItemId } from '../../shared/columbia.js';
 
 const QUIET = { warn() {}, error() {}, info() {} };
 const REG = createRegistry({ log: QUIET });
@@ -1134,9 +1135,34 @@ test('merging: two identical normal items become the golden one (upgradeNum 2); 
   cover(A('3_07'), B('3_07'));
 });
 
+// ---------------------------------------------------------------------------------------------------------------
+// 哥伦比亚的六件科技装备（本 fork 新增）。战斗效果尚未实现（见 docs/COLUMBIA.md 的待办），
+// 所以这里断言的是记录形态与两套数值，而不是行为。
+
+test('哥伦比亚科技装备：仅哥伦比亚可用、不重复、只由盟约发放，两套数值齐全', () => {
+  const ids = COLUMBIA_TECH_ITEMS.map((it) => columbiaTechItemId(it.key, false));
+  cover(...ids);
+  for (const [i, it] of COLUMBIA_TECH_ITEMS.entries()) {
+    const rec = DATA.items[ids[i]];
+    assert.ok(rec, it.name);
+    assert.equal(rec.itemType, 'EQUIP', it.name);
+    assert.equal(rec.category, 'BOND_SIGNATURE', `${it.name}: 盟约专属装备`);
+    assert.equal(rec.requiresBondId, COLUMBIA_BOND, `${it.name}: 仅哥伦比亚干员可用`);
+    assert.equal(rec.mergeable, false, `${it.name}: 不重复，不能合成进阶装备`);
+    assert.equal(rec.goldenId, null, `${it.name}: 无进阶版本`);
+    assert.equal(rec.upgradeChessId, null, it.name);
+    assert.equal(rec.hideInShop, true, `${it.name}: 只由盟约发放，不进商店`);
+    assert.ok(rec.desc && rec.desc.length > 0, `${it.name}: 有说明文字`);
+    assert.ok(DATA.effects[rec.effectId], `${it.name}: 效果记录存在`);
+    assert.ok(DATA.effects[rec.effectId].buffs.length > 0, `${it.name}: 效果有 buff`);
+    for (const k of Object.keys(it.normal)) assert.notEqual(it.overload[k], undefined, `${it.name}.${k}: 有过载值`);
+    for (const k of Object.keys(it.normal)) assert.equal(typeof it.normal[k], 'number', `${it.name}.${k}: 普通值是数字`);
+  }
+});
+
 test('coverage: every equipment (normal + golden) and every Art is exercised by a test above', () => {
   // items whose numbers are asserted in the stat table, the proc tests or the meta tests
   const missing = Object.keys(DATA.items).filter((id) => !COVER.has(id)).sort();
   assert.deepEqual(missing, []);
-  assert.equal(Object.keys(DATA.items).length, 115);
+  assert.equal(Object.keys(DATA.items).length, 121);
 });

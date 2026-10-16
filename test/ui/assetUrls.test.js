@@ -18,7 +18,10 @@ const m = load('assets.json');
 const chess = load('chess.json');
 
 function manifestUrls(obj, out = new Set()) {
-  if (typeof obj === 'string' && obj.startsWith('/assets/')) out.add(obj);
+  // 清单里的 URL 有两类前缀：/assets/（下载或提取的游戏素材，public/assets 被 .gitignore 排除）
+  // 和 /img/（本 fork 自己的原创素材，如 public/img/bonds/prosperity-*.png 与科技装备图标）。
+  // 这里只收集「清单真正声明过的」站点绝对路径，前缀白名单必须覆盖两者，否则原创素材会被误判为清单外。
+  if (typeof obj === 'string' && /^\/(assets|img)\//.test(obj)) out.add(obj);
   else if (obj && typeof obj === 'object') for (const v of Object.values(obj)) manifestUrls(v, out);
   return out;
 }
