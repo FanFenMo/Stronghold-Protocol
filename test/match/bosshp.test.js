@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PHASE } from '../../shared/constants.js';
-import { makeMatch, DATA } from './harness.js';
+import { makeMatch, DATA, give, legalTileFor } from './harness.js';
 import { aggregateMods } from '../../server/sim/buffs.js';
 import { bondBb } from '../../server/sim/content/bonds/addon/battle.js';
 import { DataSource } from '../../server/sim/simdata.js';
@@ -19,12 +19,16 @@ import { createBattleFromSpec } from '../../server/sim/spec.js';
 import { SharedBossPool } from '../../server/match/finalAssault.js';
 
 /** 4 AI seats, co-op, LP 400 (they reach R14), +`layers` on every active bond at the boss round's prep. */
-function toFinalAssault({ difficulty, seed, bossId, layers = 0, bands = DATA.bands }) {
+function toFinalAssault({ difficulty, seed, bossId, layers = 0, bands = DATA.bands, beforeFinal = null }) {
   const seats = [0, 1, 2, 3].map((i) => ({ seat: i, playerId: `ai_${i}`, name: `AI${i}`, isBot: true, connected: true }));
   // instant: false — the boss fields wait for the test to step them (server-run, real sim)
   const h = makeMatch({ mode: 'coop', difficulty, seats, seed, data: { ...DATA, bands }, captureFrames: false, instant: false });
   const m = h.m;
   m.bossId = bossId;
+  if (beforeFinal) {
+    const start = m.startFinalAssault.bind(m);
+    m.startFinalAssault = hidden => { beforeFinal(m); return start(hidden); };
+  }
   m.start();
   let last = '';
   h.run(() => {
@@ -121,9 +125,19 @@ test('终极 Final Assault vs 假想敌：胄 (seeded bot match): both players\'
   // 死亡集群's "最大生命值2%" = the leader's shown max HP, the pool (DRONE_LINK_BASE 'pool' [ASSUMED]): 72 000 at 终极
   // Seed 4 pairs two 奥术 players with different layer counts, so either player's debuff is valid but their product is not.
   const pairOf = (m) => m.fields.filter((f) => f.battle).find((f) => f.players.length === 2 && f.players.every((pid) => f.battle.getPlayer(pid).bonds.arcaneShip?.active));
-  // This fixed seed describes the original strategy pool; additions must not change its two-奥术 precondition.
+  // Prepare the exact two-奥术 lineup explicitly; random bans and shop changes cannot invalidate this precondition.
   const bands = Object.fromEntries(Object.entries(DATA.bands).filter(([, b]) => b.sortId <= 40));
-  const h = toFinalAssault({ difficulty: 'ABYSS', seed: 4, bossId: 'boss_1', bands });
+  const h = toFinalAssault({ difficulty: 'ABYSS', seed: 4, bossId: 'boss_1', bands, beforeFinal(m) {
+    for (const ps of m.alivePlayers()) {
+      for (const piece of ps.board.values()) if (piece.kind === 'chess') ps.returnCopies(piece);
+      ps.board.clear();
+      for (const id of ['chess_char_6_16_b', 'chess_columbia_aphris_b', 'chess_char_5_11_b', 'chess_char_4_09_b']) {
+        give(m, ps, id, 'board', legalTileFor(m, ps, id));
+      }
+      ps.layers.arcaneShip = 50 + ps.seat * 20;
+      ps.recompute();
+    }
+  } });
   const m = h.m;
   const fields = m.fields.filter((f) => f.battle);
   const bb = bondBb('arcaneShip');

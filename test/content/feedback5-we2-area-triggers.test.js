@@ -23,7 +23,9 @@ function field(charId, { skill, row, col, tier = 5, seed = 5 }) {
   const h = makeBattle({
     defs: { enemies: ENEMIES }, timeLimit: 900, autoFinish: false, seed,
     flags: { dpInit: 99, dpPerSec: 0, dpMax: 999, startOpCooldown: 0 }, hooks: ['skillStart', 'skillEnd'], captureNoisy: true,
-    units: [{ uid: 1, diy: { slot: SLOT[tier], charId, skillIndex: skill, uniEquipId: null }, elite: false, row, col }],
+    units: [charId === 'char_4229_aphris'
+      ? { uid: 1, chessId: 'chess_columbia_aphris_a', skillIndex: skill, moduleId: 'none', row, col }
+      : { uid: 1, diy: { slot: SLOT[tier], charId, skillIndex: skill, uniEquipId: null }, elite: false, row, col }],
   });
   h.step();
   return { h, u: h.unit(1) };

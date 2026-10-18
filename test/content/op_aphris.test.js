@@ -11,12 +11,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { makeBattle, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { KITTED_CHARS, OPERATOR_KITS, KITS } from '../../server/sim/content/kits/index.js';
+import { DataSource, getDefaultSource } from '../../server/sim/simdata.js';
 import { diyPool, validateDiyPicks } from '../../shared/diy.js';
 
 const load = (f) => JSON.parse(readFileSync(new URL(`../../data/${f}.json`, import.meta.url), 'utf8'));
 const CHESS = load('chess');
 const BACKUPS = load('backups');
 const APHRIS = 'char_4229_aphris';
+// Isolate upstream kit fidelity from roster membership; live Columbia entry is asserted separately.
+const KIT_BACKUPS = { ...BACKUPS, diy: { ...BACKUPS.diy, ownedPool: [...BACKUPS.diy.ownedPool, APHRIS],
+  operators: { ...BACKUPS.diy.operators, [APHRIS]: { bonds: ['emptyShip'] } } } };
 const RELAY = 'token_10070_aphris_pc';
 const FORMS = BACKUPS.units[APHRIS].forms;
 const TOKEN = BACKUPS.tokens[RELAY];
@@ -44,7 +48,7 @@ function field({ tier = 5, elite = false, mod = null, skill = 1, relay = null, o
   const units = [{ uid: 1, diy: { slot: SLOT[tier], charId: APHRIS, skillIndex: skill, uniEquipId: mod }, elite, row: 9, col: 2 }];
   if (relay) units.push({ uid: 2, kind: 'token', tokenId: RELAY, ownerUid: 1, row: relay.row, col: relay.col, dir: relay.dir });
   const h = makeBattle({
-    defs: { enemies: ENEMIES }, timeLimit: 900, autoFinish: false, seed,
+    data: new DataSource({ chess: CHESS, backups: KIT_BACKUPS, enemies: ENEMIES }, getDefaultSource()), timeLimit: 900, autoFinish: false, seed,
     flags: { dpInit: dp, dpPerSec: 0, dpMax: 999 }, hooks: ['damaged', 'skillStart', 'skillEnd', 'statusApplied', 'death', 'deploy'], captureNoisy: true,
     units: [...units, ...others],
   });
@@ -71,7 +75,7 @@ test('谬因 in every 自选 form: her operator kit (all three skills authored),
       assert.deepEqual([u.profile.dmgType, u.profile.canHitFly, u.profile.allInRange, u.profile.projectile], ['arts', true, true, 'beam'], `${label(f)}: 轰击术师`);
       assert.deepEqual(sortN(u.rangeKeys), sortN(OWN.map(([a, b]) => K(a, b))), `${label(f)}: her own 5-1`);
       assert.deepEqual(u.liveRangeGrid, form.rangeGrid, `${label(f)}: the card shows 5-1`);
-      assert.deepEqual([u.def.bonds, u.def.raw.garrisonIds, u.def.tokens], [BACKUPS.diy.operators[APHRIS].bonds, [], [RELAY]], `${label(f)}: bonds / 特质 / summon`);
+      assert.deepEqual([u.def.bonds, u.def.raw.garrisonIds, u.def.tokens], [KIT_BACKUPS.diy.operators[APHRIS].bonds, [], [RELAY]], `${label(f)}: bonds / 特质 / summon`);
       assert.ok(!u.s.flags.liftoff && !u.s.flags.camou && !u.s.flags.stealth, `${label(f)}: enemies target her`);
       done(h);
     }
@@ -81,12 +85,15 @@ test('谬因 in every 自选 form: her operator kit (all three skills authored),
   assert.deepEqual([modOf(5, BLAY).attr, modOf(6, BLAY).attr], [{ cost: -8, maxHp: 120, atk: 45 }, { cost: -8, maxHp: 200, atk: 70 }]);
 });
 
-test('a 自选 pick: 谬因 is offered at tiers 5 and 6 (she has a kit) and a roster with her passes validateDiyPicks', () => {
+test('迁入哥伦比亚常规池后不再提供为外援，实际棋子保留完整技能入口', () => {
   const data = { chess: CHESS, backups: BACKUPS };
   assert.ok(KITTED_CHARS.includes(APHRIS));
-  for (const t of [5, 6]) assert.ok(diyPool(t, { data, kitted: KITTED_CHARS }).includes(APHRIS), `tier ${t}`);
-  assert.deepEqual(validateDiyPicks({ [SLOT[6]]: { charId: APHRIS, skillIndex: 1, uniEquipId: BLAY } }, { data, kitted: KITTED_CHARS }),
-    { ok: true, picks: { [SLOT[6]]: { charId: APHRIS, skillIndex: 1, uniEquipId: BLAY } } });
+  for (const tier of [5, 6]) assert.ok(!diyPool(tier, { data, kitted: KITTED_CHARS }).includes(APHRIS));
+  assert.equal(validateDiyPicks({ [SLOT[6]]: { charId: APHRIS, skillIndex: 1 } }, { data, kitted: KITTED_CHARS }).error, 'BAD_TARGET');
+  const normal = Object.values(CHESS).find(c => c.charId === APHRIS && !c.isGolden);
+  assert.ok(normal && !normal.supportOperator);
+  assert.equal(normal.supportKitId, APHRIS);
+  assert.equal(normal.skills.length, 3);
 });
 
 test('链路协议 range: her 中继器 turns the path to its facing and allows 2 more tiles; one attack strikes every enemy of the bent path (air too), none of the straight line past it; the card shows the bent path', () => {

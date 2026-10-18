@@ -26,10 +26,10 @@ function field(layers = 0, tier = 2, opts = {}) {
 }
 const clean = h => { assert.deepEqual(h.b.errors, []); checkInvariants(h.b); };
 
-test('繁盛固定卡池15人及精锐，排除波登可等干员；删除两个历史条目及引用，数据生成幂等', () => {
-  const names = ['刺玫', '古米', '赫默', '哈洛德', '莎草', '调香师', '白面鸮', '华法琳', '缇缇', '铃兰', '塞雷娅', '录武官', '焰影苇草', '流明', '纯烬艾雅法拉'];
+test('繁盛固定卡池13人及精锐，排除波登可等干员；删除两个历史条目及引用，数据生成幂等', () => {
+  const names = ['刺玫', '古米', '哈洛德', '莎草', '调香师', '白面鸮', '华法琳', '缇缇', '铃兰', '录武官', '焰影苇草', '流明', '纯烬艾雅法拉'];
   const roster = Object.values(DATA.chess).filter(c => c.bonds.includes(ID));
-  assert.equal(roster.length, 30);
+  assert.equal(roster.length, 26);
   assert.deepEqual(roster.filter(c => !c.isGolden).map(c => c.name).sort(), names.sort());
   assert.ok(roster.every(c => c.visible && !c.isHidden && !c.supportOperator));
   for (const retired of ['chess_char_4_15_a', 'chess_char_4_15_b', 'chess_char_5_09_a', 'chess_char_5_09_b']) {
@@ -47,7 +47,7 @@ test('繁盛按不同干员计数：普通和精锐同人仅计一次，2人增�
   const state = ids => computeBonds(gd, { board: new Map(ids.map((id, i) => [`10,${i + 2}`, piece(id)])), hand: [], layers: {} })[ID];
   assert.equal(state(['chess_char_1_06_a', 'chess_char_1_06_b']).active, false);
   assert.equal(state(['chess_char_1_06_a', 'chess_char_1_10_a']).tier, 1);
-  assert.equal(state(['chess_char_1_06_a', 'chess_char_1_10_a', 'chess_char_2_02_a']).tier, 2);
+  assert.equal(state(['chess_char_1_06_a', 'chess_char_1_10_a', 'chess_char_2_06_a']).tier, 2);
 });
 
 test('治疗提升按50层分档，200层最高60%，只作用于成员；未激活不增疗', () => {

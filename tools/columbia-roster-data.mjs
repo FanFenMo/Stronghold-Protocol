@@ -13,39 +13,6 @@ export const COLUMBIA_NORMAL_OPERATORS = Object.freeze([
 
 export const columbiaChessId = (charId) => `chess_columbia_${charId.split('_').slice(2).join('_')}_a`;
 
-// 把归档资源登记为正常角色资源，客户端继续使用原有 chars / skills / modules 入口。
-export function applyColumbiaOperatorAssets(assets, reserved, chess) {
-  for (const op of COLUMBIA_NORMAL_OPERATORS.slice(0, 4)) {
-    const source = reserved.operators[op.charId], images = source.assets.images;
-    const image = name => images[name]?.path;
-    const model = source.assets.spine['默认'];
-    const spine = {};
-    for (const [facing, label] of [['front', '正面'], ['back', '背面']]) {
-      const m = model[label];
-      if (!m) continue;
-      spine[facing] = { skel: m.skeleton.path, atlas: m.atlas.path, textures: m.textures.map(t => t.path),
-        pma: false, anims: m.roles, animations: m.animations, events: m.events, hits: m.hits, bounds: m.bounds };
-    }
-    assets.chars[op.charId] = { avatar: image(`头像_${source.name}.png`), avatarE2: image(`头像_${source.name}.png`),
-      portrait: image(`半身像_${source.name}_1.png`) ?? image(`头像_${source.name}.png`),
-      portraitE2: image(`半身像_${source.name}_2.png`) ?? image(`头像_${source.name}.png`), spine };
-    const record = chess[columbiaChessId(op.charId)];
-    for (const sk of record.skills) {
-      const path = image(`技能_${sk.name}.png`);
-      assets.skills[sk.iconId] = path;
-      assets.skillsById[sk.skillId] = sk.iconId;
-    }
-    const elite = chess[columbiaChessId(op.charId).replace(/_a$/, '_b')];
-    for (const m of elite.modules ?? []) {
-      const path = image(`${m.uniEquipId}.typeIcon`);
-      if (path) assets.modules[m.typeName] = path;
-    }
-  }
-  assets.stats.chars = Object.keys(assets.chars).length;
-  assets.stats.skills = Object.keys(assets.skills).length;
-  assets.stats.modules = Object.keys(assets.modules).length;
-}
-
 export function applyColumbiaRoster(files, annotate) {
   const moved = new Set(COLUMBIA_NORMAL_OPERATORS.map(o => o.charId));
   const removed = new Set();

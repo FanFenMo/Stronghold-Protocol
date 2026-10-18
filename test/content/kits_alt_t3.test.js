@@ -5,13 +5,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { getDefaultSource } from '../../server/sim/simdata.js';
-import { skillSpecSource } from '../../server/sim/content/index.js';
+import { skillSpecSource, kitOf } from '../../server/sim/content/index.js';
 import { effectiveProfile } from '../../server/sim/ai.js';
 import { kitCoverage } from '../../tools/kit-coverage.mjs';
 import { wolfShadows, wolfTacticalPoint } from '../../server/sim/content/tokens.js';
-import { TIER_KITS } from '../../server/sim/content/kits/index.js';
-
-const KITS = TIER_KITS[2];
+import { KITS } from '../../server/sim/content/kits/index.js';
 
 const ds = getDefaultSource();
 /** Skill index of `skillId` on chess `id`. */
@@ -37,7 +35,7 @@ const atkHits = (h, u, skill = null) => h.hooksOf('damaged').filter((c) => c.sou
 
 test('coverage: every selectable skill of every visible tier-3 chess is hand-authored (normal + 精锐)', () => {
   const rep = kitCoverage({ tier: 3 });
-  assert.equal(rep.summary.chess, 19);
+  assert.equal(rep.summary.chess, 21);
   assert.equal(rep.summary.covered, rep.summary.skills, rep.chess.filter((r) => r.skills.some((s) => !s.covered)).map((r) => r.name).join(' '));
   for (const r of rep.chess) for (const s of r.skills) if (!s.isDefault) assert.deepEqual([s.normal, s.elite], ['skills', 'skills'], `${r.name} S${s.index + 1}`);
 });
@@ -46,13 +44,13 @@ test('skills map: each alternate spec is built from its OWN record whichever ski
   const rows = kitCoverage({ tier: 3 }).chess;
   for (const r of rows) for (const id of BOTH(r.chessId)) {
     const d0 = ds.getChess(id);
-    const kit = KITS[r.chessId](d0.skill.bb, d0.raw, d0);
-    const alts = r.skills.filter((s) => !s.isDefault).map((s) => s.skillId);
+    const kit = kitOf(d0, KITS)(d0.skill.bb, d0.raw, d0);
+    const alts = r.skills.filter((s) => d0.raw.supportKitId || !s.isDefault).map((s) => s.skillId);
     assert.deepEqual(Object.keys(kit.skills ?? {}).sort(), alts.slice().sort(), `${id} skills keys`);
     for (const sid of alts) {
       const dS = LD(id, sid);
       assert.equal(skillSpecSource(dS, KITS), 'skills', `${id} ${sid}`);
-      const own = KITS[r.chessId](dS.skill.bb, dS.raw, dS).skills[sid];
+      const own = kitOf(d0, KITS)(dS.skill.bb, dS.raw, dS).skills[sid];
       // same numbers from the default-selected kit and from the kit built for that skill
       assert.equal(JSON.stringify(kit.skills[sid], (k, v) => (typeof v === 'function' ? 'fn' : v)), JSON.stringify(own, (k, v) => (typeof v === 'function' ? 'fn' : v)), `${id} ${sid}`);
     }

@@ -31,7 +31,7 @@ const ARGS = ['--no-sandbox', '--no-first-run', '--autoplay-policy=no-user-gestu
   '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--mute-audio'];
 const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36';
 const PHONE = (width, height) => ({ width, height, deviceScaleFactor: 2, isMobile: true, hasTouch: true, isLandscape: true });
-const OFF_FUNNY = ['lateranoShip', 'egirShip', 'kazimierzShip', 'skillfulShip', 'arcaneShip', 'miraShip', 'investShip', 'raidShip', 'soloShip', 'suntShip'];
+const OFF_FUNNY = ['lateranoShip', 'egirShip', 'kazimierzShip', 'skillfulShip', 'arcaneShip', 'miraShip', 'investShip', 'raidShip', 'suntShip'];
 
 describe('GitHub issue #8 item 1: 本局信息 in the strategy draft (real server, headless Chrome)', { skip: !ENABLED && 'set SP_E2E=1 (and have Chrome + assets) to run' }, () => {
   let srv;
@@ -176,7 +176,7 @@ describe('GitHub issue #8 item 1: 本局信息 in the strategy draft (real serve
     await sleep(600);
     const brief = await readInfo(page, '.brief__right');
     const want = await truth(page);
-    assert.deepEqual(want.off, [...OFF_FUNNY].sort(), '标准模拟 switches the official 10 bonds off');
+    assert.deepEqual(want.off, [...OFF_FUNNY].sort(), '标准模拟 switches the 9 bonds off (独行 enabled)');
     assert.deepEqual(greyedOf(brief), want.greyed, 'the briefing greys D ∪ the mode\'s inactive bonds');
     assert.deepEqual(brief.banned, want.names, 'the briefing\'s banned operators, by tier');
     assert.equal(brief.count, String(want.names.length));

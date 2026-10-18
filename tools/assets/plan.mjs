@@ -62,6 +62,11 @@ export const ENEMY_SPINE_ALIAS = Object.freeze({
 });
 
 /** Loading illustrations referenced by act2autochess modeDataDict (non-training). */
+const TOKEN_SPINE_VARIANTS = {
+  token_10035_wisdel_wward: 'token_10035_wisdel_wward_game_9',
+  token_10054_phatm2_encdool: 'token_10054_phatm2_encdool_sightseer_4',
+};
+
 const LOADING_USED = new Set(['loading_ac_core', 'loading_ac_prototype', 'loading_ac_hard', 'loading_ac_abyss']);
 
 const PROFESSIONS = ['caster', 'medic', 'pioneer', 'sniper', 'special', 'support', 'tank', 'warrior'];
@@ -442,7 +447,7 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
     const t = assets07?.tokens?.[id] ?? {
       avatar: { url: `${RAW.yuanyan}avatar/${id}.png` },
       battleSpineDefault: null,
-      battleSpineSkinVariantsOnly: [id],
+      battleSpineSkinVariantsOnly: [TOKEN_SPINE_VARIANTS[id] ?? id],
     };
     const usedBy = ops03?.tokensUsedByPool?.[id]?.usedByChess || [];
     const ownerChess = usedBy.map((cid) => chessById.get(cid)).find(Boolean);

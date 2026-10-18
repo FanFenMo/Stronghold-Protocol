@@ -10,12 +10,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { makeBattle, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { KITTED_CHARS, OPERATOR_KITS, KITS } from '../../server/sim/content/kits/index.js';
+import { DataSource, getDefaultSource } from '../../server/sim/simdata.js';
 import { diyPool, validateDiyPicks } from '../../shared/diy.js';
 
 const load = (f) => JSON.parse(readFileSync(new URL(`../../data/${f}.json`, import.meta.url), 'utf8'));
 const CHESS = load('chess');
 const BACKUPS = load('backups');
 const ID = 'char_4027_heyak';
+// Isolate upstream kit fidelity from roster membership; live Columbia entry is asserted separately.
+const KIT_BACKUPS = { ...BACKUPS, diy: { ...BACKUPS.diy, ownedPool: [...BACKUPS.diy.ownedPool, ID],
+  operators: { ...BACKUPS.diy.operators, [ID]: { bonds: ['emptyShip'] } } } };
 const FORMS = BACKUPS.units[ID].forms;
 const SLOT = { 5: 'chess_char_5_diy1_a', 6: 'chess_char_6_diy1_a' };
 const CCRX = 'uniequip_002_heyak', CCRY = 'uniequip_003_heyak', ISWA = 'uniequip_004_heyak';
@@ -36,7 +40,7 @@ const label = ([tier, elite, mod]) => `T${tier} ${elite ? 'elite' : 'normal'} ${
 /** A battle with 霍尔海雅 as uid 1 at (row, col) facing RIGHT, plus `others`. */
 function field({ tier = 5, elite = false, mod = null, skill = 2, row = 10, col = 5, others = [], seed = 5, setup = null } = {}) {
   const h = makeBattle({
-    defs: { enemies: ENEMIES }, timeLimit: 900, autoFinish: false, seed,
+    data: new DataSource({ chess: CHESS, backups: KIT_BACKUPS, enemies: ENEMIES }, getDefaultSource()), timeLimit: 900, autoFinish: false, seed,
     flags: { dpPerSec: 0, dpMax: 999 }, hooks: ['damaged', 'skillStart', 'skillEnd', 'statusApplied', 'spGain'], captureNoisy: true,
     units: [{ uid: 1, diy: { slot: SLOT[tier], charId: ID, skillIndex: skill, uniEquipId: mod }, elite, row, col }, ...others],
     setup,
@@ -80,14 +84,15 @@ test('霍尔海雅 in every 自选 form: her operator kit (all three skills auth
     [{ maxHp: 120, atk: 40 }, { maxHp: 175, atk: 65 }, { maxHp: 105, atk: 32, def: 15 }, { maxHp: 140, atk: 45, def: 25 }, { maxHp: 100, atk: 55 }, { maxHp: 130, atk: 80 }]);
 });
 
-test('a 自选 pick: 霍尔海雅 is offered at tiers 5 and 6 and a roster with her passes validateDiyPicks (ISW-A, a 集成战略 module, is refused)', () => {
+test('迁入哥伦比亚常规池后不再提供为外援，实际棋子保留完整技能入口', () => {
   const data = { chess: CHESS, backups: BACKUPS };
   assert.ok(KITTED_CHARS.includes(ID));
-  for (const t of [5, 6]) assert.ok(diyPool(t, { data, kitted: KITTED_CHARS }).includes(ID), `tier ${t}`);
-  assert.equal(validateDiyPicks({ [SLOT[6]]: { charId: ID, skillIndex: 2, uniEquipId: ISWA } }, { data, kitted: KITTED_CHARS }).error, 'BAD_TARGET',
-    'a 集成战略 module (ISW-A) is not a 自选 choice (shared/diy.js, W5K)');
-  assert.deepEqual(validateDiyPicks({ [SLOT[6]]: { charId: ID, skillIndex: 2, uniEquipId: CCRX } }, { data, kitted: KITTED_CHARS }),
-    { ok: true, picks: { [SLOT[6]]: { charId: ID, skillIndex: 2, uniEquipId: CCRX } } });
+  for (const tier of [5, 6]) assert.ok(!diyPool(tier, { data, kitted: KITTED_CHARS }).includes(ID));
+  assert.equal(validateDiyPicks({ [SLOT[6]]: { charId: ID, skillIndex: 1 } }, { data, kitted: KITTED_CHARS }).error, 'BAD_TARGET');
+  const normal = Object.values(CHESS).find(c => c.charId === ID && !c.isGolden);
+  assert.ok(normal && !normal.supportOperator);
+  assert.equal(normal.supportKitId, ID);
+  assert.equal(normal.skills.length, 3);
 });
 
 test('S1 但为求索 (AUTO, 1 / 2 charges, data DEFAULT): the next attack hits two enemies at 200 % / 240 % ATK arts; with one enemy only it lifts it 2.5 / 3 s — before 传承终焉, so that hit is × 1.23 and silences', () => {

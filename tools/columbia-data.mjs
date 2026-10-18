@@ -9,7 +9,7 @@
 
 import { COLUMBIA_BOND as ID, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, columbiaTechItemId } from '../shared/columbia.js';
 import { contentHash } from './assets/manifest.mjs';
-import { COLUMBIA_NORMAL_OPERATORS, columbiaChessId, applyColumbiaOperatorAssets } from './columbia-roster-data.mjs';
+import { COLUMBIA_NORMAL_OPERATORS, columbiaChessId } from './columbia-roster-data.mjs';
 
 /**
  * 哥伦比亚的成员名单（手写，`_a` 即普通版；精锐 `_b` 由同一条 base 记录共享，不单独列出）。
@@ -145,7 +145,7 @@ export function applyColumbiaMemberTags(files) {
 }
 
 /** 素材：盟约图标与三态图标。 */
-export function applyColumbiaAssets(assets, { reserved, chess } = {}) {
+export function applyColumbiaAssets(assets) {
   assets.bonds[ID] = '/img/bonds/columbia-glyph.png';
   assets.bondStates = { ...assets.bondStates, [ID]: {
     inactive: '/img/bonds/columbia-inactive.png', active: '/img/bonds/columbia-active.png',
@@ -158,7 +158,10 @@ export function applyColumbiaAssets(assets, { reserved, chess } = {}) {
     assets.items[`trap_columbia_${it.key}`] = `/img/items/columbia-${it.key}.png`;
   }
   assets.bonds.twinShip = assets.bonds.skillfulShip;
-  if (reserved) applyColumbiaOperatorAssets(assets, reserved, chess);
+  for (const type of ['AFT-Y', 'CHA-Y', 'CRU-X', 'PRP-X']) {
+    const icon = assets.modules?.[type.toLowerCase()];
+    if (icon) assets.modules[type] = icon;
+  }
   if (assets.stats) assets.stats.bonds = Object.keys(assets.bonds).length;
   if (assets.hash) {
     const { version, hash, generator, stats, ...body } = assets;

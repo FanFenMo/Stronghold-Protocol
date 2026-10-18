@@ -53,7 +53,7 @@ const pair = (n) => [`chess_char_1_${n}_a`, `chess_char_1_${n}_b`];
 
 test('tier 1: every selectable skill of every visible chess has a hand-authored spec (normal + elite)', () => {
   const rep = kitCoverage({ tier: 1 });
-  assert.equal(rep.summary.chess, 16);
+  assert.equal(rep.summary.chess, 17);
   assert.equal(rep.summary.covered, rep.summary.skills, rep.chess.flatMap((r) => r.skills.filter((s) => !s.covered).map((s) => `${r.name} S${s.index + 1}`)).join(', '));
   assert.equal(rep.summary.chessFullyCovered, rep.summary.chess);
 });

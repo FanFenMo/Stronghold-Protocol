@@ -96,7 +96,7 @@ test('信标: the gift still arrives when its sender is eliminated before the ne
 test('信标: a grant that fails (no copy left in the pool) keeps the gift for the next round start', () => {
   const { h, m, equip } = setup({ seed: 37 });
   const p0 = h.ps('p_0'), p1 = h.ps('p_1');
-  const cid = plain((c) => c.tier === 2 && c.bonds.length)[1];
+  const cid = plain((c) => c.tier === 2 && c.bonds.length).find(id => m.pool.has(id));
   assert.deepEqual(equip(giveItem(m, p0, BEACON), give(m, p0, cid, 'hand')), OK);
   // every copy taken by "other players" before the round start
   const held = m.pool.take(cid, 99);

@@ -181,7 +181,7 @@ test('selectedSkill / selectedModule for the in-match UI (shop cards, detail pan
 
 test('roster and filters: original roster plus external variants in shop order; tier / class / bond / search / changed-only', () => {
   const roster = rosterOf(Object.values(CHESS));
-  assert.equal(roster.filter(c => !c.supportOperator).length, 112);
+  assert.equal(roster.filter(c => !c.supportOperator).length, 118);
   assert.ok(roster.every((c) => !c.isGolden && c.visible));
   for (let i = 1; i < roster.length; i++) assert.ok(roster[i - 1].tier <= roster[i].tier);
   const t3 = filterRoster(roster, { tier: 3 }, {}, get, getBond);

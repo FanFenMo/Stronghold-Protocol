@@ -545,7 +545,9 @@ test('GAIN_BUFF (哈洛德 / 锡人 / 迷迭香 03, 流星 137) and 古米 08: d
       approx(u.s.atk, 500 * bb.atk, `${gid} ATK`);
       approx(u.s.maxHp, 2000 * bb.max_hp, `${gid} HP`);
     } else {
-      approx(u.s.spRecovery, 1 + bb.sp_recovery_per_sec, `${gid} SP`);
+      approx(u.s.spRecovery, 1 + (bb.sp_recovery_per_sec ?? 0), `${gid} SP`);
+      approx(u.s.atk, 500 * (1 + (bb.atk ?? 0)), `${gid} ATK`);
+      approx(u.s.maxHp, 2000 * (1 + (bb.max_hp ?? 0)), `${gid} HP`);
     }
     cover(gid);
   }

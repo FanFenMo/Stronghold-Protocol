@@ -24,9 +24,9 @@ const VIGIL = 'chess_char_3_19_a'; // 伺夜: talent summon 狼群 (a hand card)
 const WOLF = 'token_10028_vigil_wolf';
 const KAZEMARU = 'chess_char_2_11_a'; // 风丸: merges with 2 copies
 
-function prep({ seed = 41, loadout = null, stageId = 'act2autochess_m04' } = {}) {
+function prep({ seed = 41, loadout = null, stageId = 'act2autochess_m04', difficulty = 'NORMAL' } = {}) {
   const seats = [{ seat: 0, playerId: 'p_0', name: 'P0', isBot: false, connected: true, loadout }];
-  const h = makeMatch({ mode: 'solo', difficulty: 'NORMAL', seats, seed }).start();
+  const h = makeMatch({ mode: 'solo', difficulty, seats, seed }).start();
   h.toPrep(1);
   h.setStage(stageId);
   const ps = h.ps('p_0');
@@ -213,7 +213,7 @@ test('equipment with the hand and temp full: the elite keeps up to its 2 equip s
 });
 
 test('summons: the copies\' placed summons and stacks are removed; the elite on the board gets its own full stack (伺夜 狼群)', () => {
-  const { m, ps } = prep({ seed: 46 });
+  const { m, ps } = prep({ seed: 46, difficulty: 'FUNNY' });
   assert.ok(m.pool.has(VIGIL), '伺夜 is in this match\'s pool');
   const a = give(m, ps, VIGIL);
   const at = legalTileFor(m, ps, VIGIL);
@@ -242,7 +242,7 @@ test('summons: the copies\' placed summons and stacks are removed; the elite on 
 
 test('loadout: the deployed elite\'s summon card and battle unit follow the player\'s loadout (赫默 S2 default → drone card, S1 → none)', () => {
   for (const [label, loadout, drone] of [['default S2', null, true], ['S1', checkLoadout({ [SILENCE]: { skill: 0 } }, chess).loadout, false]]) {
-    const { m, ps } = prep({ seed: 48, loadout });
+    const { m, ps } = prep({ seed: 48, loadout, difficulty: 'FUNNY' });
     assert.ok(m.pool.has(SILENCE), '赫默 is in this match\'s pool');
     const a = deploy(m, ps, SILENCE, 'LEFT');
     const tile = keyOf(ps, a);

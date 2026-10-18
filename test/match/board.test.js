@@ -97,7 +97,7 @@ test('g.move: legality per chess position, BAD_TILE outside, deploy cap 8, swaps
   // fill to the cap (8)
   const tiles = legalTiles(ps.deployMap(), 'melee').filter(([r, c]) => !ps.board.has(tileKey(r, c)));
   const extra = [];
-  for (const id of chessOfTier(2, MELEE).filter((x) => m.pool.has(x)).slice(0, 7)) extra.push(give(m, ps, id));
+  for (const id of [1, 2, 3].flatMap(t => chessOfTier(t, MELEE)).filter((x) => m.pool.has(x) && !m.gd.placeableTokens(x).length && m.gd.mergeCount(x) === 3).slice(0, 7)) extra.push(give(m, ps, id));
   for (let i = 0; i < 6; i++) assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: extra[i].uid, to: { area: 'board', row: tiles[i][0], col: tiles[i][1] } }), { ok: true });
   assert.equal(ps.deployCount, 8);
   assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: extra[6].uid, to: { area: 'board', row: tiles[6][0], col: tiles[6][1] } }), { error: ERR.BOARD_FULL });

@@ -44,8 +44,8 @@ test('a stand-in kit file standin-<codename>.js registers the kit of that stand-
   }
 });
 
-test('a 自选 kit file op-<codename>.js registers the kit of that owned-6★ pick (data/backups.json diy.ownedPool), every skill under `skills`', async () => {
-  const pool = BACKUPS.diy.ownedPool;
+test('an operator kit file op-<codename>.js registers its backed-up character for the regular or external roster, every skill under `skills`', async () => {
+  const pool = Object.keys(BACKUPS.units);
   for (const file of OPERATOR_KIT_FILES) {
     const m = /^op-([a-z0-9]+)\.js$/.exec(file);
     assert.ok(m, `${file}: name`);
@@ -56,6 +56,14 @@ test('a 自选 kit file op-<codename>.js registers the kit of that owned-6★ pi
     assert.equal(typeof mod.default[charId], 'function', `${file}: kit builder`);
     assert.equal(OPERATOR_KITS[charId], mod.default[charId], `${file}: registered`);
     assert.equal(KITS[charId], mod.default[charId], `${file}: in the merged registry`);
+    const regular = Object.values(CHESS).filter(c => c.supportKitId === charId && !c.supportOperator);
+    if (regular.length) {
+      for (const rec of regular) {
+        const kit = mod.default[charId](rec.skill.bb, rec, normalizeChess(rec));
+        assert.deepEqual(Object.keys(kit.skills || {}).sort(), rec.skills.map(s => s.skillId).sort(), rec.chessId);
+      }
+      continue;
+    }
     // every skill of every slot form is authored (a 自选 piece has no default skill: the pick chooses any), built from the
     // composed record and its def as the sim does (shared/diy.js diyRecord, simdata normalizeChess)
     for (const slot of ['chess_char_5_diy1_a', 'chess_char_6_diy1_a']) {

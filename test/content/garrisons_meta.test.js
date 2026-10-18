@@ -152,6 +152,25 @@ test('SERVER_ADD_MULTIPLE_BOND 录武官 156: 炎 +6 / 奇迹 +3 (精锐 12 / 6)
   onlyGains(s, { yanShip: 12, miraShip: 6 });
 });
 
+test('SERVER_PREP_FIN 多盟约特质：星极在场时分别增加已激活哥伦比亚与灵巧，整备区不生效', () => {
+  for (const { gid, g, owners } of idsOf('SERVER_PREP_FIN', 'SERVER_ADD_MULTIPLE_BOND')) {
+    for (const owner of owners) {
+      const s = setup(), bonds = ids(g.bbStr.bond), counts = ids(g.bbStr.count).map(Number);
+      give(s.m, s.ps, owner, 'board', [10, 4]);
+      s.prepEnd();
+      onlyGains(s, {}, gid + ': inactive');
+      s.activate(...bonds);
+      s.prepEnd();
+      onlyGains(s, Object.fromEntries(bonds.map((bond, i) => [bond, counts[i]])), gid);
+      const hand = setup();
+      give(hand.m, hand.ps, owner, 'hand');
+      hand.activate(...bonds); hand.prepEnd();
+      onlyGains(hand, {}, gid + ': board only');
+    }
+    cover(gid);
+  }
+});
+
 test('SERVER_ADD_BOND_METHOD shoplv (惊蛰 30): 调度中心等级 × multi, no activation needed', () => {
   for (const { gid, g, owners } of idsOf('SERVER_GAIN', 'SERVER_ADD_BOND_METHOD')) {
     for (const owner of owners) {

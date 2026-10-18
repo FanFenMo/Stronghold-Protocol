@@ -60,7 +60,7 @@ test('a real 标准 match: 奥术 operators are buyable, three on the board neve
   const m = h.m, ps = h.ps('p_0');
   const members = DATA.bonds.arcaneShip.visibleMembers.filter((id) => m.pool.has(id) && !m.bannedChess.includes(id));
   // 溯光星源 = [奥术, 灵巧]，本模式两个都被禁；它靠新增的【哥伦比亚】盟约被保留在卡池里。
-  assert.deepEqual(members.map((id) => DATA.chess[id].name), ['深靛', '洛洛', '阿罗玛', '夕', '圣聆初雪', '溯光星源'], 'members kept in the pool by their other bond');
+  assert.deepEqual(members.map((id) => DATA.chess[id].name), ['深靛', '洛洛', '阿罗玛', '夕', '圣聆初雪', '溯光星源', '谬因'], 'members kept in the pool by their other bond');
   ps.board.clear();
   const used = new Set();
   for (const id of members.slice(0, 3)) { const t = legalTileFor(m, ps, id, used); used.add(tileKey(t[0], t[1])); give(m, ps, id, 'board', t); }

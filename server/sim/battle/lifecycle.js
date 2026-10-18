@@ -190,6 +190,8 @@ export class BattleLifecycle {
 
   _finish(reason) {
     if (this.finished) return;
+    // The last hit may empty the pool after this tick's boss phase. Finalise every leader before the result.
+    if (this.sharedBoss && this.sharedBoss.hp <= 0) this._bossSync();
     this.finished = true;
     this.reason = reason;
     this._endReq = null;

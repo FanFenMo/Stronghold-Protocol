@@ -295,7 +295,7 @@ test('harness battle with injected kits: non-default skill via the view uses the
 
 test('tools/kit-coverage: every visible chess and each selectable skill, defaults hand-authored', { skip }, () => {
   const rep = kitCoverage();
-  assert.equal(rep.summary.chess, 258);
+  assert.equal(rep.summary.chess, 260);
   assert.equal(rep.chess.length, 258);
   for (const r of rep.chess) {
     const ch = loadoutOptions(C[r.chessId], C[C[r.chessId].goldenId]);

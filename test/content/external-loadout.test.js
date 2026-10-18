@@ -10,10 +10,10 @@ const data = getData({ log: { warn() {}, error() {}, info() {} } });
 const gd = new GameData(data, 'mode_single_funny');
 const ds = new DataSource(data);
 
-test('73 external operators: every form, skill, module and potential uses the upstream operator and summon stats', () => {
+test('71 external operators: every form, skill, module and potential uses the upstream operator and summon stats', () => {
   const roster = Object.values(data.chess).filter(c => c.supportOperator);
-  assert.equal(new Set(roster.map(c => c.charId)).size, 73);
-  assert.equal(roster.length, 292);
+  assert.equal(new Set(roster.map(c => c.charId)).size, 71);
+  assert.equal(roster.length, 284);
   let summons = 0;
   for (const c of roster) for (const potential of [1, 6]) {
     for (const sk of c.skills) for (const moduleId of [null, ...(c.modules || []).map(m => m.uniEquipId)]) {
