@@ -169,11 +169,11 @@ test('a real 标准 match (solo and co-op): the mode\'s 9 inactive bonds are "of
     assert.match(textOf(MatchLegend({ model: m })), /或本模式禁用/);
     h.m.dispose();
   }
-  // 绝境: 3 core + 4 add-on drawn, nothing switched off by the mode
+  // 绝境: 4 core + 5 add-on drawn, nothing switched off by the mode
   const h = makeMatch({ mode: 'coop', difficulty: 'HARD', humans: 1, bots: 1, seed: 4 }).start();
   const m = matchInfoModel(h.m.publicView(), SRC('mode_multi_hard'));
   assert.equal(m.sets.off.size, 0);
-  assert.deepEqual([m.core.filter((b) => m.stateOf(b.bondId)).length, m.addon.filter((b) => m.stateOf(b.bondId)).length], [3, 4]);
+  assert.deepEqual([m.core.filter((b) => m.stateOf(b.bondId)).length, m.addon.filter((b) => m.stateOf(b.bondId)).length], [4, 5]);
   assert.deepEqual([...m.banned].sort(), [...h.m.bannedChess].sort());
   h.m.dispose();
 });
