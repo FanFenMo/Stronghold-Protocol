@@ -135,8 +135,8 @@ test('维多利亚 25-layer reward and 洛洛的定制品: the 4 special 维式�
   m.dispose();
 });
 
-test('per-match disabled bonds: 3 core + 4 add-on (NORMAL+), FUNNY static + 0 + 1; weight-0 never drawn; subset ban rule', () => {
-  for (const [modeId, core, addon] of [['mode_multi_hard', 3, 4], ['mode_single_abyss', 3, 4], ['mode_multi_funny', 0, 1], ['mode_single_normal', 3, 4]]) {
+test('per-match disabled bonds: 4 core + 5 add-on (NORMAL+), FUNNY static + 0 + 1; weight-0 never drawn; subset ban rule', () => {
+  for (const [modeId, core, addon] of [['mode_multi_hard', 4, 5], ['mode_single_abyss', 4, 5], ['mode_multi_funny', 0, 1], ['mode_single_normal', 4, 5]]) {
     const gd = new GameData(DATA, modeId);
     for (let seed = 1; seed <= 20; seed++) {
       const { drawn, staticOff, banned } = drawDisabledBonds(gd, createRng(seed));
@@ -163,7 +163,7 @@ test('per-match disabled bonds: 3 core + 4 add-on (NORMAL+), FUNNY static + 0 + 
 test('the match pool excludes banned chess; m.public lists disabled bonds and banned chess', () => {
   const h = makeMatch({ mode: 'coop', difficulty: 'HARD', humans: 1, bots: 1, seed: 3 }).start();
   const pub = h.lastBc('m.public');
-  assert.equal(pub.drawnDisabledBonds.length, 7);
+  assert.equal(pub.drawnDisabledBonds.length, 9);
   assert.ok(pub.bannedChess.length > 0);
   for (const id of pub.bannedChess) assert.ok(!h.m.pool.has(id), `${id} should not be in the pool`);
   assert.equal(h.m.pool.entries.size + pub.bannedChess.length, 112);
