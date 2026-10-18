@@ -9,25 +9,20 @@
 
 import { COLUMBIA_BOND as ID, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, columbiaTechItemId } from '../shared/columbia.js';
 import { contentHash } from './assets/manifest.mjs';
+import { COLUMBIA_NORMAL_OPERATORS, columbiaChessId, applyColumbiaOperatorAssets } from './columbia-roster-data.mjs';
 
 /**
  * 哥伦比亚的成员名单（手写，`_a` 即普通版；精锐 `_b` 由同一条 base 记录共享，不单独列出）。
  *
  * 说明：干员名与数据的对应关系已逐条核对（`data/chess.json` 的 tier 与你给的名单一致）：
  *   赫默 char_2_02 / 锡人 char_2_19 / 塞雷娅 char_5_11 / 溯光星源 char_6_16
- * TODO（待办，见 docs/COLUMBIA.md）：以下两项需要先完成干员接入，暂用现有版本占位
- *   * 霍尔海雅：设计为**四本**，但数据里只有 chess_external_5_heyak / chess_external_6_heyak，
- *     且需要"把哥伦比亚干员从外援池搬进常规卡池"。这里先挂六本版本，接入四本后替换。
- *   * 石英（一本）、星源（三本）、星极（四本）、响石（三本）：棋子在 data/chess.json 里不存在，
- *     需要从 feature/prts-reserved-operators 的归档资料完整接入后才能加入名单。
  */
 export const COLUMBIA_MEMBERS = [
   'chess_char_2_02_a',          // 赫默   T2
   'chess_char_2_19_a',          // 锡人   T2
   'chess_char_5_11_a',          // 塞雷娅 T5
   'chess_char_6_16_a',          // 溯光星源 T6
-  'chess_external_6_aphris_a',  // 谬因   T6（检索别名"缪因"）
-  'chess_external_6_heyak_a',   // 霍尔海雅 T6（设计为四本，待搬池后替换）
+  ...COLUMBIA_NORMAL_OPERATORS.map(op => columbiaChessId(op.charId)),
 ];
 
 const desc = '<在场3名不同【哥伦比亚】干员>获得哥伦比亚的科技装备，仅【哥伦比亚】干员可用；'
@@ -117,19 +112,19 @@ function columbiaItemDesc(key, v) {
         + `为治疗目标周围四格回复${pct(v.targetAroundHeal)}（${pct(ov.targetAroundHeal)}）的治疗量。`;
     case 'antigrav':
       return `开启技能时使技能范围内所有敌人浮空${v.floatSeconds}（${ov.floatSeconds}）秒，同一格每5秒最多触发一次；`
-        + `技能持续期间攻击范围内所有干员技力回复+${v.spRegen}（${ov.spRegen}）、攻击速度+${v.attackSpeed}（${ov.attackSpeed}）。`;
+        + `技能持续期间攻击范围内所有干员技力回复+${v.spRegen}（${ov.spRegen}）、攻击速度+${v.atkSpeed}（${ov.atkSpeed}）。`;
     default:
       return '';
   }
 }
 
 const COLUMBIA_ITEM_FORMULA = {
-  pioneer: 'Damage x(1 + atkScale + perThree * floor(attacks / 3)), capped at cap. [ASSUMED]',
-  mapland: 'Heal lowest-HP% ally for healRatio x damage dealt; on damaging an enemy reduce its ATK by atkDown for atkDownDuration (max atkDownMax stacks). [ASSUMED]',
-  shield: 'maxHP += hp; DEF/RES += resRatio x maxHP; first drop below 50% HP locks HP for lockHpSeconds. [ASSUMED]',
-  graymatter: 'ATK% += atkPct + perThousand * floor(damageDealt / 1000), up to maxStacks; attacks carry necrosis elemental damage. [ASSUMED]',
-  dover: 'Healing dealt x(1 + healUp); each heal grants selfAroundSp SP to allies in the 4 tiles around the carrier and heals targetAroundHeal x amount around the target. [ASSUMED]',
-  antigrav: 'On skill cast: float enemies in range for floatSeconds (once per tile per 5 s); while the skill lasts, allies in range gain spRegen SP/s and atkSpeed ASPD. [ASSUMED]',
+  pioneer: 'Damage x min(cap, atkScale + perThree * floor(attacks / 3)).',
+  mapland: 'Heal lowest-HP% ally for healRatio x damage dealt; on damaging an enemy reduce its ATK by atkDown for atkDownDuration (max atkDownMax stacks).',
+  shield: 'maxHP += hp; DEF/RES += resRatio x maxHP; first drop below 50% HP locks HP for lockHpSeconds.',
+  graymatter: 'ATK% += atkPct + perThousand * floor(damageDealt / 1000), up to maxStacks; attacks carry necrosis elemental damage.',
+  dover: 'Healing dealt x(1 + healUp); each heal grants selfAroundSp SP to allies in the 4 tiles around the carrier and heals targetAroundHeal x amount around the target.',
+  antigrav: 'On skill cast: float enemies in range for floatSeconds (once per tile per 5 s); while the skill lasts, allies in range gain spRegen SP/s and atkSpeed ASPD.',
 };
 
 /**
@@ -150,7 +145,7 @@ export function applyColumbiaMemberTags(files) {
 }
 
 /** 素材：盟约图标与三态图标。 */
-export function applyColumbiaAssets(assets) {
+export function applyColumbiaAssets(assets, { reserved, chess } = {}) {
   assets.bonds[ID] = '/img/bonds/columbia-glyph.png';
   assets.bondStates = { ...assets.bondStates, [ID]: {
     inactive: '/img/bonds/columbia-inactive.png', active: '/img/bonds/columbia-active.png',
@@ -162,6 +157,8 @@ export function applyColumbiaAssets(assets) {
   for (const it of COLUMBIA_TECH_ITEMS) {
     assets.items[`trap_columbia_${it.key}`] = `/img/items/columbia-${it.key}.png`;
   }
+  assets.bonds.twinShip = assets.bonds.skillfulShip;
+  if (reserved) applyColumbiaOperatorAssets(assets, reserved, chess);
   if (assets.stats) assets.stats.bonds = Object.keys(assets.bonds).length;
   if (assets.hash) {
     const { version, hash, generator, stats, ...body } = assets;
@@ -225,10 +222,7 @@ export function applyColumbiaData(files) {
       layerGain: '石英 休整期结束 +2/4；锡人 每3层攻击力与生命值+1/2%；星源 获得时 哥伦比亚+3、奇迹+1；'
         + '响石 作战中前三次击倒 +2/4；星极 休整期结束 +4/8；谬因 每3层技力回复+0.015/0.03、攻速+0.5/1；'
         + '溯光星源 与奥术灵巧同层数。',
-      assumed: [
-        '六件科技装备的具体战斗效果尚未实现（见 docs/COLUMBIA.md 的待办）。',
-        '霍尔海雅暂挂六本外援版本；石英／星源／星极／响石 尚未接入。',
-      ],
+      assumed: [],
     },
   };
 
@@ -269,6 +263,69 @@ export function applyColumbiaData(files) {
   // 成员标记：给棋子的 bonds 数组加 columbiaShip（普通与精锐都要）。
   applyColumbiaMemberTags(files);
 
+  // 按干员设计明确盟约组合；重建每个盟约的成员索引，防止迁池后残留旧归属。
+  const memberships = [
+    ['chess_char_2_02_a', [ID, 'visiShip']],
+    ['chess_char_2_19_a', [ID, 'swiftShip', 'investShip']],
+    ['chess_char_5_11_a', [ID, 'steadShip']],
+    ['chess_char_6_16_a', [ID, 'arcaneShip', 'skillfulShip', 'twinShip']],
+    ...COLUMBIA_NORMAL_OPERATORS.map(op => [columbiaChessId(op.charId),
+      ['char_135_halo', 'char_274_astesi'].includes(op.charId) ? [...op.bonds, 'twinShip'] : op.bonds]),
+  ];
+  const twinMembers = [columbiaChessId('char_274_astesi'), columbiaChessId('char_135_halo'), 'chess_char_6_16_a'];
+  const twinDesc = '星极与星源或溯光星源同时在场时共享装备；攻击范围重叠时，互相视作攻击范围的延伸。';
+  bonds.twinShip = { ...structuredClone(bonds.preciShip), bondId: 'twinShip', name: '双星', identifier: 26,
+    iconId: 'icon_twinShip', activeCount: 2, thresholds: [2], countMode: 'BOARD', countsHand: false,
+    members: twinMembers, visibleMembers: twinMembers,
+    memberGroups: [[twinMembers[0]], twinMembers.slice(1)],
+    effectId: 'bondeffect_twin', effectName: '双星', desc: twinDesc, descRaw: twinDesc,
+    effectDesc: twinDesc, effectDescRaw: twinDesc, effectDescParams: [], bb: {}, bbStr: {}, buffs: [],
+    baseParams: [], perStackParams: [], spec: { tiers: [{ need: '星极与星源或溯光星源', effect: twinDesc }] } };
+  effects.bondeffect_twin = { ...structuredClone(effects.bondeffect_preci), effectId: 'bondeffect_twin',
+    name: '双星', desc: twinDesc, descRaw: twinDesc, buffs: [], params: {} };
+  for (const [base, memberBonds] of memberships) {
+    for (const suffix of ['a', 'b']) {
+      const c = chess[base.replace(/_a$/, `_${suffix}`)];
+      if (c) c.bonds = [...memberBonds];
+    }
+    for (const b of Object.values(bonds)) for (const key of ['members', 'visibleMembers']) {
+      b[key] = b[key].filter(id => id !== base);
+      if (chess[base] && memberBonds.includes(b.bondId)) b[key].push(base);
+    }
+  }
+
+  for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+    const add = (stem, base, template, desc, bb, bbStr, fields = {}) => {
+      const owner = base.replace(/_a$/, `_${suffix}`), gid = `garrison_custom_columbia_${stem}_${suffix}`;
+      if (!chess[owner]) return;
+      garrisons[gid] = { ...structuredClone(garrisons[`${template}_${suffix}`]), ...fields,
+        garrisonId: gid, owners: [owner], desc, descRaw: desc, bb, bbStr };
+      if (!chess[owner].garrisonIds.includes(gid)) chess[owner].garrisonIds.push(gid);
+    };
+    add('quartz', columbiaChessId('char_4063_quartz'), 'garrison_154', `<休整期结束时>使已激活的【哥伦比亚】层数+${2 * mul}`,
+      { count: 2 * mul }, { bond: ID, conditionkey: 'character_target_inboard' });
+    add('halo', columbiaChessId('char_135_halo'), 'garrison_25', `<获得时>【哥伦比亚】层数+${3 * mul}，【奇迹】层数+${mul}（无需激活盟约）`,
+      {}, { bond: `${ID},miraShip`, count: `${3 * mul},${mul}` },
+      { effectType: 'SERVER_ADD_MULTIPLE_BOND', effectKey: 'SERVER_ADD_MULTIPLE_BOND' });
+    add('astesi', columbiaChessId('char_274_astesi'), 'garrison_154', `<休整期结束时>使已激活的【哥伦比亚】层数+${4 * mul}，【灵巧】层数+${3 * mul}`,
+      {}, { bond: `${ID},skillfulShip`, count: `${4 * mul},${3 * mul}`, conditionkey: 'character_target_inboard' },
+      { effectType: 'SERVER_ADD_MULTIPLE_BOND', effectKey: 'SERVER_ADD_MULTIPLE_BOND' });
+    add('tinman', 'chess_char_2_19_a', 'garrison_151', `【哥伦比亚】每叠加3层，本干员攻击力和生命值+${mul}%`,
+      { divide_num: 3, atk: 0.01 * mul, max_hp: 0.01 * mul },
+      { key: 'act1autochess_gar_eff_attrByBond', bond_id: ID });
+    add('aphris', columbiaChessId('char_4229_aphris'), 'garrison_151', `【哥伦比亚】每叠加3层，本干员技力回复+${0.015 * mul}，攻击速度+${0.5 * mul}`,
+      { divide_num: 3, sp_recovery_per_sec: 0.015 * mul, attack_speed: 0.5 * mul },
+      { key: 'act1autochess_gar_eff_attrByBond', bond_id: ID });
+    add('cairn', columbiaChessId('char_4214_cairn'), 'garrison_140', `<战斗中>前三次击倒敌人时，使已激活的【哥伦比亚】【坚守】层数+${2 * mul}`,
+      { bond_add_count: 2 * mul, check_cnt: 1, max_add_count_per_battle: 6 * mul },
+      { key: 'act1autochess_gar_event_selfkillenemy', bond_type: 'bond_by_id', bond_id: `${ID},steadShip`, bond_add_type: 'by_count' },
+      { effectKey: 'act1autochess_gar_event_selfkillenemy' });
+    add('heyak_stats', columbiaChessId('char_4027_heyak'), 'garrison_08', `攻击力和生命值+${25 * mul}%`,
+      { atk: 0.25 * mul, max_hp: 0.25 * mul }, { key: 'attr_common_global_buff' });
+    add('heyak_weakness', columbiaChessId('char_4027_heyak'), 'garrison_01', '攻击变为弱点伤害',
+      {}, { key: 'act1autochess_gar_eff_chaos' });
+  }
+
   // 溯光星源的双星：与它原有的奥术／灵巧同层数，加一条哥伦比亚版本的特质。
   // 原特质 garrison_121_a: <休整期结束时>本回合每花费3资金，使已激活的【灵巧】【奥术】层数+2
   for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
@@ -292,6 +349,7 @@ export function applyColumbiaData(files) {
   for (const mode of Object.values(config.modes)) {
     mode.inactiveBondIds = mode.inactiveBondIds.filter((id) => id !== ID);
     if (!mode.activeBondIds.includes(ID)) mode.activeBondIds.push(ID);
+    if (!mode.activeBondIds.includes('twinShip')) mode.activeBondIds.push('twinShip');
   }
 
   if (files.assets) applyColumbiaAssets(files.assets);

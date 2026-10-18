@@ -3,7 +3,7 @@
 // 设计要点（来自本 fork 的哥伦比亚方案）：
 //   * (3) 档：获得科技装备，仅哥伦比亚干员可用；每叠加 50 层随机获得一件，不重复。
 //   * (6) 档：科技装备获得过载，其效果增加 100%；所有佩戴科技装备的干员获得 50 攻速。
-// 过载不是统一翻倍：拓荒者蓄力装具是特例（普通 115%/+1%/上限200%，过载 130%/+2%/上限400%），
+// 过载不是统一翻倍：拓荒者蓄力装具是特例（普通 115%/+1%/上限200%，过载 130%/+2%/上限300%），
 // 其余五件的过载值恰好是普通值的两倍。因此两套数值都在这里显式写死，不用倍率推导。
 
 export const COLUMBIA_BOND = 'columbiaShip';
@@ -23,16 +23,16 @@ export const columbiaTechCount = (layers) => {
   return Math.max(0, Math.min(COLUMBIA_TECH_CAP, n));
 };
 
-/** 过载是否生效：(6) 档及以上。 */
-export const columbiaOverloaded = (tier) => (Number(tier) || 0) >= 6;
+/** 六人档是第二档：传入模拟器的档数，而不是人数。 */
+export const columbiaOverloaded = (tier) => (Number(tier) || 0) >= 2;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // 六件科技装备。`key` 用于生成装备 id 与战斗内的识别；normal / overload 是同一件的两套数值。
 //
-// 1 拓荒者蓄力装具：攻击造成 115%(130%) 伤害，每三次攻击增加 1%(2%)，最高 200%(400%)。
+// 1 拓荒者蓄力装具：攻击造成 115%(130%) 伤害，每三次攻击增加 1%(2%)，最高 200%(300%)。
 // 2 梅兰德战地保单：为百分比生命值最低的干员回复相当于 15%(30%) 造成的伤害的生命值；对一名敌人造成伤害后
 //   削减其 2%(4%) 攻击力持续 15s(30s)，可叠加，最高 15 层。
-// 3 过载护盾：获得 2000(4000) 生命值，获得 0.6(1.2)% 最大生命值的双抗，生命值首次跌下 50% 时锁血 7(14)s。
+// 3 过载护盾：获得 2000(4000) 生命值，获得 0.6(1.2)% 最大生命值的双抗，生命值首次跌下 50% 时锁血 6(12)s。
 // 4 灰质引擎：攻击力 +45/90%，每造成 1000 点伤害攻击力 +1(2)%，最多 100 层，攻击附带 5(10)% 精神损伤。
 // 5 多维尔综合诊疗仪：治疗效果增加 20(40)%，每次治疗为自身周围四格干员 sp+1(2)，为治疗目标周围四格回复
 //   15(30)% 的治疗量。
@@ -43,7 +43,7 @@ export const COLUMBIA_TECH_ITEMS = Object.freeze([
   {
     key: 'pioneer', name: '拓荒者蓄力装具',
     normal: { atkScale: 1.15, perThree: 0.01, cap: 2.0 },
-    overload: { atkScale: 1.3, perThree: 0.02, cap: 4.0 },
+    overload: { atkScale: 1.3, perThree: 0.02, cap: 3.0 },
   },
   {
     key: 'mapland', name: '梅兰德战地保单',
@@ -52,8 +52,8 @@ export const COLUMBIA_TECH_ITEMS = Object.freeze([
   },
   {
     key: 'shield', name: '过载护盾',
-    normal: { hp: 2000, resRatio: 0.006, lockHpSeconds: 7 },
-    overload: { hp: 4000, resRatio: 0.012, lockHpSeconds: 14 },
+    normal: { hp: 2000, resRatio: 0.006, lockHpSeconds: 6 },
+    overload: { hp: 4000, resRatio: 0.012, lockHpSeconds: 12 },
   },
   {
     key: 'graymatter', name: '灰质引擎',

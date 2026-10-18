@@ -48,6 +48,7 @@ import {
 } from '../support/index.js';
 import { mitigate, hasHp, periodicDamage, isHpLoss } from '../../damage.js';
 import { hypot } from '../../detmath.js';
+import { columbiaItemKey, installColumbiaItem } from './columbia.js';
 
 // =====================================================================================================================
 // data helpers
@@ -871,7 +872,7 @@ export function addShieldLayer(battle, target, key, cap = 1) {
 export function hasBattleEffect(rec) {
   if (!rec || rec.itemType !== 'EQUIP') return false;
   const key = itemKeyOf(rec.id);
-  if (BY_ITEM[key] || hammerInfo(key)) return true;
+  if (BY_ITEM[key] || hammerInfo(key) || columbiaItemKey(key)) return true;
   return buffsOf(rec).some((b) => STAT_BUFFS.has(b.bbKey) || BY_BUFF[b.bbKey]);
 }
 
@@ -882,13 +883,13 @@ export function hasBattleEffect(rec) {
  * Install the battle effects of item `itemId` on `u`. `lent` grants use their own buff keys (`@lend`).
  * Returns the grant `{ id, key, lent, dispose() }` or null when the item has no battle part.
  */
-export function installItem(battle, u, itemId, { lent = false } = {}) {
+export function installItem(battle, u, itemId, { lent = false, grantKey = null } = {}) {
   const rec = itemRecord(itemId);
   if (!isOp(u) || !hasBattleEffect(rec)) return null;
   const rt = runtime(battle);
   const gm = grantsOf(rt, u);
-  const gid = lent ? `lend:${itemId}` : `own:${itemId}:${gm.size}`;
-  const S = new Scope(battle, u, `item:${itemId}${lent ? '@lend' : ''}`);
+  const gid = grantKey ?? (lent ? `lend:${itemId}` : `own:${itemId}:${gm.size}`);
+  const S = new Scope(battle, u, `item:${itemId}${grantKey ? `@${grantKey}` : lent ? '@lend' : ''}`);
   const key = itemKeyOf(itemId);
   const grant = { gid, id: itemId, key, lent, scope: S, timer: null, dispose: null };
   grant.dispose = () => {
@@ -914,6 +915,8 @@ export function installItem(battle, u, itemId, { lent = false } = {}) {
       S.onDispose(() => { hs.own[h.type] = Math.max(0, hs.own[h.type] - 1); hammerRelease(battle, rt, u, hs); });
     }
     if (BY_ITEM[key]) BY_ITEM[key](battle, u, rec, S, grant);
+    const tech = columbiaItemKey(key);
+    if (tech) installColumbiaItem(battle, u, tech, S);
   } catch (e) {
     battle._handlerError?.(`item:${itemId}`, u, e);
   }

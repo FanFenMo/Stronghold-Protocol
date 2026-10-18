@@ -1,4 +1,4 @@
-// 哥伦比亚盟约：数据生成与共用数值。战斗级效果由 npm run golden 与 UI 测试覆盖。
+// 哥伦比亚盟约：数据生成与共用数值；战斗行为见 columbia-battle.test.js。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DATA } from '../match/harness.js';
@@ -66,14 +66,14 @@ test('每 50 层一件、6 件封顶；过载在 (6) 档生效', () => {
   assert.equal(COLUMBIA_TECH_STEP, 50);
 
   assert.equal(columbiaOverloaded(0), false);
-  assert.equal(columbiaOverloaded(3), false);
-  assert.equal(columbiaOverloaded(6), true);
+  assert.equal(columbiaOverloaded(1), false);
+  assert.equal(columbiaOverloaded(2), true);
 });
 
 test('拓荒者蓄力装具是过载特例：不是简单翻倍', () => {
   const pioneer = columbiaTechItem('pioneer');
   assert.deepEqual(pioneer.normal, { atkScale: 1.15, perThree: 0.01, cap: 2.0 });
-  assert.deepEqual(pioneer.overload, { atkScale: 1.3, perThree: 0.02, cap: 4.0 });
+  assert.deepEqual(pioneer.overload, { atkScale: 1.3, perThree: 0.02, cap: 3.0 });
 
   // 其余五件的**效果数值**恰好是普通值的两倍；但**层数上限不翻倍**
   // —— 设计里梅兰德 15 层、灰质引擎 100 层在两档相同。

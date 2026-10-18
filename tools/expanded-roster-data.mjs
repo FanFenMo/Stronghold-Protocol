@@ -2,13 +2,17 @@ import { composeUnitRecord, unitForm, statusKey } from '../shared/standIn.js';
 import { atPotential, stripPotential } from '../shared/potential.js';
 import { isDiyModule } from '../shared/diy.js';
 import { OPERATOR_KITS } from '../server/sim/content/kits/index.js';
+import { COLUMBIA_NORMAL_OPERATORS } from './columbia-roster-data.mjs';
 
 // Use upstream operator forms with our existing per-player external roster and saved ids.
 export function applyExpandedRoster(files, custom, annotate) {
   const original = new Map(Object.values(custom.chess).filter(c => !c.isGolden).map(c => [c.charId, c]));
   const available = new Set(Object.keys(OPERATOR_KITS));
   const records = [];
-  for (const charId of files.backups.diy.ownedPool.filter(id => available.has(id))) {
+  const regular = new Set(COLUMBIA_NORMAL_OPERATORS.map(op => op.charId));
+  const roster = files.backups.diy.ownedPool.filter(id => available.has(id));
+  for (const [rosterIndex, charId] of roster.entries()) {
+    if (regular.has(charId)) continue;
     const old = original.get(charId);
     const suffix = charId.split('_').slice(2).join('_');
     const variants = Object.fromEntries([5, 6].map(tier => [tier, old
@@ -21,7 +25,7 @@ export function applyExpandedRoster(files, custom, annotate) {
       const identity = { ...slot, chessId, baseId, goldenId: baseId.replace(/_a$/, '_b'),
         upgradeChessId: golden ? null : baseId.replace(/_a$/, '_b'),
         isDiy: false, visible: true, isHidden: false, garrisonIds: [],
-        identifier: 20000 + records.length };
+        identifier: 20000 + rosterIndex * 4 + (tier - 5) * 2 + Number(golden) };
       const skillIndex = old?.skill?.index ?? form.skills[2]?.index ?? form.skills[0].index;
       const moduleId = golden ? old?.module?.id ?? null : null;
       const bonds = old?.bonds ?? files.backups.diy.operators[charId].bonds;

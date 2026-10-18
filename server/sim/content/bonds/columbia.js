@@ -1,45 +1,55 @@
-// server/sim/content/bonds/columbia.js — 哥伦比亚盟约的战斗侧实现（DESIGN §7 同层；本 fork 新增）。
-//
-// 本模块负责 (6) 档的"所有佩戴科技装备的干员获得50攻速"，并对外暴露"某玩家当前是否处于过载"，
-// 供六件科技装备的效果实现读取（装备效果见 docs/COLUMBIA.md 的待办，尚未实现）。
-//
-// 与 prosperity.js 相同的约定：
-//   * install(battle) 只在战斗开始时跑一次；
-//   * 数值全部来自 shared/columbia.js，本文件不写死常数；
-//   * 只走 support/index.js 的公开辅助与 Battle 的公开 API。
+// 哥伦比亚干员特质与双星：装备复用可撤销的 item grant，范围复用 setExtraRange。
+import { isOp, onField } from '../support/index.js';
+import { installItem } from '../items/battle.js';
+import { absoluteRangeKeys } from '../../targeting.js';
 
-import { COLUMBIA_BOND as ID, COLUMBIA_OVERLOAD_ATK_SPEED, columbiaOverloaded } from '../../../../shared/columbia.js';
-import { bondTier, isMember, playerOps, passiveBuff, itemsOf } from '../support/index.js';
-
-/** 六件科技装备的 id 前缀（tools/columbia-data.mjs 的 columbiaTechItemId 生成规则）。 */
-const TECH_ITEM_RE = /^chess_item_custom_columbia_/;
-
-/** 单位身上是否有哥伦比亚科技装备。 */
-export const wearsTechItem = (u) => itemsOf(u).some((id) => TECH_ITEM_RE.test(String(id)));
-
-/** 该玩家当前是否处于过载（(6) 档）。装备效果用它选择普通值还是过载值。 */
-export const columbiaOverloadActive = (battle, pid) => columbiaOverloaded(bondTier(battle, pid, ID));
+const ASTESI = 'char_274_astesi';
+const HALOS = new Set(['char_135_halo', 'char_1047_halo2']);
+const charId = u => u.def.charId;
 
 export function install(battle) {
-  // 只有 (6) 档才有效果：收集满足条件的玩家及其哥伦比亚成员。
-  const states = new Map();
-  for (const p of battle.players) {
-    if (!columbiaOverloaded(bondTier(battle, p.playerId, ID))) continue;
-    states.set(p.playerId, playerOps(battle, p.playerId).filter((u) => isMember(battle, u, ID)));
-  }
-  if (!states.size) return;
+  const stars = battle.allyUnits.filter(u => isOp(u) && (charId(u) === ASTESI || HALOS.has(charId(u))));
+  if (!stars.some(u => charId(u) === ASTESI) || !stars.some(u => HALOS.has(charId(u)))) return;
+  const grants = new Map(), extended = new Map(), triggerKeys = new Map();
+  for (const u of stars) u.skill?.addTriggerRange(() => [triggerKeys.get(u) ?? []]);
+  const ownRange = u => {
+    const tg = u.skill?.active ? u.skill.spec.targeting : null;
+    const grid = tg?.rangeGrid ?? u.rangeGrid;
+    const extend = (tg?.noRangeExtend ? 0 : u.s.rangeExtend) + (tg?.rangeExtend ?? 0);
+    return absoluteRangeKeys(grid, u.tileR, u.tileC, u.dir, extend);
+  };
+  const refresh = () => {
+    for (const u of stars) {
+      const peers = onField(u) ? stars.filter(a => onField(a) && a.ownerId === u.ownerId && a !== u) : [];
+      const active = (charId(u) === ASTESI ? peers.some(a => HALOS.has(charId(a))) : peers.some(a => charId(a) === ASTESI));
+      const ids = new Set();
+      if (active) for (const a of peers) for (const id of a.items) if (!u.items.includes(id)) ids.add(id);
+      let mine = grants.get(u);
+      if (!mine) { mine = new Map(); grants.set(u, mine); }
+      for (const [id, grant] of mine) if (!ids.has(id)) { grant.dispose(); mine.delete(id); }
+      for (const id of ids) if (!mine.has(id)) {
+        const grant = installItem(battle, u, id, { lent: true, grantKey: `twin:${id}` });
+        if (grant) mine.set(id, grant);
+      }
 
-  const apply = (pid) => {
-    for (const u of states.get(pid)) {
-      // 装备一旦配发就锁定在干员身上，所以这里只需要在开战时按"是否佩戴科技装备"给一次。
-      // 未佩戴的成员给一个 0 值的同名 buff，避免同一干员在两次战斗之间残留上一场的 50 攻速。
-      passiveBuff(battle, u, `bond:${ID}:overload`, { aspd: wearsTechItem(u) ? COLUMBIA_OVERLOAD_ATK_SPEED : 0 });
+      // 用自身当前范围判定相交，不能拿上次已延伸的范围继续递归扩大。
+      const own = ownRange(u), ownSet = new Set(own), additions = new Set();
+      if (active) for (const a of peers) {
+        if ((charId(u) === ASTESI) === (charId(a) === ASTESI)) continue;
+        const range = ownRange(a);
+        if (range.some(k => ownSet.has(k))) for (const k of range) additions.add(k);
+      }
+      const previous = extended.get(u) ?? new Set();
+      if (additions.size !== previous.size || [...additions].some(k => !previous.has(k))) {
+        battle.setExtraRange(u, additions, 'bond:twinShip');
+      }
+      extended.set(u, additions);
+      triggerKeys.set(u, [...additions]);
     }
   };
-  for (const pid of states.keys()) apply(pid);
-
-  // 战斗中部署的新成员（再部署、召唤物本体不适用）也要拿到这个 buff。
-  battle.on('deploy', ({ unit }) => {
-    if (unit && states.has(unit.ownerId)) apply(unit.ownerId);
-  });
+  battle.on('deploy', refresh);
+  battle.on('death', refresh);
+  battle.on('skillStart', refresh, { priority: -50 });
+  battle.on('skillEnd', refresh, { priority: -50 });
+  battle.every(0.1, refresh);
 }

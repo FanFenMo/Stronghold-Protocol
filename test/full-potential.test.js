@@ -87,9 +87,8 @@ test('every chess, 自选 form and stand-in form: the raw keyframes plus every p
     n++;
     if (Object.keys(steps(c.charId)).length) withSteps++;
   }
-  // 546 = 554 条记录减去 8 条 isDiy 的「甄选干员」；繁盛退役的 4 条棋子（RETIRED_CHESS）已不在数据里，
-  // 所以不是退役前的 550。本测试依赖 .cache/gamedata，缓存缺失时整条被 skip。
-  assert.equal(n, 546);
+  // 558 条记录减去 8 条 isDiy 的「甄选干员」；包含本次新增与迁池后的常规棋子。
+  assert.equal(n, 550);
   assert.ok(withSteps >= 220, `chess with potential steps: ${withSteps}`);
   let forms = 0;
   for (const [charId, u] of Object.entries(backups.units)) {

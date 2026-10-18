@@ -859,7 +859,7 @@ export class PlayerState {
    */
   _grantColumbiaTech(from, to) {
     const st = this.bonds[COLUMBIA_BOND];
-    if (!st || !st.active || (Number(st.tier) || 0) < 3) return;
+    if (!st || !st.active) return;
     const owned = Array.isArray(this.columbiaTech) ? this.columbiaTech : (this.columbiaTech = []);
     if (owned.length >= COLUMBIA_TECH_CAP) return;
     const rng = this._techRng || (this._techRng = createRng(deriveSeed(this.m.seed, `columbia:${this.playerId}`)));

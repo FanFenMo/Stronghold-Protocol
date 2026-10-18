@@ -94,10 +94,8 @@ test('every chess and 自选 form at every potential: the raw keyframes plus the
     if (c.isDiy || !c.charId) continue;
     for (let rank = 0; rank <= FULL_RANK; rank++) { const r = atRank(c, rank); check(c.chessId, c.charId, c.status, r.statsBase ?? r.stats, rank); n++; }
   }
-  // 546 = data/chess.json 的 554 条减去 8 条 isDiy 的「甄选干员」。
-  // 曾被繁盛退役的 4 条棋子（char_4_15 与 char_5_09 的 a/b，tools/prosperity-data.mjs 的 RETIRED_CHESS）
-  // 已不在数据里，所以这里是 546 而不是退役前的 550。本测试依赖 .cache/gamedata，缓存缺失时整条被 skip。
-  assert.equal(n, 546 * 6);
+  // 558 条记录减去 8 条 isDiy 的「甄选干员」，每条验证六档潜能。
+  assert.equal(n, 550 * 6);
   let forms = 0;
   for (const [charId, u] of Object.entries(backups.units)) {
     for (const f of Object.values(u.forms)) {

@@ -464,7 +464,10 @@ async function main() {
   const body = resolved.value;
   tidyManifest(body);
   applyProsperityAssets(body);
-  applyColumbiaAssets(body);
+  applyColumbiaAssets(body, {
+    reserved: JSON.parse(await readFile(join(ROOT, 'data/reserved-operators.json'), 'utf8')),
+    chess: JSON.parse(await readFile(join(ROOT, 'data/chess.json'), 'utf8')),
+  });
   applyStrategyAssets(body);
   const fontFaces = {};
   for (const [name, f] of Object.entries(fonts.files)) fontFaces[name] = f;
