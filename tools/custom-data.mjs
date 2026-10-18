@@ -3,6 +3,7 @@ import { applyAegirCovenantData } from './aegir-covenant-data.mjs';
 import { applyAegirTraitData } from './aegir-trait-data.mjs';
 import { applyAegirBandData } from './aegir-band-data.mjs';
 import { applyProsperityData } from './prosperity-data.mjs';
+import { applyColumbiaData } from './columbia-data.mjs';
 import { applyStrategyData } from './strategy-data.mjs';
 
 export function applyCustomData(files, custom) {
@@ -43,5 +44,6 @@ export function applyCustomData(files, custom) {
     if (!mode.activeBondIds.includes('soloShip')) mode.activeBondIds.push('soloShip');
   }
   applyProsperityData(files);
+  applyColumbiaData(files);
   applyStrategyData(files);
 }

@@ -82,6 +82,8 @@ import { offsetTile } from '../sim/dir.js';
 import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains } from './bondsMeta.js';
 import { itemKey } from './gamedata.js';
 import { bountyText } from './choices.js';
+import { createRng, deriveSeed } from '../sim/rng.js';
+import { COLUMBIA_BOND, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, columbiaTechItemId } from '../../shared/columbia.js';
 
 const HAND_SIZE = GEO.HAND_SIZE;
 const TEMP_SIZE = GEO.TEMP_SIZE;
@@ -136,6 +138,8 @@ export class PlayerState {
     this.layers = {};
     /** computed bond states */
     this.bonds = {};
+    /** 哥伦比亚科技装备已发放的 key 列表（每满 50 层随机一件、不重复，至多 6 件） */
+    this.columbiaTech = [];
     /**
      * this round's IN_BATTLE layer gains of the finished normal battle ({ [bondId]: n }, Match._finishCombat) until
      * settle() makes them persistent — the views add them (bondsView, DESIGN §20.15); null otherwise
@@ -841,7 +845,33 @@ export class PlayerState {
     this.layers[bondId] = before + add;
     this.recompute();
     this.m.dispatch(this, 'onLayers', { bondId, from: before, to: before + add, reason });
+    // 哥伦比亚 (3) 档：跨越 50 层的倍数时随机发放一件科技装备
+    if (bondId === COLUMBIA_BOND) this._grantColumbiaTech(before, before + add);
     return add;
+  }
+
+  /**
+   * 哥伦比亚 (3) 档：每叠加 50 层随机获得一件科技装备，不重复，至多 6 件（shared/columbia.js）。
+   *
+   * 只在 (3) 档及以上发放。整备区已满时 acquireItem 会销毁装备并返回 null —— 此时不消耗名额，
+   * 留到跨过下一个 50 层倍数时再试。随机数走本玩家专属的 `columbia` 流，不扰动
+   * setup / shop / waves / draft / bots / meta（黄金结果只受哥伦比亚自身影响）。
+   */
+  _grantColumbiaTech(from, to) {
+    const st = this.bonds[COLUMBIA_BOND];
+    if (!st || !st.active) return;
+    const owned = Array.isArray(this.columbiaTech) ? this.columbiaTech : (this.columbiaTech = []);
+    if (owned.length >= COLUMBIA_TECH_CAP) return;
+    const rng = this._techRng || (this._techRng = createRng(deriveSeed(this.m.seed, `columbia:${this.playerId}`)));
+    for (let k = Math.floor(from / COLUMBIA_TECH_STEP) + 1; k * COLUMBIA_TECH_STEP <= to; k++) {
+      if (owned.length >= COLUMBIA_TECH_CAP) return;
+      const pool = COLUMBIA_TECH_ITEMS.filter((it) => !owned.includes(it.key));
+      if (!pool.length) return;
+      const pick = pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+      const piece = this.acquireItem(columbiaTechItemId(pick.key, false), { source: `bond:${COLUMBIA_BOND}`, deferMerge: true });
+      if (!piece) return;
+      owned.push(pick.key);
+    }
   }
 
   // =================================================================================================

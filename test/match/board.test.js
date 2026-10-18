@@ -136,8 +136,11 @@ test('g.move to the hand: withdraw, full-hand swap with a chess, hand↔hand swa
   assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: boardPiece.uid, to: { area: 'hand', idx: itemIdx } }), { error: ERR.HAND_FULL });
   // items cannot be placed on the board but can move inside the hand
   assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: item.uid, to: { area: 'board', row: 9, col: 4 } }).error, ERR.BAD_TARGET);
-  const other = handChess[0];
-  const oi = ps.hand.findIndex((p) => p && p.uid === other.uid);
+  // 手牌内的棋子↔装备交换。用来交换的那枚棋子必须**不是**上面刚被换到棋盘上的那个（target），
+  // 否则它在手牌里的索引会变成 -1，move 收到 idx:-1 直接返回 BAD_TARGET。
+  // 原来写死取 handChess[0]，而这轮 tier-1 池里 ids[1] 恰好就是第一个 MELEE（与 target 同一个），于是撞上。
+  const oi = ps.hand.findIndex((p, i) => p && p.kind === 'chess' && i !== target);
+  const other = ps.hand[oi];
   assert.deepEqual(m.handle('p_0', { t: 'g.move', uid: item.uid, to: { area: 'hand', idx: oi } }), { ok: true });
   assert.equal(ps.hand[oi].uid, item.uid);
   assert.equal(ps.hand[itemIdx].uid, other.uid);

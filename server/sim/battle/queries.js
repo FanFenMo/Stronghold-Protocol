@@ -259,6 +259,9 @@ export class BattleQueries {
     const set = new Set(keys);
     const extra = u.extraRangeKeys;
     if (extra) for (const k of extra) if (!set.has(k)) { set.add(k); keys.push(k); }
+    if (u.extraRangeSources) for (const range of u.extraRangeSources.values()) {
+      for (const k of range) if (!set.has(k)) { set.add(k); keys.push(k); }
+    }
     u.rangeKeys = keys;
     u.rangeKeySet = set;
     const own = !!(tg && tg.showOwnRange);
@@ -285,12 +288,17 @@ export class BattleQueries {
    * (row × COLS + col), kept across every later range rebuild until content sets them again (null / [] clears).
    * Not part of `baseRangeKeys` (the DEFAULT trigger range) — see SkillRuntime.addTriggerRange for that.
    */
-  setExtraRange(unit, keys) {
+  setExtraRange(unit, keys, source = null) {
     if (!unit || unit.side !== 'ally') return false;
     const out = [];
     const seen = new Set();
     for (const k of keys || []) if (Number.isInteger(k) && k >= 0 && k < ROWS * COLS && !seen.has(k)) { seen.add(k); out.push(k); }
-    unit.extraRangeKeys = out.length ? out : null;
+    if (source === null) unit.extraRangeKeys = out.length ? out : null;
+    else {
+      unit.extraRangeSources ??= new Map();
+      if (out.length) unit.extraRangeSources.set(source, out);
+      else unit.extraRangeSources.delete(source);
+    }
     if (unit.alive && unit.deployed) this._refreshRange(unit);
     return true;
   }

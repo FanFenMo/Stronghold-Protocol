@@ -76,6 +76,7 @@ import { collectLeaves, downloadLeaves, resolveTemplate, totalBytes, contentHash
 import { fontJobs, buildFonts } from './assets/fonts.mjs';
 import { skelParserAvailable } from './assets/skel.mjs';
 import { applyProsperityAssets } from './prosperity-data.mjs';
+import { applyColumbiaAssets } from './columbia-data.mjs';
 import { applyStrategyAssets } from './strategy-data.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -463,6 +464,10 @@ async function main() {
   const body = resolved.value;
   tidyManifest(body);
   applyProsperityAssets(body);
+  applyColumbiaAssets(body, {
+    reserved: JSON.parse(await readFile(join(ROOT, 'data/reserved-operators.json'), 'utf8')),
+    chess: JSON.parse(await readFile(join(ROOT, 'data/chess.json'), 'utf8')),
+  });
   applyStrategyAssets(body);
   const fontFaces = {};
   for (const [name, f] of Object.entries(fonts.files)) fontFaces[name] = f;

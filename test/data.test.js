@@ -75,12 +75,12 @@ test('numbers: every stats/bb/enemyScale object holds only finite numbers (no nu
   assert.deepEqual(bad.slice(0, 10), [], `${bad.length} bad numeric fields`);
 });
 
-test('chess: 554 records, 258 visible non-DIY, 19 hidden normal records', () => {
-  assert.equal(Object.keys(chess).length, 554);
-  assert.equal(visible.length, 258);
+test('chess: 558 records, 260 visible non-DIY, 19 hidden normal records', () => {
+  assert.equal(Object.keys(chess).length, 558);
+  assert.equal(visible.length, 260);
   const perTier = {};
   for (const c of visible) perTier[c.tier] = (perTier[c.tier] || 0) + 1;
-  assert.deepEqual(perTier, { 1: 16, 2: 17, 3: 19, 4: 22, 5: 92, 6: 92 });
+  assert.deepEqual(perTier, { 1: 17, 2: 17, 3: 21, 4: 24, 5: 90, 6: 91 });
   assert.equal(normalChess.filter((c) => c.isDiy).length, 4);
   assert.equal(normalChess.filter((c) => c.isHidden).length, 19);
 });
@@ -129,9 +129,9 @@ test('chess: every non-DIY chess has stats, range, classification and a resolvab
   assert.equal(chess.chess_char_1_01_a.targetPriority, 'fly');
 });
 
-test('bonds: 24 bonds with valid members, thresholds and effects', () => {
-  assert.equal(Object.keys(bonds).length, 24);
-  assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 8);
+test('bonds: 26 bonds with valid members, thresholds and effects', () => {
+  assert.equal(Object.keys(bonds).length, 26);
+  assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 9);
   const modes = new Set(['BOARD', 'BOARD_AND_DECK', 'BOARD_ALL_CHESS']);
   for (const b of Object.values(bonds)) {
     assert.ok(modes.has(b.countMode), `${b.bondId}: countMode ${b.countMode}`);
@@ -163,9 +163,9 @@ test('garrisons: all referenced exist; 43 distinct effect keys', () => {
   }
 });
 
-test('items: 115 item chess with valid effects, bonds and golden links', () => {
-  assert.equal(Object.keys(items).length, 115);
-  assert.equal(Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden).length, 56);
+test('items: 121 item chess with valid effects, bonds and golden links', () => {
+  assert.equal(Object.keys(items).length, 121);
+  assert.equal(Object.values(items).filter((i) => i.itemType === 'EQUIP' && !i.isGolden).length, 62);
   assert.equal(Object.values(items).filter((i) => i.itemType === 'MAGIC').length, 3);
   for (const it of Object.values(items)) {
     assert.ok(effects[it.effectId], `${it.id}: effect ${it.effectId}`);
@@ -806,7 +806,10 @@ test('independent re-derivation of every chess and enemy stat from the raw offic
     }
     n++;
   }
-  assert.equal(n, 258);
+  // 254 = 官方 charChessDataDict 的 266 条，减去 8 条 isDiy 的「甄选干员」（char_5_diy1/2、char_6_diy1/2 各 a/b），
+  // 再减去 tools/prosperity-data.mjs 的 RETIRED_CHESS —— 繁盛特意删除的 4 条（char_4_15 与 char_5_09 的 a/b）。
+  // 这个断言长期没被执行过：它依赖 .cache/gamedata，缓存不存在时整条测试被 skip，所以期望值一直停留在删除之前。
+  assert.equal(n, 254);
 
   const db = new Map(raw('levels/enemydata/enemy_database.json').enemies.map((e) => [e.Key, e.Value]));
   const ov = new Map((raw('levels/activities/act1autochess/level_autochess_enemy_data.json').enemyDbRefs || [])

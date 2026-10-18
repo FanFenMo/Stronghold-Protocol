@@ -1,0 +1,41 @@
+{
+  // 搬自上游 sganggs/Stronghold-Protocol 的 jsconfig.json，改了两处：
+  //   1. 去掉 include 里的 "types/**/*.js" —— 这个 fork 没有 types/ 目录
+  //   2. exclude 里加上本 fork 独有的 4 个模块，它们从没经过 checkJs，先排除掉减少噪音
+  //
+  // VS Code 自带 TypeScript，所以编辑器里的类型检查开箱即用，不需要装任何依赖。
+  // 但上游注释里提到的 `npm run typecheck` 在这个 fork 不存在（package.json 里没有该脚本）。
+  //
+  // 上游的设计是「一次放宽一个路径」：把某个文件从 exclude 里挪走后，
+  // 在「问题」面板里把它清干净，再挪下一个。strict 暂时关闭，等文件夹干净了再开。
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "checkJs": true,
+    "allowJs": true,
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": [],
+    "lib": ["ES2022"],
+    "maxNodeModuleJsDepth": 0
+  },
+  "include": [
+    "shared/**/*.js",
+    "server/sim/rng.js",
+    "server/sim/detmath.js",
+    "server/sim/dir.js",
+    "server/sim/constants.js"
+  ],
+  "exclude": [
+    // 上游本来就排除的两个
+    "shared/protocol.js",
+    "shared/bandBonds.js",
+    // 本 fork 独有的四个模块；清理干净后可以逐个挪回 include
+    "shared/prosperity.js",
+    "shared/strategies.js",
+    "shared/supportOperators.js",
+    "shared/ultimateDifficulty.js"
+  ]
+}

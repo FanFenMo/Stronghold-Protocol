@@ -41,6 +41,8 @@ import { statusKey, composeUnitRecord, standInRecord, unitForm } from '../shared
 import { extendedGrid } from '../shared/loadoutRecord.js';
 import { FULL_RANK, atRank, stripPotential } from '../shared/potential.js';
 import { applyCustomData } from './custom-data.mjs';
+import { applyColumbiaData } from './columbia-data.mjs';
+import { COLUMBIA_NORMAL_OPERATORS, applyColumbiaRoster } from './columbia-roster-data.mjs';
 import { applyExpandedRoster } from './expanded-roster-data.mjs';
 import { timesEnemySpeedMultipliers } from './enemy-balance-data.mjs';
 
@@ -1374,8 +1376,13 @@ function buildBackups(ctx, chess) {
   const ownedPool = [...legal6.filter((id) => !excluded.includes(id)), 'char_4182_oblvns'];
   for (const id of ownedPool) for (const st of diyStatuses.values()) addNeed(id, st);
 
+  for (const op of COLUMBIA_NORMAL_OPERATORS) for (const golden of [false, true]) {
+    const template = Object.values(chess).find(c => c.tier === op.tier && c.isGolden === golden && !c.isDiy);
+    addNeed(op.charId, template.status);
+  }
+
   const units = {};
-  for (const id of [...standInIds, ...ownedPool]) {
+  for (const id of new Set([...standInIds, ...ownedPool, ...COLUMBIA_NORMAL_OPERATORS.map(op => op.charId)])) {
     const unit = buildUnitHead(ctx, id);
     unit.standsIn = (standsIn.get(id) || []).sort(naturalCmp);
     unit.forms = {};
@@ -4088,6 +4095,8 @@ async function main() {
   const custom = JSON.parse(await readFile(join(ROOT, 'tools/data/custom-operators.json'), 'utf8'));
   applyCustomData(files, custom);
   applyExpandedRoster(files, custom, (ranks, id) => withPotentialData(ranks, id, errors));
+  applyColumbiaRoster(files, (ranks, id) => withPotentialData(ranks, id, errors));
+  applyColumbiaData(files);
   let total = 0;
   const sizes = {};
   const texts = {};

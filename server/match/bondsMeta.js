@@ -76,7 +76,10 @@ function membership(gd, ps) {
 function rawCount(gd, id, mem, ps) {
   const bond = gd.bond(id);
   let count;
-  if (bond.countMode === 'BOARD_ALL_CHESS' || bond.thresholdTemplate === 'count_threshold_upward_golden') {
+  if (bond.memberGroups) {
+    const members = mem.onBoard.get(id) || new Set();
+    count = bond.memberGroups.filter(group => group.some(base => members.has(base))).length;
+  } else if (bond.countMode === 'BOARD_ALL_CHESS' || bond.thresholdTemplate === 'count_threshold_upward_golden') {
     count = mem.goldenOnBoard;
   } else if (bond.countMode === 'BOARD_AND_DECK') {
     const s = new Set([...(mem.onBoard.get(id) || []), ...(mem.inHand.get(id) || [])]);

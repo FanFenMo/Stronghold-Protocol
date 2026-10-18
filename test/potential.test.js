@@ -94,6 +94,7 @@ test('every chess and 自选 form at every potential: the raw keyframes plus the
     if (c.isDiy || !c.charId) continue;
     for (let rank = 0; rank <= FULL_RANK; rank++) { const r = atRank(c, rank); check(c.chessId, c.charId, c.status, r.statsBase ?? r.stats, rank); n++; }
   }
+  // 558 条记录减去 8 条 isDiy 的「甄选干员」，每条验证六档潜能。
   assert.equal(n, 550 * 6);
   let forms = 0;
   for (const [charId, u] of Object.entries(backups.units)) {

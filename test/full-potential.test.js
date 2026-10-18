@@ -87,6 +87,7 @@ test('every chess, 自选 form and stand-in form: the raw keyframes plus every p
     n++;
     if (Object.keys(steps(c.charId)).length) withSteps++;
   }
+  // 558 条记录减去 8 条 isDiy 的「甄选干员」；包含本次新增与迁池后的常规棋子。
   assert.equal(n, 550);
   assert.ok(withSteps >= 220, `chess with potential steps: ${withSteps}`);
   let forms = 0;

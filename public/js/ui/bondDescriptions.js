@@ -85,6 +85,9 @@ export function bondDescriptionClauses(bond, { layers = 0, tier = 0, active = fa
     case 'prosperityShip':
       add(`【繁盛】干员治疗效果+${highlight(prosperityHealBonus(L), true)}，上限200层。`);
       add('累计对其他干员的实际治疗；范围内有敌人时，每秒投掷生命球并清空计数，造成一次周围五格真实伤害，并为范围内友方恢复生命。40层时爆炸范围扩大至九格。', 2); break;
+    case 'columbiaShip':
+      add('获得哥伦比亚的科技装备，仅【哥伦比亚】干员可用；每叠加50层随机获得一件，不重复，至多6件。');
+      add('科技装备获得过载，其效果增加100%；所有佩戴科技装备的干员获得50攻速。', 2); break;
   }
   return clauses;
 }
