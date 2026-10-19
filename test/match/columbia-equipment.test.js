@@ -12,7 +12,7 @@ for (const tech of COLUMBIA_TECH_ITEMS) {
       const item = giveItem(h.m, ps, id);
       assert.deepEqual(ps.equip(item.uid, target.uid), { ok: true });
     }
-    const item = giveItem(h.m, ps, columbiaTechItemId(tech.key));
+    const item = giveItem(h.m, ps, columbiaTechItemId(tech.key), 'temp');
     const before = JSON.stringify({ hand: ps.hand, temp: ps.temp, target, equipped: ps.stats.itemsEquipped });
     assert.deepEqual(h.m.handle('p_0', { t: 'g.equip', itemUid: item.uid, targetUid: target.uid, replaceUid: target.items[1].uid }),
       { error: 'BAD_TARGET', detail: '仅【哥伦比亚】干员可用' });

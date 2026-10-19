@@ -13,7 +13,7 @@ import { DATA, makeMatch, give, giveItem, checkInvariants, chessOfTier, legalTil
 
 /** Plain equipment (no equip / merge side effects): fillers for the hand and the pieces granted by the tests. */
 const PLAIN = Object.values(DATA.items)
-  .filter((i) => i.itemType === 'EQUIP' && !i.isGolden && i.kind === 'passive')
+  .filter((i) => i.itemType === 'EQUIP' && !i.isGolden && i.kind === 'passive' && !i.requiresBondId)
   .map((i) => i.itemId ?? i.id).filter(Boolean);
 const GRANTS = PLAIN.slice(-3);
 const FILL = PLAIN.slice(0, 10);
