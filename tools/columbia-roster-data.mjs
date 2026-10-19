@@ -1,3 +1,4 @@
+import { COLUMBIA_BOND } from '../shared/columbia.js';
 import { composeUnitRecord, unitForm, statusKey } from '../shared/standIn.js';
 import { atPotential } from '../shared/potential.js';
 
@@ -14,6 +15,7 @@ export const COLUMBIA_NORMAL_OPERATORS = Object.freeze([
 export const columbiaChessId = (charId) => `chess_columbia_${charId.split('_').slice(2).join('_')}_a`;
 
 export function applyColumbiaRoster(files, annotate) {
+  files.backups.diy.operators.char_4048_doroth.bonds = [COLUMBIA_BOND];
   const moved = new Set(COLUMBIA_NORMAL_OPERATORS.map(o => o.charId));
   const removed = new Set();
   for (const [id, c] of Object.entries(files.chess)) if (c.supportOperator && moved.has(c.charId)) {

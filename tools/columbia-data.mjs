@@ -139,7 +139,6 @@ const COLUMBIA_ITEM_FORMULA = {
  * 所以构建脚本必须在 applyExpandedRoster 之后再调用一次本函数。
  */
 export function applyColumbiaMemberTags(files) {
-  files.backups.diy.operators[DOROTHY].bonds = [ID];
   const chess = files && files.chess ? files.chess : {};
   for (const base of COLUMBIA_MEMBERS) {
     for (const suffix of ['a', 'b']) {
