@@ -154,7 +154,7 @@ test('bonds: 25 bonds with valid members, thresholds and effects', () => {
   for (const c of normalChess) for (const b of c.bonds) assert.ok(bonds[b].members.includes(c.chessId), `${c.chessId} not in ${b}.members`);
 });
 
-test('garrisons: all referenced exist; 43 distinct effect keys', () => {
+test('garrisons: all referenced exist; 45 distinct effect keys', () => {
   const keys = new Set(Object.values(garrisons).map((g) => g.effectKey));
   assert.equal(keys.size, 44);
   for (const g of Object.values(garrisons)) {
