@@ -138,7 +138,7 @@ export class PlayerState {
     this.layers = {};
     /** computed bond states */
     this.bonds = {};
-    /** 哥伦比亚科技装备已发放的 key 列表（每满 50 层随机一件、不重复，至多 6 件） */
+    /** 哥伦比亚科技装备已发放的 key 列表（每满 30 层随机一件、不重复，至多 6 件） */
     this.columbiaTech = [];
     this._grantingColumbiaTech = false;
     /**
@@ -850,7 +850,7 @@ export class PlayerState {
   }
 
   /**
-   * 哥伦比亚 (3) 档：每叠加 50 层随机获得一件科技装备，不重复，至多 6 件（shared/columbia.js）。
+   * 哥伦比亚 (3) 档：每叠加 30 层随机获得一件科技装备，不重复，至多 6 件（shared/columbia.js）。
    *
    * 在盟约重算后按累计层数补齐，覆盖先叠层后激活及战斗结算。整备区与临时整备区都满时
    * 保留未领取名额，腾出空间后的下一次重算再试。随机数走本玩家专属的 `columbia` 流，不扰动

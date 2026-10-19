@@ -1,18 +1,21 @@
-// 哥伦比亚 v1.1：三人档每层提升装备加成0.3%；六人档每人共享实际佩戴的可共享装备数值的5%。
+// 哥伦比亚 v1.1：三人档初始提升装备加成50%，每层再提升0.3%；六人档每人共享实际佩戴的可共享装备数值的20%。
 
 export const COLUMBIA_BOND = 'columbiaShip';
 
-/** 科技装备的总件数上限：每满 50 层发一件，发满 6 件后不再发放。 */
+/** 科技装备的总件数上限：每满 30 层发一件，发满 6 件后不再发放。 */
 export const COLUMBIA_TECH_CAP = 6;
 
-/** 触发间隔：每叠加 50 层随机获得一件。 */
-export const COLUMBIA_TECH_STEP = 50;
+/** 触发间隔：每叠加 30 层随机获得一件。 */
+export const COLUMBIA_TECH_STEP = 30;
+
+/** 三人档装备加成的初始增幅。 */
+export const COLUMBIA_EQUIPMENT_BASE_BONUS = 0.5;
 
 /** 六人共享系数、共享溶剂每秒代价，以及科技护盾的法抗加成上限。 */
-export const COLUMBIA_SHARE_RATIO = 0.05;
+export const COLUMBIA_SHARE_RATIO = 0.2;
 export const COLUMBIA_SOLVENT_DRAIN = 30;
 export const COLUMBIA_RES_CAP = 30;
-export const columbiaEquipmentBonus = (layers) => Math.max(0, Number(layers) || 0) * 0.003;
+export const columbiaEquipmentBonus = (layers) => COLUMBIA_EQUIPMENT_BASE_BONUS + Math.max(0, Number(layers) || 0) * 0.003;
 
 /** 已发放的科技装备件数（层数 → 件数，受上限约束）。3 档起才发放，调用方负责判断档位。 */
 export const columbiaTechCount = (layers) => {

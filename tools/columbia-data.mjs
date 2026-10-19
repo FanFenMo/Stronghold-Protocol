@@ -7,7 +7,7 @@
 // yanShip（bondType SEASON / isCore:true）。但成员不走向 powerIdList 自动圈人的官方路线，而是像繁盛那样
 // 直接写 members —— 这是本项目主人选定的口径（见 docs/COLUMBIA.md）。
 
-import { COLUMBIA_BOND as ID, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, COLUMBIA_SHARE_RATIO, COLUMBIA_RES_CAP, columbiaTechItemId } from '../shared/columbia.js';
+import { COLUMBIA_BOND as ID, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, COLUMBIA_EQUIPMENT_BASE_BONUS, COLUMBIA_SHARE_RATIO, COLUMBIA_RES_CAP, columbiaTechItemId } from '../shared/columbia.js';
 import { contentHash } from './assets/manifest.mjs';
 import { COLUMBIA_NORMAL_OPERATORS, columbiaChessId } from './columbia-roster-data.mjs';
 
@@ -30,16 +30,17 @@ export const COLUMBIA_MEMBERS = [
 ];
 
 const desc = '<在场3名不同【哥伦比亚】干员>获得哥伦比亚的科技装备，仅【哥伦比亚】干员可用；'
-  + `每叠加${COLUMBIA_TECH_STEP}层随机获得一件，不重复，至多${COLUMBIA_TECH_CAP}件；哥伦比亚干员装备加成随层数提升，每100层提升30%。\n`
-  + '<在场6名不同【哥伦比亚】干员>在场所有哥伦比亚干员共享可共享装备效果，每人获取装备总加成的5%；哥伦比亚科技装备不参与共享。';
+  + `每叠加${COLUMBIA_TECH_STEP}层随机获得一件，不重复，至多${COLUMBIA_TECH_CAP}件；哥伦比亚干员装备加成初始提升${COLUMBIA_EQUIPMENT_BASE_BONUS * 100}%，每100层再提升30%。\n`
+  + `<在场6名不同【哥伦比亚】干员>在场所有哥伦比亚干员共享可共享装备效果，每人获取装备总加成的${COLUMBIA_SHARE_RATIO * 100}%；哥伦比亚科技装备不参与共享。`;
 
 const effectDesc = '<在场3名不同【哥伦比亚】干员>获得科技装备（仅【哥伦比亚】可用），'
-  + `每${COLUMBIA_TECH_STEP}层随机一件、不重复，至多${COLUMBIA_TECH_CAP}件；装备加成每100层提升30%。\n`
-  + '<在场6名不同【哥伦比亚】干员>每人共享在场成员可共享装备总加成的5%，不含哥伦比亚科技装备。';
+  + `每${COLUMBIA_TECH_STEP}层随机一件、不重复，至多${COLUMBIA_TECH_CAP}件；装备加成初始提升${COLUMBIA_EQUIPMENT_BASE_BONUS * 100}%，每100层再提升30%。\n`
+  + `<在场6名不同【哥伦比亚】干员>每人共享在场成员可共享装备总加成的${COLUMBIA_SHARE_RATIO * 100}%，不含哥伦比亚科技装备。`;
 
 const bb = {
   tech_cap: COLUMBIA_TECH_CAP,
   tech_step: COLUMBIA_TECH_STEP,
+  equipment_bonus_base: COLUMBIA_EQUIPMENT_BASE_BONUS,
   equipment_bonus_per_layer: 0.003,
   share_ratio: COLUMBIA_SHARE_RATIO,
 };
@@ -216,13 +217,13 @@ export function applyColumbiaData(files) {
     visibleMembers: [...COLUMBIA_MEMBERS],
     spec: {
       tiers: [
-        { need: '3 distinct 哥伦比亚', effect: '获得科技装备，仅哥伦比亚干员可用；每50层随机一件，至多6件；装备加成每100层提升30%。' },
-        { need: '6 distinct 哥伦比亚', effect: '每名在场哥伦比亚共享可共享装备总加成的5%，科技装备不共享。' },
+        { need: '3 distinct 哥伦比亚', effect: `获得科技装备，仅哥伦比亚干员可用；每${COLUMBIA_TECH_STEP}层随机一件，至多${COLUMBIA_TECH_CAP}件；装备加成初始提升${COLUMBIA_EQUIPMENT_BASE_BONUS * 100}%，每100层再提升30%。` },
+        { need: '6 distinct 哥伦比亚', effect: `每名在场哥伦比亚共享可共享装备总加成的${COLUMBIA_SHARE_RATIO * 100}%，科技装备不共享。` },
       ],
       formulas: {
         techCount: `min(${COLUMBIA_TECH_CAP}, floor(L / ${COLUMBIA_TECH_STEP}))`,
-        equipmentBonus: 'max(0, L) * 0.003',
-        share: 'sum(eligible equipped bonuses after layer scaling) * 0.05; no division by operator count',
+        equipmentBonus: `${COLUMBIA_EQUIPMENT_BASE_BONUS} + max(0, L) * 0.003`,
+        share: `sum(eligible equipped bonuses after layer scaling) * ${COLUMBIA_SHARE_RATIO}; no division by operator count`,
       },
       layerGain: '石英 休整期结束 +2/4；锡人 每3层攻击力与生命值+1/2%；星源 获得时 哥伦比亚+3、奇迹+1；'
         + '响石 作战中前三次击倒哥伦比亚 +2/4；星极 休整期结束哥伦比亚 +4/8、奥术 +3/6；谬因 每3层技力回复+0.015/0.03、攻速+0.5/1。',
