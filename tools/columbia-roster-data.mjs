@@ -6,10 +6,10 @@ import { atPotential } from '../shared/potential.js';
 export const COLUMBIA_NORMAL_OPERATORS = Object.freeze([
   { charId: 'char_4063_quartz', tier: 1, skill: 1, bonds: ['columbiaShip'] },
   { charId: 'char_135_halo', tier: 3, skill: 1, bonds: ['columbiaShip', 'miraShip'] },
-  { charId: 'char_4214_cairn', tier: 3, skill: 1, bonds: ['columbiaShip', 'steadShip'] },
-  { charId: 'char_274_astesi', tier: 4, skill: 1, bonds: ['columbiaShip', 'skillfulShip'] },
-  { charId: 'char_4027_heyak', tier: 4, skill: 2, bonds: ['columbiaShip', 'soloShip'] },
-  { charId: 'char_4229_aphris', tier: 6, skill: 2, bonds: ['columbiaShip', 'preciShip', 'arcaneShip'] },
+  { charId: 'char_4214_cairn', tier: 3, skill: 1, bonds: ['columbiaShip', 'soloShip'] },
+  { charId: 'char_274_astesi', tier: 4, skill: 1, bonds: ['columbiaShip', 'arcaneShip'] },
+  { charId: 'char_4027_heyak', tier: 4, skill: 2, bonds: ['columbiaShip'] },
+  { charId: 'char_4229_aphris', tier: 6, skill: 2, bonds: ['columbiaShip', 'preciShip'] },
 ]);
 
 export const columbiaChessId = (charId) => `chess_columbia_${charId.split('_').slice(2).join('_')}_a`;

@@ -7,7 +7,7 @@
 // yanShip（bondType SEASON / isCore:true）。但成员不走向 powerIdList 自动圈人的官方路线，而是像繁盛那样
 // 直接写 members —— 这是本项目主人选定的口径（见 docs/COLUMBIA.md）。
 
-import { COLUMBIA_BOND as ID, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, columbiaTechItemId } from '../shared/columbia.js';
+import { COLUMBIA_BOND as ID, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_TECH_ITEMS, COLUMBIA_SHARE_RATIO, COLUMBIA_RES_CAP, columbiaTechItemId } from '../shared/columbia.js';
 import { contentHash } from './assets/manifest.mjs';
 import { COLUMBIA_NORMAL_OPERATORS, columbiaChessId } from './columbia-roster-data.mjs';
 
@@ -30,17 +30,18 @@ export const COLUMBIA_MEMBERS = [
 ];
 
 const desc = '<在场3名不同【哥伦比亚】干员>获得哥伦比亚的科技装备，仅【哥伦比亚】干员可用；'
-  + `每叠加${COLUMBIA_TECH_STEP}层随机获得一件，不重复，至多${COLUMBIA_TECH_CAP}件。\n`
-  + '<在场6名不同【哥伦比亚】干员>科技装备获得过载，其效果增加100%；所有佩戴科技装备的干员获得50攻速。';
+  + `每叠加${COLUMBIA_TECH_STEP}层随机获得一件，不重复，至多${COLUMBIA_TECH_CAP}件；哥伦比亚干员装备加成随层数提升，每100层提升30%。\n`
+  + '<在场6名不同【哥伦比亚】干员>在场所有哥伦比亚干员共享可共享装备效果，每人获取装备总加成的5%；哥伦比亚科技装备不参与共享。';
 
 const effectDesc = '<在场3名不同【哥伦比亚】干员>获得科技装备（仅【哥伦比亚】可用），'
-  + `每${COLUMBIA_TECH_STEP}层随机一件、不重复，至多${COLUMBIA_TECH_CAP}件。\n`
-  + '<在场6名不同【哥伦比亚】干员>科技装备过载：效果+100%，佩戴者攻速+50。';
+  + `每${COLUMBIA_TECH_STEP}层随机一件、不重复，至多${COLUMBIA_TECH_CAP}件；装备加成每100层提升30%。\n`
+  + '<在场6名不同【哥伦比亚】干员>每人共享在场成员可共享装备总加成的5%，不含哥伦比亚科技装备。';
 
 const bb = {
   tech_cap: COLUMBIA_TECH_CAP,
   tech_step: COLUMBIA_TECH_STEP,
-  overload_atk_speed: 50,
+  equipment_bonus_per_layer: 0.003,
+  share_ratio: COLUMBIA_SHARE_RATIO,
 };
 const bbStr = { key: 'custom_bond_eff_columbia' };
 
@@ -95,28 +96,24 @@ function columbiaItems() {
   return out;
 }
 
-/** 单件科技装备的说明文字（过载后的数值在战斗内按档位切换，说明里同时列出两套）。 */
+/** 科技装备显示基础值；三人档的层数增幅另按盟约结算。 */
 function columbiaItemDesc(key, v) {
-  const ov = COLUMBIA_TECH_ITEMS.find((x) => x.key === key).overload;
   const pct = (n) => `${Number((n * 100).toFixed(1))}%`;
   switch (key) {
     case 'pioneer':
-      return `攻击造成${pct(v.atkScale)}（${pct(ov.atkScale)}）伤害，每三次攻击增加${pct(v.perThree)}（${pct(ov.perThree)}），最高${pct(v.cap)}（${pct(ov.cap)}）。`;
+      return `攻击造成${pct(v.atkScale)}伤害，每三次攻击增加${pct(v.perThree)}，最高${pct(v.cap)}；层数只提升超过100%的伤害加成。`;
     case 'mapland':
-      return `为百分比生命值最低的干员回复相当于${pct(v.healRatio)}（${pct(ov.healRatio)}）造成的伤害的生命值；`
-        + `对一名敌人造成伤害后削减其${pct(v.atkDown)}（${pct(ov.atkDown)}）攻击力，持续${v.atkDownDuration}（${ov.atkDownDuration}）秒，可叠加，最高${v.atkDownMax}层。`;
+      return `为百分比生命值最低的干员回复相当于造成伤害${pct(v.healRatio)}的生命值。`;
     case 'shield':
-      return `获得${v.hp}（${ov.hp}）生命值，获得${pct(v.resRatio)}（${pct(ov.resRatio)}）最大生命值的双抗；`
-        + `生命值首次跌下50%时，锁血${v.lockHpSeconds}（${ov.lockHpSeconds}）秒。`;
+      return `获得${v.hp}生命值，获得${pct(v.resRatio)}最大生命值的防御与法术抗性，装备提供的法术抗性最多+${COLUMBIA_RES_CAP}。`;
     case 'graymatter':
-      return `攻击力+${pct(v.atkPct)}（${pct(ov.atkPct)}）；每造成1000点伤害，攻击力+${pct(v.perThousand)}（${pct(ov.perThousand)}），`
-        + `最多${v.maxStacks}层；攻击附带${pct(v.necrosis)}（${pct(ov.necrosis)}）精神损伤。`;
+      return `攻击力+${pct(v.atkPct)}；每造成1000点伤害，攻击力+${pct(v.perThousand)}，`
+        + `最多${v.maxStacks}层；攻击附带${pct(v.necrosis)}神经损伤。`;
     case 'dover':
-      return `治疗效果增加${pct(v.healUp)}（${pct(ov.healUp)}）；每次治疗为自身周围四格干员sp+${v.selfAroundSp}（${ov.selfAroundSp}），`
-        + `为治疗目标周围四格回复${pct(v.targetAroundHeal)}（${pct(ov.targetAroundHeal)}）的治疗量。`;
+      return `治疗效果增加${pct(v.healUp)}；每次治疗为自身周围四格干员sp+${v.selfAroundSp}，`
+        + `为治疗目标周围四格回复${pct(v.targetAroundHeal)}的治疗量。`;
     case 'antigrav':
-      return `开启技能时使技能范围内所有敌人浮空${v.floatSeconds}（${ov.floatSeconds}）秒，同一格每5秒最多触发一次；`
-        + `技能持续期间攻击范围内所有干员技力回复+${v.spRegen}（${ov.spRegen}）、攻击速度+${v.atkSpeed}（${ov.atkSpeed}）。`;
+      return `技能持续期间攻击范围内所有干员技力回复+${v.spRegen}/秒、攻击速度+${v.atkSpeed}。`;
     default:
       return '';
   }
@@ -124,11 +121,11 @@ function columbiaItemDesc(key, v) {
 
 const COLUMBIA_ITEM_FORMULA = {
   pioneer: 'Damage x min(cap, atkScale + perThree * floor(attacks / 3)).',
-  mapland: 'Heal lowest-HP% ally for healRatio x damage dealt; on damaging an enemy reduce its ATK by atkDown for atkDownDuration (max atkDownMax stacks).',
-  shield: 'maxHP += hp; DEF/RES += resRatio x maxHP; first drop below 50% HP locks HP for lockHpSeconds.',
+  mapland: 'Heal lowest-HP% ally for healRatio x damage dealt.',
+  shield: 'maxHP += hp; DEF += resRatio x maxHP; RES += min(30, resRatio x maxHP).',
   graymatter: 'ATK% += atkPct + perThousand * floor(damageDealt / 1000), up to maxStacks; attacks carry necrosis elemental damage.',
   dover: 'Healing dealt x(1 + healUp); each heal grants selfAroundSp SP to allies in the 4 tiles around the carrier and heals targetAroundHeal x amount around the target.',
-  antigrav: 'On skill cast: float enemies in range for floatSeconds (once per tile per 5 s); while the skill lasts, allies in range gain spRegen SP/s and atkSpeed ASPD.',
+  antigrav: 'While the skill lasts, allies in range gain spRegen SP/s and atkSpeed ASPD.',
 };
 
 /**
@@ -219,17 +216,16 @@ export function applyColumbiaData(files) {
     visibleMembers: [...COLUMBIA_MEMBERS],
     spec: {
       tiers: [
-        { need: '3 distinct 哥伦比亚', effect: '获得科技装备，仅哥伦比亚干员可用；每叠加50层随机获得一件，不重复，至多6件。' },
-        { need: '6 distinct 哥伦比亚', effect: '科技装备过载，其效果增加100%；所有佩戴科技装备的干员获得50攻速。' },
+        { need: '3 distinct 哥伦比亚', effect: '获得科技装备，仅哥伦比亚干员可用；每50层随机一件，至多6件；装备加成每100层提升30%。' },
+        { need: '6 distinct 哥伦比亚', effect: '每名在场哥伦比亚共享可共享装备总加成的5%，科技装备不共享。' },
       ],
       formulas: {
         techCount: `min(${COLUMBIA_TECH_CAP}, floor(L / ${COLUMBIA_TECH_STEP}))`,
-        overload: 'tier >= 2 → 使用装备的过载数值',
-        overloadAtkSpeed: '+50 ASPD',
+        equipmentBonus: 'max(0, L) * 0.003',
+        share: 'sum(eligible equipped bonuses after layer scaling) * 0.05; no division by operator count',
       },
       layerGain: '石英 休整期结束 +2/4；锡人 每3层攻击力与生命值+1/2%；星源 获得时 哥伦比亚+3、奇迹+1；'
-        + '响石 作战中前三次击倒 +2/4；星极 休整期结束 +4/8；谬因 每3层技力回复+0.015/0.03、攻速+0.5/1；'
-        + '溯光星源 与奥术灵巧同层数。',
+        + '响石 作战中前三次击倒哥伦比亚 +2/4；星极 休整期结束哥伦比亚 +4/8、奥术 +3/6；谬因 每3层技力回复+0.015/0.03、攻速+0.5/1。',
       assumed: [],
     },
   };
@@ -306,8 +302,8 @@ export function applyColumbiaData(files) {
     add('halo', columbiaChessId('char_135_halo'), 'garrison_25', `<获得时>【哥伦比亚】层数+${3 * mul}，【奇迹】层数+${mul}（无需激活盟约）`,
       {}, { bond: `${ID},miraShip`, count: `${3 * mul},${mul}` },
       { effectType: 'SERVER_ADD_MULTIPLE_BOND', effectKey: 'SERVER_ADD_MULTIPLE_BOND' });
-    add('astesi', columbiaChessId('char_274_astesi'), 'garrison_154', `<休整期结束时>使已激活的【哥伦比亚】层数+${4 * mul}，【灵巧】层数+${3 * mul}`,
-      {}, { bond: `${ID},skillfulShip`, count: `${4 * mul},${3 * mul}`, conditionkey: 'character_target_inboard' },
+    add('astesi', columbiaChessId('char_274_astesi'), 'garrison_154', `<休整期结束时>使已激活的【哥伦比亚】层数+${4 * mul}，【奥术】层数+${3 * mul}`,
+      {}, { bond: `${ID},arcaneShip`, count: `${4 * mul},${3 * mul}`, conditionkey: 'character_target_inboard' },
       { effectType: 'SERVER_ADD_MULTIPLE_BOND', effectKey: 'SERVER_ADD_MULTIPLE_BOND' });
     add('tinman', 'chess_char_2_19_a', 'garrison_151', `【哥伦比亚】每叠加3层，本干员攻击力和生命值+${mul}%`,
       { divide_num: 3, atk: 0.01 * mul, max_hp: 0.01 * mul },
@@ -315,9 +311,9 @@ export function applyColumbiaData(files) {
     add('aphris', columbiaChessId('char_4229_aphris'), 'garrison_151', `【哥伦比亚】每叠加3层，本干员技力回复+${0.015 * mul}，攻击速度+${0.5 * mul}`,
       { divide_num: 3, sp_recovery_per_sec: 0.015 * mul, attack_speed: 0.5 * mul },
       { key: 'act1autochess_gar_eff_attrByBond', bond_id: ID });
-    add('cairn', columbiaChessId('char_4214_cairn'), 'garrison_140', `<战斗中>前三次击倒敌人时，使已激活的【哥伦比亚】【坚守】层数+${2 * mul}`,
+    add('cairn', columbiaChessId('char_4214_cairn'), 'garrison_140', `<战斗中>前三次击倒敌人时，使已激活的【哥伦比亚】层数+${2 * mul}`,
       { bond_add_count: 2 * mul, check_cnt: 1, max_add_count_per_battle: 6 * mul },
-      { key: 'act1autochess_gar_event_selfkillenemy', bond_type: 'bond_by_id', bond_id: `${ID},steadShip`, bond_add_type: 'by_count' },
+      { key: 'act1autochess_gar_event_selfkillenemy', bond_type: 'bond_by_id', bond_id: ID, bond_add_type: 'by_count' },
       { effectKey: 'act1autochess_gar_event_selfkillenemy' });
     add('heyak_stats', columbiaChessId('char_4027_heyak'), 'garrison_08', `攻击力和生命值+${25 * mul}%`,
       { atk: 0.25 * mul, max_hp: 0.25 * mul }, { key: 'attr_common_global_buff' });
@@ -338,23 +334,12 @@ export function applyColumbiaData(files) {
     }
   }
 
-  // 溯光星源：与它原有的奥术／灵巧同层数，加一条哥伦比亚版本的特质。
-  // 原特质 garrison_121_a: <休整期结束时>本回合每花费3资金，使已激活的【灵巧】【奥术】层数+2
-  for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+  // v1.1 溯光星源只保留原有奥术／灵巧叠层，移除旧生成结果中的哥伦比亚追加特质。
+  for (const suffix of ['a', 'b']) {
     const owner = `chess_char_6_16_${suffix}`;
-    const src = garrisons[`garrison_121_${suffix}`];
-    if (!src || !chess[owner]) continue;
     const gid = `garrison_custom_columbia_astgenne_${suffix}`;
-    garrisons[gid] = {
-      ...structuredClone(src),
-      garrisonId: gid,
-      owners: [owner],
-      desc: `<休整期结束时>本回合每花费3资金，使已激活的【哥伦比亚】层数+${2 * mul}`,
-      descRaw: `<休整期结束时>本回合每花费3资金，使已激活的【哥伦比亚】层数+${2 * mul}`,
-      bb: { layer: 2 * mul, count: 3 },
-      bbStr: { bond: ID, conditionkey: 'character_target_inboard' },
-    };
-    if (!chess[owner].garrisonIds.includes(gid)) chess[owner].garrisonIds.push(gid);
+    delete garrisons[gid];
+    if (chess[owner]) chess[owner].garrisonIds = chess[owner].garrisonIds.filter(id => id !== gid);
   }
 
   // 模式名单：哥伦比亚是核心盟约，与其它核心盟约一样从"本局禁用"里移除、加进可用名单。

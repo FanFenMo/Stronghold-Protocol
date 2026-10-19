@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { DATA } from '../match/harness.js';
 import { applyColumbiaData, COLUMBIA_MEMBERS } from '../../tools/columbia-data.mjs';
 import {
-  COLUMBIA_BOND, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_OVERLOAD_ATK_SPEED,
-  COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaOverloaded, columbiaTechItem, columbiaTechItemId,
+  COLUMBIA_BOND, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_SHARE_RATIO,
+  COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaEquipmentBonus, columbiaTechItem, columbiaTechItemId,
 } from '../../shared/columbia.js';
 
 const ID = COLUMBIA_BOND;
@@ -56,7 +56,7 @@ test('六件科技装备：仅哥伦比亚可用、不可合并、不进商店',
   }
 });
 
-test('每 50 层一件、6 件封顶；过载在 (6) 档生效', () => {
+test('每50层一件、6件封顶；三人装备成长，六人固定5%共享', () => {
   assert.equal(columbiaTechCount(0), 0);
   assert.equal(columbiaTechCount(49), 0);
   assert.equal(columbiaTechCount(50), 1);
@@ -65,43 +65,43 @@ test('每 50 层一件、6 件封顶；过载在 (6) 档生效', () => {
   assert.equal(columbiaTechCount(999), COLUMBIA_TECH_CAP, '封顶不随层数继续增长');
   assert.equal(COLUMBIA_TECH_STEP, 50);
 
-  assert.equal(columbiaOverloaded(0), false);
-  assert.equal(columbiaOverloaded(1), false);
-  assert.equal(columbiaOverloaded(2), true);
+  assert.equal(columbiaEquipmentBonus(0), 0);
+  assert.equal(columbiaEquipmentBonus(100), 0.3);
+  assert.equal(columbiaEquipmentBonus(300), 0.9);
+  assert.equal(COLUMBIA_SHARE_RATIO, 0.05);
 });
 
-test('拓荒者蓄力装具是过载特例：不是简单翻倍', () => {
+test('科技装备移除旧过载、削攻、锁血与浮空参数', () => {
   const pioneer = columbiaTechItem('pioneer');
   assert.deepEqual(pioneer.normal, { atkScale: 1.15, perThree: 0.01, cap: 2.0 });
-  assert.deepEqual(pioneer.overload, { atkScale: 1.3, perThree: 0.02, cap: 3.0 });
-
-  // 其余五件的**效果数值**恰好是普通值的两倍；但**层数上限不翻倍**
-  // —— 设计里梅兰德 15 层、灰质引擎 100 层在两档相同。
-  const CAP_KEYS = new Set(['atkDownMax', 'maxStacks']);
-  for (const it of COLUMBIA_TECH_ITEMS) {
-    if (it.key === 'pioneer') continue;
-    for (const [k, v] of Object.entries(it.normal)) {
-      const want = CAP_KEYS.has(k) ? v : v * 2;
-      assert.equal(it.overload[k], want, `${it.name} 的 ${k}`);
-    }
-  }
-  assert.equal(COLUMBIA_OVERLOAD_ATK_SPEED, 50);
+  for (const it of COLUMBIA_TECH_ITEMS) assert.equal(it.overload, undefined);
+  assert.deepEqual(columbiaTechItem('mapland').normal, { healRatio: 0.15 });
+  assert.equal(columbiaTechItem('shield').normal.lockHpSeconds, undefined);
+  assert.equal(columbiaTechItem('antigrav').normal.floatSeconds, undefined);
 });
 
-test('溯光星源的双星：新增一条与奥术/灵巧同层数的哥伦比亚特质', () => {
+test('溯光星源不再叠加哥伦比亚，原有奥术灵巧与双星保留', () => {
   for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
     const owner = `chess_char_6_16_${suffix}`;
     const gid = `garrison_custom_columbia_astgenne_${suffix}`;
-    assert.ok(DATA.chess[owner].garrisonIds.includes(gid), `${owner} 挂上了 ${gid}`);
-    const g = DATA.garrisons[gid];
-    assert.equal(g.bb.layer, 2 * mul, '层数与原特质一致');
-    assert.equal(g.bb.count, 3, '同样是每花费 3 资金');
-    assert.equal(g.bbStr.bond, ID);
+    assert.ok(!DATA.chess[owner].garrisonIds.includes(gid));
+    assert.equal(DATA.garrisons[gid], undefined);
   }
   // 原特质原样保留
   const src = DATA.garrisons.garrison_121_a;
   assert.equal(src.bb.layer, 2);
   assert.equal(src.bbStr.bond, 'skillfulShip,arcaneShip');
+});
+
+test('v1.1成员盟约、星极奥术叠层与响石独行归属同步', () => {
+  for (const suffix of ['a', 'b']) {
+    for (const [stem, bonds] of [
+      ['astesi', [ID, 'arcaneShip']], ['cairn', [ID, 'soloShip']],
+      ['heyak', [ID]], ['aphris', [ID, 'preciShip']],
+    ]) assert.deepEqual(DATA.chess[`chess_columbia_${stem}_${suffix}`].bonds, bonds);
+    assert.equal(DATA.garrisons[`garrison_custom_columbia_astesi_${suffix}`].bbStr.bond, `${ID},arcaneShip`);
+    assert.equal(DATA.garrisons[`garrison_custom_columbia_cairn_${suffix}`].bbStr.bond_id, ID);
+  }
 });
 
 test('多萝西保留五六阶外援，只归属哥伦比亚，技能与召唤物入口保留', () => {

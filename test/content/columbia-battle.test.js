@@ -37,24 +37,22 @@ test('三人档真实层数入口发装，跨多个里程碑不重复且最多�
   assert.equal(ps.columbiaTech.length, 6);
 });
 
-test('六人档两件科技装备只给一次50攻速；灰质引擎累计真实伤害并产生神经损伤', () => {
+test('六人档不再给50攻速或过载；灰质引擎累计实际伤害并产生神经损伤', () => {
   const h = field([tech('graymatter'), tech('pioneer')], 2);
   const u = h.unit('carrier'), e = h.b.enemies[0];
-  close(u.s.aspd, 150);
+  close(u.s.aspd, 100);
   close(u.s.atk, 0);
   h.b.dealDamage(u, e, { amount: 1000, type: 'true', isAttack: true });
   assert.ok(e.elem.neural > 0);
-  close(u.findBuff(`item:${tech('graymatter')}:atk`).mods.atkPct, 0.92);
+  close(u.findBuff(`item:${tech('graymatter')}:atk`).mods.atkPct, 0.46);
 });
 
-test('梅兰德治疗最低生命比例成员并叠加削攻，持续时间结束后恢复', () => {
+test('梅兰德治疗最低生命比例成员，不再削减敌人攻击力', () => {
   const h = field([tech('mapland')]);
   const u = h.unit('carrier'), patient = h.unit('patient'), e = h.b.enemies[0];
   patient.hp = 500;
   h.b.dealDamage(u, e, { amount: 100, type: 'true' });
   close(patient.hp, 515);
-  assert.equal(e.findBuff(`item:${tech('mapland')}:atkDown`).stacks, 1);
-  h.run(15.1);
   assert.equal(e.findBuff(`item:${tech('mapland')}:atkDown`), null);
 });
 
@@ -78,7 +76,7 @@ test('多维尔按实际治疗扩散，扩散治疗不会再次扩散', () => {
   close(patient.hp, 1018);
 });
 
-test('反重力在开技能时浮空，光环随技能结束移除', () => {
+test('反重力不再浮空，保留技能期间光环并在技能结束后移除', () => {
   const h = field([tech('antigrav')], 1, {
     defs: { chess: { carrier: record('carrier', { rangeGrid: [[0, 0], [0, 1]],
       skill: { spCost: 100, duration: 10, trigger: { rule: 'NEVER' } } }), patient: record('patient') },
@@ -87,23 +85,30 @@ test('反重力在开技能时浮空，光环随技能结束移除', () => {
   });
   const u = h.unit('carrier'), patient = h.unit('patient'), e = h.b.enemies[0];
   u.skill.activate('test', { free: true });
-  assert.equal(e.s.flags.levitate, true);
+  assert.ok(!e.s.flags.levitate);
   close(patient.s.aspd, 140);
   h.run(10.2);
   close(patient.s.aspd, 100);
 });
 
-test('过载护盾增加生命与双抗，锁血窗口内存活且结束后可以死亡', () => {
+test('过载护盾增加生命与双抗，不再提供锁血', () => {
   const h = field([tech('shield')]);
   const u = h.unit('carrier');
   close(u.s.maxHp, 4000);
   close(u.s.res, 24);
   h.b.dealDamage(null, u, { type: 'true', amount: 5000 });
-  assert.equal(u.alive, true);
-  assert.equal(u.hp, 1);
-  h.run(6.1);
-  h.b.dealDamage(null, u, { type: 'true', amount: 5000 });
   assert.equal(u.alive, false);
+});
+
+test('三人档科技装备随层数成长，护盾法抗上限30，拓荒者只放大额外伤害', () => {
+  const h = field([tech('shield'), tech('pioneer')], 1, {
+    bonds: { [ID]: { count: 3, tier: 1, active: true, layers: 500 } },
+  });
+  const u = h.unit('carrier'), e = h.b.enemies[0];
+  close(u.s.maxHp, 7000); close(u.s.res, 30);
+  u.base.atk = 100; u.markDirty();
+  const before = e.hp;
+  h.b.forceAttack(u, [e]); close(before - e.hp, 137.5);
 });
 
 test('双星是干员特性：两名星源不产生共享，星极可分别与两种星源联动', () => {

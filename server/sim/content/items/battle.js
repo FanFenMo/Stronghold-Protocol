@@ -49,6 +49,8 @@ import {
 import { mitigate, hasHp, periodicDamage, isHpLoss } from '../../damage.js';
 import { hypot } from '../../detmath.js';
 import { columbiaItemKey, installColumbiaItem } from './columbia.js';
+import { equipmentMultiplier, equipmentMods, equipmentScopes, sharedEquipmentState } from './columbia-policy.js';
+import { installColumbiaSharing } from './columbia-sharing.js';
 
 // =====================================================================================================================
 // data helpers
@@ -178,6 +180,9 @@ class Scope {
     this.buffs = [];
     this.fns = [];
     this.disposed = false;
+    this.modRecords = [];
+    this.multiplier = equipmentMultiplier(battle, unit);
+    equipmentScopes(battle).add(this);
   }
   key(part) { return `${this.tag}:${part}`; }
   on(name, fn, priority = 0) {
@@ -190,21 +195,39 @@ class Scope {
   /** Match-long stat buff on the carrier (persist, survives death/redeploy). */
   stat(part, mods, extra = {}) {
     const k = this.key(part);
-    const r = passiveBuff(this.b, this.u, k, mods, extra);
+    const { equipmentScale = true, ...buffExtra } = extra;
+    const r = passiveBuff(this.b, this.u, k, equipmentScale ? equipmentMods(mods, equipmentMultiplier(this.b, this.u)) : mods, buffExtra);
+    if (mods && equipmentScale) this.rememberMods(this.u, k, mods);
     if (r) this.track(this.u, k);
     return r;
   }
   /** Any buff on any unit, removed at dispose. */
   buff(target, b) {
-    const r = this.b.addBuff(target, b);
+    const r = this.b.addBuff(target, { ...b, mods: equipmentMods(b.mods, equipmentMultiplier(this.b, this.u)) });
+    if (b.mods) this.rememberMods(target, b.key, b.mods);
     if (r) this.track(target, b.key);
     return r;
   }
   track(target, key) { if (!this.buffs.some(([t, k]) => t === target && k === key)) this.buffs.push([target, key]); }
+  rememberMods(target, key, mods) {
+    const old = this.modRecords.find(r => r.target === target && r.key === key);
+    if (old) old.mods = mods;
+    else this.modRecords.push({ target, key, mods });
+  }
+  refreshMods() {
+    const multiplier = equipmentMultiplier(this.b, this.u);
+    if (multiplier === this.multiplier) return;
+    this.multiplier = multiplier;
+    for (const { target, key, mods } of this.modRecords) {
+      const buff = target.findBuff(key);
+      if (buff) { buff.mods = equipmentMods(mods, multiplier); target.markDirty(); }
+    }
+  }
   onDispose(fn) { this.fns.push(fn); }
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    equipmentScopes(this.b).delete(this);
     for (const h of this.hooks) this.b.off(h);
     for (const s of this.scheds) s.cancel();
     for (const [t, k] of this.buffs) this.b.removeBuff(t, k);
@@ -406,7 +429,8 @@ const BY_BUFF = {
     if (!(d > 0)) return;
     S.stat('drain', null, { interval: 1, onTick: ({ unit }) => {
       if (!unit.deployed) return;
-      battle.dealDamage(unit, unit, periodicDamage(d));
+      const shared = sharedEquipmentState(battle).get(unit.ownerId);
+      if (!(shared?.solvent && shared.members.includes(unit))) battle.dealDamage(unit, unit, periodicDamage(d));
       for (const a of battle.allies()) {
         if (a === unit || !ENEMY_RECORD.test(a.defId ?? '') || battle.time - (a.mem.solventAt ?? -Infinity) < 1 - 1e-6) continue;
         a.mem.solventAt = battle.time;
@@ -467,7 +491,7 @@ const BY_ITEM = {
     const r = num(p.radius, 3), sc = num(p.damage_scale, 1);
     S.on('hit', (c) => {
       if (c.source !== u || !c.target || c.target.side !== 'enemy' || c.dmg.type === 'element') return;
-      if (hypot(c.target.x - u.x, c.target.y - u.y) >= r - 1e-6) c.dmg.mul *= sc;
+      if (hypot(c.target.x - u.x, c.target.y - u.y) >= r - 1e-6) c.dmg.mul *= 1 + (sc - 1) * equipmentMultiplier(battle, u);
     });
   },
   // 炎国短刀: each skill activation +atk (≤ atk_buff_cnt stacks) — one 直接乘算 bonus of atk × stacks
@@ -498,7 +522,7 @@ const BY_ITEM = {
           if (unitBonds(a).some((b) => mine.includes(b))) n++;
         }
       }
-      u.skill.gainSp(each * (1 + n), 'item');
+      u.skill.gainSp(each * (1 + n) * equipmentMultiplier(battle, u), 'item');
     });
   },
   // 歌利亚头盔: HP +init_max_hp; deploy with no operator on the tile in front ⇒ HP +ex_max_hp (until it leaves)
@@ -574,7 +598,7 @@ const BY_ITEM = {
   chess_item_4_06_e(battle, u, rec, S) {
     const p = bp(rec, 'act1vautochess_equip_acarm025_global_buff');
     const r = p ? num(p.hp_ratio) : 0;
-    if (r > 0) onAttackEnemies(S, u, () => battle.heal(u, u, u.s.maxHp * r, { self: true }));
+    if (r > 0) onAttackEnemies(S, u, () => battle.heal(u, u, u.s.maxHp * r * equipmentMultiplier(battle, u), { self: true }));
   },
   // 卡西米尔竞技旗: damage ×damage_scale for `interval` s after each deploy, then −damage_scale_minus every ex_interval s
   chess_item_4_07_e(battle, u, rec, S) {
@@ -641,14 +665,14 @@ const BY_ITEM = {
   chess_item_5_01_e(battle, u, rec, S) {
     const p = bp(rec, 'act1autochess_equip_acarm058_global_buff');
     const pr = p ? num(p.prob) : 0;
-    if (pr > 0) onAttackEnemies(S, u, (t) => { if (chance(battle, pr)) battle.applyStatus(t, 'palsy', { value: 1, source: u }); });
+    if (pr > 0) onAttackEnemies(S, u, (t) => { if (chance(battle, pr * equipmentMultiplier(battle, u))) battle.applyStatus(t, 'palsy', { value: 1, source: u }); });
   },
   // 谢拉格不融冰: on attack prob ⇒ 寒冷 `cold` s
   chess_item_5_02_e(battle, u, rec, S) {
     const p = bp(rec, 'act1vautochess_equip_acarm003_global_buff');
     if (!p) return;
     const pr = num(p.prob), d = num(p.cold);
-    if (pr > 0 && d > 0) onAttackEnemies(S, u, (t) => { if (chance(battle, pr)) battle.applyStatus(t, 'cold', { duration: d, source: u }); });
+    if (pr > 0 && d > 0) onAttackEnemies(S, u, (t) => { if (chance(battle, pr * equipmentMultiplier(battle, u))) battle.applyStatus(t, 'cold', { duration: d, source: u }); });
   },
   // 双模机械臂: physical/arts damage becomes 弱点伤害 (whichever type the target resists less)
   chess_item_5_03_e(battle, u, rec, S) {
@@ -932,6 +956,7 @@ export function install(battle) {
     if (u.kind !== 'op') continue;
     for (const id of itemsOf(u)) installItem(battle, u, id);
   }
+  installColumbiaSharing(battle, runtime(battle));
 }
 
 /**
