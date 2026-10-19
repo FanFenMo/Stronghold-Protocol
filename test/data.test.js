@@ -156,7 +156,7 @@ test('bonds: 25 bonds with valid members, thresholds and effects', () => {
 
 test('garrisons: all referenced exist; 45 distinct effect keys', () => {
   const keys = new Set(Object.values(garrisons).map((g) => g.effectKey));
-  assert.equal(keys.size, 44);
+  assert.equal(keys.size, 45);
   for (const g of Object.values(garrisons)) {
     assert.ok(typeof g.eventType === 'string' && typeof g.desc === 'string', g.garrisonId);
     for (const o of g.owners) assert.ok(chess[o], `${g.garrisonId}: owner ${o}`);
