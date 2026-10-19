@@ -347,7 +347,7 @@ function hammerAcquire(battle, rt, u) {
     const p = hammerParams(hs, 'burn');
     if (!p) return;
     const m = hammerMul(battle, rt, u, hs, 'burn');
-    if (m > 0) battle.dealDamage(u, c.target, { type: 'element', element: 'burn', amount: c.amount * num(p.damage_scale) * m, tags: procTags('hammer_burn') });
+    if (m > 0) battle.dealDamage(u, c.target, { type: 'element', element: 'burn', amount: c.amount * num(p.damage_scale) * m * equipmentMultiplier(battle, u), tags: procTags('hammer_burn') });
   });
   // 战栗: 地面干员 carrier (melee position, any tile — support isGroundOp), on attack prob × m ⇒ 战栗 disarmed_duration s
   S.on('attack', (c) => {
@@ -356,7 +356,7 @@ function hammerAcquire(battle, rt, u) {
     if (!p) return;
     const m = hammerMul(battle, rt, u, hs, 'tremble');
     if (!(m > 0)) return;
-    const pr = Math.min(1, num(p.prob) * m);
+    const pr = Math.min(1, num(p.prob) * m * equipmentMultiplier(battle, u));
     for (const t of c.targets) {
       if (t && t.side === 'enemy' && t.alive && chance(battle, pr)) battle.applyStatus(t, 'tremble', { duration: num(p.disarmed_duration, 2), source: u });
     }
@@ -464,7 +464,7 @@ const BY_BUFF = {
       if (d.type === 'element') return;
       const base = mitigated(d.amount * d.mul, d.type, u, c.source, d);
       if (!(base > 0)) return;
-      d.mul *= Math.max(0, base - v) / base;
+      d.mul *= Math.max(0, base - v * equipmentMultiplier(battle, u)) / base;
     }, -10);
   },
   // 叙拉古正装: allies on the two tiles beside the carrier ("左右两格", perpendicular to its direction: the facing-RIGHT
@@ -610,7 +610,7 @@ const BY_ITEM = {
       const t = battle.time - u.deployedAt;
       let m = sc;
       if (t > win + 1e-9) m = minus < 0 ? Math.max(1, sc + minus * Math.ceil((t - win) / step - 1e-9)) : 1;
-      if (m !== 1) c.dmg.mul *= m;
+      if (m !== 1) c.dmg.mul *= 1 + (m - 1) * equipmentMultiplier(battle, u);
     });
   },
   // 拉特兰桥夹: ammo skill down to 1 bullet ⇒ prob: +ceil(ammo_percent × ammo) bullets (≤ max_trigger_cnt per deploy)
@@ -622,9 +622,9 @@ const BY_ITEM = {
     S.on('ammoUsed', (c) => {
       if (c.unit !== u || c.left !== 1 || !c.skill) return;
       if (u.deploySeq !== seq) { seq = u.deploySeq; n = 0; }
-      if (n >= cap || !chance(battle, num(p.prob))) return;
+      if (n >= cap || !chance(battle, num(p.prob) * equipmentMultiplier(battle, u))) return;
       n++;
-      c.skill.addAmmo(Math.max(1, Math.ceil(num(p.ammo_percent) * c.skill.ammo - 1e-9)));
+      c.skill.addAmmo(Math.max(1, Math.ceil(num(p.ammo_percent) * equipmentMultiplier(battle, u) * c.skill.ammo - 1e-9)));
       fxOn(battle, 'buff', u, 'item:chess_item_4_08_e', rec.id);
     });
   },
@@ -644,7 +644,7 @@ const BY_ITEM = {
       if (c.source !== u || !c.target || (c.opts && (c.opts.regen || c.opts.self)) || !(c.amount > 0)) return;
       const cur = c.target.findBuff(SHIELD_KEY);
       if (cur && cur.shieldHits >= cap) return;
-      if (!chance(battle, pr)) return;
+      if (!chance(battle, pr * equipmentMultiplier(battle, u))) return;
       if (addShieldLayer(battle, c.target, SHIELD_KEY, cap)) fxOn(battle, 'shield', c.target, 'item:chess_item_4_11_e', rec.id);
     });
   },
@@ -684,7 +684,7 @@ const BY_ITEM = {
     const partner = partnerOf(p);
     const r = p ? num(p.hp_recovery_per_sec_by_max_hp_ratio) : 0;
     if (!partner || !(r > 0)) return;
-    S.stat('set', null, { interval: 1, onTick: ({ unit }) => { if (unit.deployed && carries(battle, unit, partner)) battle.heal(unit, unit, unit.s.maxHp * r, { self: true }); } });
+    S.stat('set', null, { interval: 1, onTick: ({ unit }) => { if (unit.deployed && carries(battle, unit, partner)) battle.heal(unit, unit, unit.s.maxHp * r * equipmentMultiplier(battle, unit), { self: true }); } });
   },
   // 天马之枪: with 天马之盔 ⇒ every damage instance also deals atk_scale × ATK true damage
   chess_item_6_01_e(battle, u, rec, S) {
@@ -695,7 +695,7 @@ const BY_ITEM = {
     S.on('damaged', (c) => {
       if (c.source !== u || isProc(c.dmg) || c.type === 'element' || !c.target || c.target.side !== 'enemy' || !c.target.alive) return;
       if (!carries(battle, u, partner)) return;
-      battle.dealDamage(u, c.target, { amount: u.s.atk * sc, type: 'true', canDodge: false, tags: procTags('pegasus') });
+      battle.dealDamage(u, c.target, { amount: u.s.atk * sc * equipmentMultiplier(battle, u), type: 'true', canDodge: false, tags: procTags('pegasus') });
     });
   },
   // 铳骑之威 (拉特兰): on attack 35 % ⇒ extra bullet at 1 enemy in range, atk_scale_1 (with 拉特兰桥夹 atk_scale_2) × ATK phys
@@ -705,13 +705,13 @@ const BY_ITEM = {
     const partner = partnerOf(p);
     S.on('attack', (c) => {
       if (c.attacker !== u || !c.targets.some((t) => t && t.side === 'enemy') || !memberOf(battle, u, 'lateranoShip')) return;
-      if (!chance(battle, num(p.prob))) return;
+      if (!chance(battle, num(p.prob) * equipmentMultiplier(battle, u))) return;
       const cands = battle.enemiesInKeys(u.rangeKeys, u, u.profile);
       const t = battle.rng.pick(cands);
       if (!t) return;
       const sc = partner && carries(battle, u, partner) ? num(p.atk_scale_2) : num(p.atk_scale_1);
       battle.fx('strike', { x: t.x, y: t.y, id: t.id, src: 'item:chess_item_6_02_e', key: rec.id, from: u.id });
-      battle.dealDamage(u, t, { amount: u.s.atk * sc, type: 'phys', tags: procTags('gunknight') });
+      battle.dealDamage(u, t, { amount: u.s.atk * sc * equipmentMultiplier(battle, u), type: 'phys', tags: procTags('gunknight') });
     });
   },
   // 天师古鼎 (炎): ASPD +attack_speed × min(operators gained this round, max_cnt) for the battle
@@ -734,7 +734,7 @@ const BY_ITEM = {
       if (!u.alive || !memberOf(battle, u, 'egirShip')) return;
       ready = battle.time + cd;
       const hits = partner && carries(battle, u, partner) ? 2 : 1;
-      for (let i = 0; i < hits && src.alive; i++) battle.dealDamage(u, src, { amount: u.s.atk * sc, type: 'arts', tags: procTags('trench') });
+      for (let i = 0; i < hits && src.alive; i++) battle.dealDamage(u, src, { amount: u.s.atk * sc * equipmentMultiplier(battle, u), type: 'arts', tags: procTags('trench') });
     });
   },
   // 蒸汽之心 (维多利亚): hammer effects of the field (see header)
@@ -756,7 +756,7 @@ const BY_ITEM = {
       const sc = partner && carries(battle, u, partner) ? num(p.atk_scale_ex) : num(p.atk_scale);
       for (const e of battle.enemiesInKeys(u.rangeKeys, u, { canHitFly: true })) {
         const f = e.s.flags;
-        if (f.cold || f.freeze) battle.dealDamage(u, e, { amount: u.s.atk * sc, type: 'arts', canDodge: false, tags: procTags('tears') });
+        if (f.cold || f.freeze) battle.dealDamage(u, e, { amount: u.s.atk * sc * equipmentMultiplier(battle, u), type: 'arts', canDodge: false, tags: procTags('tears') });
       }
     });
   },
@@ -767,18 +767,18 @@ const BY_ITEM = {
     const partner = partnerOf(p);
     const init = num(p.init_sp);
     if (init > 0) {
-      S.on('deploy', (c) => { if (c.unit === u && u.skill) u.skill.gainSp(init, 'init'); });
-      if (onField(u) && u.skill) u.skill.gainSp(init, 'init');
+      S.on('deploy', (c) => { if (c.unit === u && u.skill) u.skill.gainSp(init * equipmentMultiplier(battle, u), 'init'); });
+      if (onField(u) && u.skill) u.skill.gainSp(init * equipmentMultiplier(battle, u), 'init');
     }
     let firstDone = false;
     S.on('skillEnd', (c) => {
       if (c.unit !== u || firstDone || c.reason === 'death' || !memberOf(battle, u, 'sargonShip')) return;
       firstDone = true;
-      if (u.skill && u.alive) u.skill.gainSp(num(p.sp), 'item', false, { ignoreLock: true });
+      if (u.skill && u.alive) u.skill.gainSp(num(p.sp) * equipmentMultiplier(battle, u), 'item', false, { ignoreLock: true });
     });
     S.on('skillStart', (c) => {
       if (c.unit !== u || !partner || !memberOf(battle, u, 'sargonShip') || !carries(battle, u, partner)) return;
-      const n = num(p.addition_sp);
+      const n = num(p.addition_sp) * equipmentMultiplier(battle, u);
       if (!(n > 0)) return;
       for (const a of battle.allyUnits) {
         if (a.kind === 'op' && a.ownerId === u.ownerId && onField(a) && a.skill && memberOf(battle, a, 'sargonShip')) a.skill.gainSp(n, 'item', false, { ignoreLock: true });
@@ -852,7 +852,7 @@ const BY_ITEM = {
       if (c.source !== u || !st.armed || isProc(c.dmg) || !(c.amount > 0)) return;
       st.armed = false;
       if (partner && carries(battle, u, partner) && c.target && c.target.alive && c.target.side === 'enemy') {
-        battle.dealDamage(u, c.target, { amount: u.s.atk * num(p.atk_scale), type: 'true', canDodge: false, tags: procTags('crest') });
+        battle.dealDamage(u, c.target, { amount: u.s.atk * num(p.atk_scale) * equipmentMultiplier(battle, u), type: 'true', canDodge: false, tags: procTags('crest') });
         battle.fx('strike', { x: c.target.x, y: c.target.y, id: c.target.id, src: 'item:chess_item_6_11_e', key: rec.id, from: u.id });
       }
       st.bonus = 0;

@@ -45,6 +45,17 @@ test('layer gates, chance caps, prosperity blast size and small duration changes
   assert.match(text(clauses('suntShip', 0, 2)), /5名精锐/);
 });
 
+test('哥伦比亚三人显示实时装备增幅，六人显示5%共享且无旧过载攻速', () => {
+  const zero = clauses('columbiaShip', 0, 1);
+  assert.match(text(zero), /装备效果提升0%.*每100层提升30%/);
+  assert.deepEqual(zero.map(c => c.active), [true, false]);
+  const six = clauses('columbiaShip', 500, 2);
+  assert.match(text(six), /装备效果提升150%/);
+  assert.match(text(six), /每人获取装备总加成的5%.*科技装备不参与共享/);
+  assert.deepEqual(six.map(c => c.active), [true, true]);
+  assert.doesNotMatch(text(six), /过载|50攻速/);
+});
+
 test('every operator keeps all executable garrison IDs and original records after display merging', () => {
   for (const c of Object.values(DATA.chess)) {
     const records = c.garrisonIds.map(id => DATA.garrisons[id]);

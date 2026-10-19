@@ -74,6 +74,21 @@ test('不共享装备的基础属性也不进入共享池', () => {
   }
 });
 
+test('不共享的竞技旗仍受三哥增幅，伤害基础100%不被放大', () => {
+  const h = field({ 0: ['chess_item_4_07_e_a'] }, { layers: 500 });
+  const source = h.unit('op0'), target = h.b.enemies[0];
+  const own = { type: 'true', mul: 1 }; h.b.emit('hit', { source, target, dmg: own }); close(own.mul, 1.875);
+  const shared = { type: 'true', mul: 1 }; h.b.emit('hit', { source: h.unit('op1'), target, dmg: shared }); close(shared.mul, 1);
+});
+
+test('护盾无人机原携带者的概率随层数增长，接收者不获得抵挡效果', () => {
+  const h = field({ 0: ['chess_item_4_11_e_a'] }, { layers: 500 });
+  h.b.rng = () => 0.15;
+  const target = h.unit('op3'); target.hp -= 100;
+  h.b.heal(h.unit('op1'), target, 10); assert.equal(target.findBuff('item:shield_drone'), null);
+  h.b.heal(h.unit('op0'), target, 10); assert.equal(target.findBuff('item:shield_drone').shieldHits, 1);
+});
+
 test('阿戈尔重刃分享攻击增幅但共享攻速固定减10', () => {
   const h = field({ 0: ['chess_item_3_07_e_a'] }, { layers: 500 });
   close(h.unit('op0').s.atk, 205); close(h.unit('op1').s.atk, 105);
