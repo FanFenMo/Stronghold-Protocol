@@ -131,9 +131,11 @@ test('终极 Final Assault vs 假想敌：胄 (seeded bot match): both players\'
     for (const ps of m.alivePlayers()) {
       for (const piece of ps.board.values()) if (piece.kind === 'chess') ps.returnCopies(piece);
       ps.board.clear();
-      // 谬因在v1.1移除了奥术；同阶圣聆初雪保留这项测试需要的双奥术阵容。
-      for (const id of ['chess_char_6_16_b', 'chess_char_6_02_b', 'chess_char_5_11_b', 'chess_char_4_09_b']) {
-        give(m, ps, id, 'board', legalTileFor(m, ps, id));
+      for (const id of ['chess_char_6_16_b', 'chess_columbia_aphris_b', 'chess_char_5_11_b', 'chess_char_4_09_b']) {
+        const piece = give(m, ps, id, 'board', legalTileFor(m, ps, id));
+        // 谬因不再自带奥术，用现有同构体配装恢复测试前提，同时保留覆盖首领的远程攻击。
+        if (id === 'chess_columbia_aphris_b') piece.items.push(
+          ps.newPiece('item', 'chess_item_6_09_e_a'), ps.newPiece('item', 'chess_item_3_08_e_a'));
       }
       ps.layers.arcaneShip = 50 + ps.seat * 20;
       ps.recompute();
