@@ -50,4 +50,4 @@
 
 盟约三态和六件装备图标已提供。新干员的原作图片、模型和字体通过原有公开素材下载计划获取，无需依赖本机归档路径。
 
-行为覆盖位于 `test/content/columbia-battle.test.js`、`test/match/columbia-equipment.test.js` 和相关特质、前端测试。双星特性、多萝西外援归属以及科技装备限制在合入 develop 后验证；浏览器专项验收位于 `test/ui/columbia.e2e.test.js`。
+行为覆盖位于 `test/content/columbia-battle.test.js`、`test/match/columbia-equipment.test.js` 和相关特质、前端测试。相关专项用例已在 develop 验证，真实浏览器已验收特质展示、配发限制和战斗共享；浏览器专项验收位于 `test/ui/columbia.e2e.test.js`。
