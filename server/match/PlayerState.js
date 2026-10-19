@@ -1343,6 +1343,9 @@ export class PlayerState {
     if (!tloc || tloc.piece.kind !== 'chess' || tloc.area === 'equipped') return fail(ERR.BAD_TARGET);
     const item = iloc.piece;
     const target = tloc.piece;
+    if (rec.requiresBondId === COLUMBIA_BOND && !this.gd.chess(target.id).bonds.includes(COLUMBIA_BOND)) {
+      return fail(ERR.BAD_TARGET, `仅【${this.gd.bond(rec.requiresBondId).name}】干员可用`);
+    }
     if (replaceUid != null && !(Number.isInteger(replaceUid) && (target.items || []).some((x) => x.uid === replaceUid))) return fail(ERR.BAD_TARGET, 'replace: not equipped on the target');
     const consume = typeof rec.kind === 'string' && rec.kind.startsWith('consume_on_equip');
     if (consume) {

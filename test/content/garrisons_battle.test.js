@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec, checkInvariants } from '../helpers/battleHarness.js';
 import { getData } from '../../server/data.js';
+import { itemGrants } from '../../server/sim/content/items/battle.js';
 
 const D = getData({ log: { warn() {}, error() {}, info() {} } });
 const GR = (gid) => D.garrisons[gid];
@@ -719,6 +720,21 @@ test('real data: every owned IN_BATTLE garrison installs without errors on its r
     h.runToEnd(60);
     assert.deepEqual(h.b.errors.filter((e) => /garrison|content:garrisons/.test(JSON.stringify(e))), [], `batch ${i}`);
     checkInvariants(h.b);
+  }
+});
+
+test('双星特性：每条普通和精锐记录都在实际干员上共享装备', () => {
+  for (const gid of idsOfKey('CUSTOM_TWIN_STARS')) {
+    const owner = GR(gid).owners[0];
+    const partner = owner.includes('astesi') ? 'chess_columbia_halo_a' : 'chess_columbia_astesi_a';
+    const h = makeBattle({ autoFinish: false, units: [
+      { chessId: owner, row: 10, col: 4 },
+      { chessId: partner, row: 10, col: 5, items: ['chess_item_1_01_e_a'] },
+    ] });
+    h.step();
+    assert.ok(itemGrants(h.b, h.unit(owner)).some(g => g.lent), gid);
+    assert.deepEqual(h.b.errors, []);
+    cover(gid);
   }
 });
 

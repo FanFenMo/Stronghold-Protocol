@@ -1136,8 +1136,7 @@ test('merging: two identical normal items become the golden one (upgradeNum 2); 
 });
 
 // ---------------------------------------------------------------------------------------------------------------
-// 哥伦比亚的六件科技装备（本 fork 新增）。战斗效果尚未实现（见 docs/COLUMBIA.md 的待办），
-// 所以这里断言的是记录形态与两套数值，而不是行为。
+// 哥伦比亚的六件科技装备：本文件验证记录与两套数值，战斗行为见 columbia-battle.test.js。
 
 test('哥伦比亚科技装备：仅哥伦比亚可用、不重复、只由盟约发放，两套数值齐全', () => {
   const ids = COLUMBIA_TECH_ITEMS.map((it) => columbiaTechItemId(it.key, false));

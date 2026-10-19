@@ -17,12 +17,16 @@ import { COLUMBIA_NORMAL_OPERATORS, columbiaChessId } from './columbia-roster-da
  * 说明：干员名与数据的对应关系已逐条核对（`data/chess.json` 的 tier 与你给的名单一致）：
  *   赫默 char_2_02 / 锡人 char_2_19 / 塞雷娅 char_5_11 / 溯光星源 char_6_16
  */
+const DOROTHY = 'char_4048_doroth';
+const DOROTHY_CHESS = [5, 6].map(tier => `chess_external_${tier}_doroth_a`);
+
 export const COLUMBIA_MEMBERS = [
   'chess_char_2_02_a',          // 赫默   T2
   'chess_char_2_19_a',          // 锡人   T2
   'chess_char_5_11_a',          // 塞雷娅 T5
   'chess_char_6_16_a',          // 溯光星源 T6
   ...COLUMBIA_NORMAL_OPERATORS.map(op => columbiaChessId(op.charId)),
+  ...DOROTHY_CHESS,
 ];
 
 const desc = '<在场3名不同【哥伦比亚】干员>获得哥伦比亚的科技装备，仅【哥伦比亚】干员可用；'
@@ -131,15 +135,17 @@ const COLUMBIA_ITEM_FORMULA = {
  * 给成员棋子的 `bonds` 数组加上 columbiaShip（普通与精锐各一份）。幂等。
  *
  * 单独导出是有原因的：build-data 在 applyCustomData 之后还会跑 applyExpandedRoster，后者会**重建**
- * `chess_external_*` 记录并覆盖 `bonds`，把外援成员（谬因、霍尔海雅）的标记抹掉。
+ * `chess_external_*` 记录并覆盖 `bonds`，多萝西的单哥伦比亚归属须同时写入外援数据源。
  * 所以构建脚本必须在 applyExpandedRoster 之后再调用一次本函数。
  */
 export function applyColumbiaMemberTags(files) {
+  files.backups.diy.operators[DOROTHY].bonds = [ID];
   const chess = files && files.chess ? files.chess : {};
   for (const base of COLUMBIA_MEMBERS) {
     for (const suffix of ['a', 'b']) {
       const c = chess[base.replace(/_a$/, `_${suffix}`)];
-      if (c && Array.isArray(c.bonds) && !c.bonds.includes(ID)) c.bonds.push(ID);
+      if (c?.charId === DOROTHY) c.bonds = [ID];
+      else if (c && Array.isArray(c.bonds) && !c.bonds.includes(ID)) c.bonds.push(ID);
     }
   }
 }
@@ -157,7 +163,7 @@ export function applyColumbiaAssets(assets) {
   for (const it of COLUMBIA_TECH_ITEMS) {
     assets.items[`trap_columbia_${it.key}`] = `/img/items/columbia-${it.key}.png`;
   }
-  assets.bonds.twinShip = assets.bonds.skillfulShip;
+  delete assets.bonds.twinShip;
   for (const type of ['AFT-Y', 'CHA-Y', 'CRU-X', 'PRP-X']) {
     const icon = assets.modules?.[type.toLowerCase()];
     if (icon) assets.modules[type] = icon;
@@ -219,7 +225,7 @@ export function applyColumbiaData(files) {
       ],
       formulas: {
         techCount: `min(${COLUMBIA_TECH_CAP}, floor(L / ${COLUMBIA_TECH_STEP}))`,
-        overload: 'tier >= 6 → 使用装备的过载数值',
+        overload: 'tier >= 2 → 使用装备的过载数值',
         overloadAtkSpeed: '+50 ASPD',
       },
       layerGain: '石英 休整期结束 +2/4；锡人 每3层攻击力与生命值+1/2%；星源 获得时 哥伦比亚+3、奇迹+1；'
@@ -271,21 +277,12 @@ export function applyColumbiaData(files) {
     ['chess_char_2_02_a', [ID, 'visiShip']],
     ['chess_char_2_19_a', [ID, 'swiftShip', 'investShip']],
     ['chess_char_5_11_a', [ID, 'steadShip']],
-    ['chess_char_6_16_a', [ID, 'arcaneShip', 'skillfulShip', 'twinShip']],
-    ...COLUMBIA_NORMAL_OPERATORS.map(op => [columbiaChessId(op.charId),
-      ['char_135_halo', 'char_274_astesi'].includes(op.charId) ? [...op.bonds, 'twinShip'] : op.bonds]),
+    ['chess_char_6_16_a', [ID, 'arcaneShip', 'skillfulShip']],
+    ...COLUMBIA_NORMAL_OPERATORS.map(op => [columbiaChessId(op.charId), op.bonds]),
+    ...DOROTHY_CHESS.map(base => [base, [ID]]),
   ];
-  const twinMembers = [columbiaChessId('char_274_astesi'), columbiaChessId('char_135_halo'), 'chess_char_6_16_a'];
-  const twinDesc = '星极与星源或溯光星源同时在场时共享装备；攻击范围重叠时，互相视作攻击范围的延伸。';
-  bonds.twinShip = { ...structuredClone(bonds.preciShip), bondId: 'twinShip', name: '双星', identifier: 26,
-    iconId: 'icon_twinShip', activeCount: 2, thresholds: [2], countMode: 'BOARD', countsHand: false,
-    members: twinMembers, visibleMembers: twinMembers,
-    memberGroups: [[twinMembers[0]], twinMembers.slice(1)],
-    effectId: 'bondeffect_twin', effectName: '双星', desc: twinDesc, descRaw: twinDesc,
-    effectDesc: twinDesc, effectDescRaw: twinDesc, effectDescParams: [], bb: {}, bbStr: {}, buffs: [],
-    baseParams: [], perStackParams: [], spec: { tiers: [{ need: '星极与星源或溯光星源', effect: twinDesc }] } };
-  effects.bondeffect_twin = { ...structuredClone(effects.bondeffect_preci), effectId: 'bondeffect_twin',
-    name: '双星', desc: twinDesc, descRaw: twinDesc, buffs: [], params: {} };
+  delete bonds.twinShip;
+  delete effects.bondeffect_twin;
   for (const [base, memberBonds] of memberships) {
     for (const suffix of ['a', 'b']) {
       const c = chess[base.replace(/_a$/, `_${suffix}`)];
@@ -329,7 +326,20 @@ export function applyColumbiaData(files) {
       {}, { key: 'act1autochess_gar_eff_chaos' });
   }
 
-  // 溯光星源的双星：与它原有的奥术／灵巧同层数，加一条哥伦比亚版本的特质。
+  // 双星属于干员特性，不进入盟约统计或随机禁用池。
+  const twinDesc = '<战斗中>双星：同一玩家的星极与星源或溯光星源同时在场时共享装备效果；攻击范围重叠时，互相视作攻击范围的延伸。';
+  for (const base of [columbiaChessId('char_274_astesi'), columbiaChessId('char_135_halo'), 'chess_char_6_16_a']) {
+    for (const suffix of ['a', 'b']) {
+      const owner = base.replace(/_a$/, `_${suffix}`), gid = `garrison_custom_twin_${owner}`;
+      if (!chess[owner]) continue;
+      garrisons[gid] = { ...structuredClone(garrisons[`garrison_08_${suffix}`]), garrisonId: gid,
+        desc: twinDesc, descRaw: twinDesc, owners: [owner], effectType: 'CUSTOM_TWIN_STARS', effectKey: 'CUSTOM_TWIN_STARS',
+        battleRuneKey: null, bb: {}, bbStr: {} };
+      if (!chess[owner].garrisonIds.includes(gid)) chess[owner].garrisonIds.push(gid);
+    }
+  }
+
+  // 溯光星源：与它原有的奥术／灵巧同层数，加一条哥伦比亚版本的特质。
   // 原特质 garrison_121_a: <休整期结束时>本回合每花费3资金，使已激活的【灵巧】【奥术】层数+2
   for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
     const owner = `chess_char_6_16_${suffix}`;
@@ -352,7 +362,8 @@ export function applyColumbiaData(files) {
   for (const mode of Object.values(config.modes)) {
     mode.inactiveBondIds = mode.inactiveBondIds.filter((id) => id !== ID);
     if (!mode.activeBondIds.includes(ID)) mode.activeBondIds.push(ID);
-    if (!mode.activeBondIds.includes('twinShip')) mode.activeBondIds.push('twinShip');
+    mode.activeBondIds = mode.activeBondIds.filter(id => id !== 'twinShip');
+    mode.inactiveBondIds = mode.inactiveBondIds.filter(id => id !== 'twinShip');
   }
 
   if (files.assets) applyColumbiaAssets(files.assets);

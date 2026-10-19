@@ -1,3 +1,4 @@
+import { COLUMBIA_BOND } from '../../../shared/columbia.js';
 import { DEFAULT_HOTKEYS, sanitizeHotkeys } from './gameLogic/shortcuts.js';
 export { HOTKEY_ACTIONS, DEFAULT_HOTKEYS, isBindableCode, hotkeyLabel, sanitizeHotkeys, rebindHotkey, isDefaultHotkeys, hotkeyOf, actionForKey, captureHotkey, shortcutFor, facingSwallows, facingEnter, closesOnFieldPress, shortcutBlocked } from './gameLogic/shortcuts.js';
 // Pure in-match UI logic (no DOM, no Preact) — unit-tested in Node (test/ui/*.test.js).
@@ -1213,6 +1214,9 @@ function equipCheck(ctx, itemPiece, targetPiece) {
   const item = ctx.getItem(itemPiece.id);
   if (item?.itemType === 'MAGIC') return { ok: false, code: 'BAD_TARGET', reason: '该道具需要放置在战场上使用' };
   if (!isObj(targetPiece) || targetPiece.kind !== 'chess') return { ok: false, code: 'BAD_TARGET', reason: '装备只能配发给干员' };
+  if (item?.requiresBondId === COLUMBIA_BOND && !ctx.getChess(targetPiece.id).bonds.includes(COLUMBIA_BOND)) {
+    return { ok: false, code: 'BAD_TARGET', reason: '该装备仅可配发给哥伦比亚干员' };
+  }
   return { ok: true, action: 'equip' };
 }
 

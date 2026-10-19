@@ -693,3 +693,18 @@ describe('special terrain tip', () => {
     assert.match(terrainInfo(mire, 0, 0).lines[2], /最多 10 层/);
   });
 });
+
+test('科技装备配发预校验：非哥伦比亚目标不可放置，普通、精锐和多萝西外援均可接收', () => {
+  for (const it of Object.values(items).filter(it => it.requiresBondId === 'columbiaShip')) {
+    for (const id of [RANGED, 'chess_columbia_quartz_a', 'chess_columbia_quartz_b', 'chess_external_5_doroth_a', 'chess_external_6_doroth_b']) {
+      const target = { ...piece(id), row: 9, col: 3 }, equipment = item(it.id);
+      const ctx = ctxFor(privWith({ board: [target], hand: [equipment] }));
+      const result = canPlace(ctx, equipment.uid, { area: 'board', row: 9, col: 3 });
+      assert.equal(result.ok, id !== RANGED, it.id + ' -> ' + id);
+      if (id === RANGED) {
+        assert.match(result.reason, /仅可配发给哥伦比亚干员/);
+        assert.equal(dropIntent(ctx, equipment.uid, { area: 'board', row: 9, col: 3 }), null);
+      }
+    }
+  }
+});

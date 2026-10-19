@@ -4,7 +4,7 @@ import { makeBattle, chessRec, enemyRec } from '../helpers/battleHarness.js';
 import { makeMatch, give, DATA } from '../match/harness.js';
 import { columbiaTechItemId } from '../../shared/columbia.js';
 import { itemGrants } from '../../server/sim/content/items/battle.js';
-import { computeBonds } from '../../server/match/bondsMeta.js';
+
 
 const ID = 'columbiaShip';
 const tech = columbiaTechItemId;
@@ -106,18 +106,28 @@ test('过载护盾增加生命与双抗，锁血窗口内存活且结束后可�
   assert.equal(u.alive, false);
 });
 
-test('双星需要星极和任一星源；两个星源不代替星极', () => {
-  const gd = { bondIds: ['twinShip'], modeInactiveBonds: new Set(),
-    bond: id => DATA.bonds[id], chess: id => DATA.chess[id], baseIdOf: id => DATA.chess[id].baseId,
-    isGolden: id => !!DATA.chess[id].isGolden, item: id => DATA.items[id] };
-  const ps = ids => ({ hand: [], layers: {}, board: new Map(ids.map((id, i) => [i, { id, kind: 'chess' }])) });
-  assert.equal(computeBonds(gd, ps(['chess_columbia_halo_a', 'chess_char_6_16_a'])).twinShip.active, false);
-  assert.equal(computeBonds(gd, ps(['chess_columbia_astesi_a', 'chess_columbia_halo_a'])).twinShip.active, true);
+test('双星是干员特性：两名星源不产生共享，星极可分别与两种星源联动', () => {
+  for (const partner of ['chess_columbia_halo_a', 'chess_char_6_16_a']) {
+    const h = makeBattle({ autoFinish: false, bonds: {}, units: [
+      { chessId: 'chess_columbia_astesi_a', row: 10, col: 4 },
+      { chessId: partner, row: 10, col: 5, items: ['chess_item_1_01_e_a'] },
+    ] });
+    h.step();
+    assert.ok(itemGrants(h.b, h.unit('chess_columbia_astesi_a')).some(g => g.lent));
+  }
+  const h = makeBattle({ autoFinish: false, units: [
+    { chessId: 'chess_columbia_halo_a', row: 10, col: 4 },
+    { chessId: 'chess_char_6_16_a', row: 10, col: 5, items: ['chess_item_1_01_e_a'] },
+  ] });
+  h.step();
+  assert.equal(itemGrants(h.b, h.unit('chess_columbia_halo_a')).some(g => g.lent), false);
 });
 
 test('双星共享装备与重叠范围；同伴离场后移除共享效果，保留其他范围来源', () => {
-  const astesi = record('star', { charId: 'char_274_astesi', rangeGrid: [[0, 0], [0, 1]] });
-  const halo = record('halo', { charId: 'char_135_halo', rangeGrid: [[0, 0], [0, 1]] });
+  const astesi = { ...record('star', { charId: 'char_274_astesi', rangeGrid: [[0, 0], [0, 1]] }),
+    garrisonIds: ['garrison_custom_twin_chess_columbia_astesi_a'] };
+  const halo = { ...record('halo', { charId: 'char_135_halo', rangeGrid: [[0, 0], [0, 1]] }),
+    garrisonIds: ['garrison_custom_twin_chess_columbia_halo_a'] };
   const h = makeBattle({ autoFinish: false, defs: { chess: { star: astesi, halo } },
     units: [{ chessId: 'star', row: 10, col: 4 }, { chessId: 'halo', row: 10, col: 5, items: ['chess_item_1_01_e_a'] }] });
   h.step();
@@ -130,4 +140,23 @@ test('双星共享装备与重叠范围；同伴离场后移除共享效果，�
   assert.equal(itemGrants(h.b, a).some(g => g.lent), false);
   assert.equal(a.rangeKeySet.has(10 * 21 + 6), false);
   assert.equal(a.rangeKeySet.has(10 * 21 + 8), true);
+});
+
+test('双星只联动同一玩家的在场特性成员，不向队友借用装备', () => {
+  const h = makeBattle({ autoFinish: false, kind: 'unite', players: [
+    { playerId: 'p1', units: [{ uid: 1, chessId: 'chess_columbia_astesi_a', row: 10, col: 4 }], bonds: {} },
+    { playerId: 'p2', units: [{ uid: 2, chessId: 'chess_columbia_halo_a', row: 10, col: 5, items: ['chess_item_1_01_e_a'] }], bonds: {} },
+  ] });
+  h.step();
+  assert.equal(itemGrants(h.b, h.unit(1)).some(g => g.lent), false);
+  assert.deepEqual(h.b.errors, []);
+});
+
+test('科技装备在战斗中也拒绝非哥伦比亚干员，即使盟约已过载', () => {
+  const h = field([tech('shield'), tech('graymatter')], 2, { enemies: [], defs: { chess: {
+    carrier: record('carrier', { bonds: [] }), patient: record('patient'),
+  } } });
+  const u = h.unit('carrier');
+  close(u.s.maxHp, 2000); close(u.s.aspd, 100); close(u.s.atk, 0);
+  assert.deepEqual(h.b.errors, []);
 });

@@ -44,6 +44,7 @@
 import * as S from '../support/index.js';
 import { mitigate } from '../../damage.js';
 import { frontOf } from '../../dir.js';
+import { installTwinStars } from './twin-stars.js';
 
 const ids = (s) => String(s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
 const EMPTY = Object.freeze([]);
@@ -243,6 +244,7 @@ function ammoScope(it, u) {
 }
 
 const INSTALLERS = {
+  CUSTOM_TWIN_STARS(battle, list) { installTwinStars(battle, list.map(it => it.unit)); },
   act1autochess_gar_event_useskill(battle, list) {
     const m = byUnit(list);
     battle.on('skillStart', ({ unit }) => {

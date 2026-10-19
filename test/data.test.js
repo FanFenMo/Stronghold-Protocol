@@ -129,8 +129,8 @@ test('chess: every non-DIY chess has stats, range, classification and a resolvab
   assert.equal(chess.chess_char_1_01_a.targetPriority, 'fly');
 });
 
-test('bonds: 26 bonds with valid members, thresholds and effects', () => {
-  assert.equal(Object.keys(bonds).length, 26);
+test('bonds: 25 bonds with valid members, thresholds and effects', () => {
+  assert.equal(Object.keys(bonds).length, 25);
   assert.equal(Object.values(bonds).filter((b) => b.isCore).length, 9);
   const modes = new Set(['BOARD', 'BOARD_AND_DECK', 'BOARD_ALL_CHESS']);
   for (const b of Object.values(bonds)) {

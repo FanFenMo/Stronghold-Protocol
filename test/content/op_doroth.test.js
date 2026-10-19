@@ -62,7 +62,7 @@ function done(h) {
   assert.equal(h.b.errors.length, 0, JSON.stringify(h.b.errors[0]));
 }
 
-test('多萝西 in every 自选 form: her operator kit (all three skills authored, SP_FULL), the form\'s stats + module attributes, 3-3, ranged physical arrows that hit air units, blocks 1, ground-targetable, 空 bond, no 特质; her traps untargetable, blocking nothing, no attack', () => {
+test('多萝西 in every 自选 form: her operator kit (all three skills authored, SP_FULL), the form\'s stats + module attributes, 3-3, ranged physical arrows that hit air units, blocks 1, ground-targetable, 哥伦比亚 bond, no 特质; her traps untargetable, blocking nothing, no attack', () => {
   assert.equal(OPERATOR_KITS[DOR], KITS[DOR]);
   for (const f of FORMS_ALL) {
     const [tier, elite, mod] = f;
@@ -74,7 +74,7 @@ test('多萝西 in every 自选 form: her operator kit (all three skills authore
       assert.deepEqual([u.s.blockCnt, u.profile.attack, u.profile.dmgType, u.profile.canHitFly, u.profile.projectile, u.base.bat], [1, 'ranged', 'phys', true, 'arrow', 0.85], `${label(f)}: 陷阱师`);
       assert.deepEqual(u.liveRangeGrid, form.rangeGrid, `${label(f)}: 3-3`);
       assert.deepEqual([form.skills[skill].trigger.rule, u.skill.rule], ['DEFAULT', 'SP_FULL'], `${label(f)}: AUTO acting on herself — SP_FULL`);
-      assert.deepEqual([u.def.bonds, u.def.raw.garrisonIds], [['emptyShip'], []], `${label(f)}: bonds / 特质`);
+      assert.deepEqual([u.def.bonds, u.def.raw.garrisonIds], [['columbiaShip'], []], `${label(f)}: bonds / 特质`);
       assert.ok(!u.s.flags.liftoff && !u.s.flags.camou && !u.s.flags.stealth, `${label(f)}: ground enemies target her`);
       const t = piece(h, 2);
       const v = tokOf(tier, elite, skill, mod);

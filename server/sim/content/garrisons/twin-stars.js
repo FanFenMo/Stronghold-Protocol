@@ -1,4 +1,4 @@
-// 哥伦比亚干员特质与双星：装备复用可撤销的 item grant，范围复用 setExtraRange。
+// 双星干员特性：装备复用可撤销的 item grant，范围复用 setExtraRange。
 import { isOp, onField } from '../support/index.js';
 import { installItem } from '../items/battle.js';
 import { absoluteRangeKeys } from '../../targeting.js';
@@ -7,8 +7,8 @@ const ASTESI = 'char_274_astesi';
 const HALOS = new Set(['char_135_halo', 'char_1047_halo2']);
 const charId = u => u.def.charId;
 
-export function install(battle) {
-  const stars = battle.allyUnits.filter(u => isOp(u) && (charId(u) === ASTESI || HALOS.has(charId(u))));
+export function installTwinStars(battle, units) {
+  const stars = units.filter(u => isOp(u) && (charId(u) === ASTESI || HALOS.has(charId(u))));
   if (!stars.some(u => charId(u) === ASTESI) || !stars.some(u => HALOS.has(charId(u)))) return;
   const grants = new Map(), extended = new Map(), triggerKeys = new Map();
   for (const u of stars) u.skill?.addTriggerRange(() => [triggerKeys.get(u) ?? []]);
@@ -41,7 +41,7 @@ export function install(battle) {
       }
       const previous = extended.get(u) ?? new Set();
       if (additions.size !== previous.size || [...additions].some(k => !previous.has(k))) {
-        battle.setExtraRange(u, additions, 'bond:twinShip');
+        battle.setExtraRange(u, additions, 'garrison:twinStars');
       }
       extended.set(u, additions);
       triggerKeys.set(u, [...additions]);

@@ -103,3 +103,35 @@ test('溯光星源的双星：新增一条与奥术/灵巧同层数的哥伦比�
   assert.equal(src.bb.layer, 2);
   assert.equal(src.bbStr.bond, 'skillfulShip,arcaneShip');
 });
+
+test('多萝西保留五六阶外援，只归属哥伦比亚，技能与召唤物入口保留', () => {
+  assert.ok(DATA.backups.diy.ownedPool.includes('char_4048_doroth'));
+  assert.deepEqual(DATA.backups.diy.operators.char_4048_doroth.bonds, [ID]);
+  const entries = Object.values(DATA.chess).filter(c => c.charId === 'char_4048_doroth');
+  assert.equal(entries.length, 4);
+  for (const c of entries) {
+    assert.equal(c.supportOperator, true);
+    assert.deepEqual(c.bonds, [ID]);
+    assert.equal(c.skills.length, 3);
+    assert.ok(c.tokens.includes('token_10025_doroth_recttp'));
+    assert.ok(!DATA.bonds.emptyShip.members.includes(c.baseId));
+  }
+});
+
+test('双星仅出现在三名干员的普通与精锐特性中，不占盟约或禁用名额', () => {
+  assert.equal(DATA.bonds.twinShip, undefined);
+  assert.equal(DATA.effects.bondeffect_twin, undefined);
+  assert.equal(DATA.assets.bonds.twinShip, undefined);
+  for (const mode of Object.values(DATA.config.modes)) {
+    assert.ok(!mode.activeBondIds.includes('twinShip'));
+    assert.ok(!mode.inactiveBondIds.includes('twinShip'));
+  }
+  const bases = ['chess_columbia_astesi_a', 'chess_columbia_halo_a', 'chess_char_6_16_a'];
+  for (const base of bases) for (const suffix of ['a', 'b']) {
+    const c = DATA.chess[base.replace(/_a$/, '_' + suffix)];
+    assert.ok(!c.bonds.includes('twinShip'));
+    const features = c.garrisonIds.map(id => DATA.garrisons[id]).filter(g => g.effectKey === 'CUSTOM_TWIN_STARS');
+    assert.equal(features.length, 1);
+    assert.match(features[0].desc, /双星.*星极.*星源.*共享装备/);
+  }
+});
