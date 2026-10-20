@@ -63,8 +63,8 @@ test('相邻灰质引擎不递归汇总借来的攻击，时间推移与层数�
   const item = columbiaTechItemId('graymatter');
   const h = field({ 0: [item], 1: [item] }, { tier: 1 });
   h.run(0.5);
-  close(h.unit('op0').s.atk, 242.875); close(h.unit('op1').s.atk, 287.875);
+  close(h.unit('op0').s.atk, 205.1875); close(h.unit('op1').s.atk, 227.6875);
   h.run(1);
-  close(h.unit('op0').s.atk, 242.875); close(h.unit('op1').s.atk, 287.875);
+  close(h.unit('op0').s.atk, 205.1875); close(h.unit('op1').s.atk, 227.6875);
   assert.deepEqual(h.b.errors, []);
 });

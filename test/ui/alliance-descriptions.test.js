@@ -78,6 +78,10 @@ test('matching kill triggers merge gains while different triggers and separate c
 });
 
 for (const [suffix, mul] of [['a', 1], ['b', 2]]) test(`merged traits ${suffix} retain triggers, per-bond caps and elite values`, () => {
+  const aphris = traits(`chess_columbia_aphris_${suffix}`);
+  assert.equal(aphris.length, 1);
+  assert.match(aphris[0].desc, new RegExp(`每消耗2发子弹.*哥伦比亚】层数\\+${mul}.*精准】层数\\+${2 * mul}`));
+  assert.equal(aphris[0].sourceGarrisonIds.length, 2);
   const vendla = traits(`chess_char_1_06_${suffix}`);
   assert.equal(vendla.length, 1);
   assert.match(vendla[0].desc, new RegExp(`维多利亚】层数\\+${mul}.*繁盛】层数\\+${mul}`));

@@ -1,4 +1,4 @@
-// 哥伦比亚 v1.2：三人档提升装备效果；六人档激活科技装备的专属效果。
+// 哥伦比亚 v1.3：三人档提升装备效果；六人档激活科技装备的专属效果。
 
 export const COLUMBIA_BOND = 'columbiaShip';
 
@@ -22,7 +22,7 @@ export const columbiaTechCount = (layers) => {
 export const COLUMBIA_TECH_ITEMS = Object.freeze([
   {
     key: 'pioneer', name: '拓荒者蓄力装具',
-    base: { atkFlat: 300, aroundAtk: 150 },
+    base: { atkFlat: 200, aroundAtk: 75 },
     normal: { atkScale: 1.15, perThree: 0.01, cap: 2.0 },
   },
   {
@@ -37,7 +37,7 @@ export const COLUMBIA_TECH_ITEMS = Object.freeze([
   },
   {
     key: 'graymatter', name: '灰质引擎',
-    base: { atkPct: 0.45, aroundAtkRatio: 0.3 },
+    base: { atkPct: 0.45, aroundAtkRatio: 0.15 },
     normal: { perThousand: 0.01, maxStacks: 100, necrosis: 0.05 },
   },
   {
@@ -47,7 +47,7 @@ export const COLUMBIA_TECH_ITEMS = Object.freeze([
   },
   {
     key: 'antigrav', name: '反重力投送场',
-    base: { skillDurationPct: 0.5, spRegen: 0.25 },
+    base: { skillDurationPct: 0.3, spRegen: 0.25 },
     normal: { spRegen: 0.25, atkSpeed: 40 },
   },
 ]);

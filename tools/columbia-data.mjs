@@ -124,12 +124,12 @@ function columbiaItemDesc(key, v) {
 }
 
 const COLUMBIA_ITEM_FORMULA = {
-  pioneer: 'Base: carrier ATK +300; N4 allies ATK +150. Six Columbia: damage x min(cap, atkScale + perThree * floor(attacks / 3)).',
+  pioneer: 'Base: carrier ATK +200; N4 allies ATK +75. Six Columbia: damage x min(cap, atkScale + perThree * floor(attacks / 3)).',
   mapland: 'Base: ATK +200, ASPD +50. Six Columbia: heal lowest-HP% ally for healRatio x damage dealt.',
   shield: 'Base: HP +2000, block +3; N8 allies HP +500. Six Columbia: DEF += resRatio x maxHP; RES += min(30, resRatio x maxHP).',
-  graymatter: 'Base: ATK +45%; ATK final addition += 30% x N4 allies ATK, excluding borrowed ATK. Six Columbia: ATK +1% per 1000 damage, max 100 stacks; attacks carry 5% neural damage.',
+  graymatter: 'Base: ATK +45%; ATK final addition += 15% x N4 allies ATK, excluding borrowed ATK. Six Columbia: ATK +1% per 1000 damage, max 100 stacks; attacks carry 5% neural damage.',
   dover: 'Base: healing +50%, healing targets +1 (unscaled). Six Columbia: grant SP to N4 allies and spread 15% healing to target N4 allies without recursion.',
-  antigrav: 'Base: skill duration +50%, SP +0.25/s. Six Columbia: while skill active, allies in range gain SP +0.25/s and ASPD +40.',
+  antigrav: 'Base: skill duration +30%, SP +0.25/s. Six Columbia: while skill active, allies in range gain SP +0.25/s and ASPD +40.',
 };
 
 /**
@@ -229,7 +229,7 @@ export function applyColumbiaData(files) {
         special: 'tier >= 2 and at least 6 distinct on-field Columbia members of the same player',
       },
       layerGain: '石英 休整期结束 +2/4；锡人 每3层攻击力与生命值+1/2%；星源 获得时 哥伦比亚+3、奇迹+1；'
-        + '响石 作战中前三次击倒哥伦比亚 +2/4；星极 休整期结束哥伦比亚 +4/8、奥术 +3/6；赫默 休整期结束远见 +2/4、哥伦比亚 +3/6；谬因 每3层技力回复+0.015/0.03、攻速+0.5/1。',
+        + '响石 作战中前三次击倒哥伦比亚 +2/4；星极 休整期结束哥伦比亚 +4/8、奥术 +3/6；赫默 休整期结束远见 +2/4、哥伦比亚 +3/6；谬因 每消耗2发子弹，已激活的哥伦比亚 +1/2、精准 +2/4。',
       assumed: [],
     },
   };
@@ -319,9 +319,11 @@ export function applyColumbiaData(files) {
     add('tinman', 'chess_char_2_19_a', 'garrison_151', `【哥伦比亚】每叠加3层，本干员攻击力和生命值+${mul}%`,
       { divide_num: 3, atk: 0.01 * mul, max_hp: 0.01 * mul },
       { key: 'act1autochess_gar_eff_attrByBond', bond_id: ID });
-    add('aphris', columbiaChessId('char_4229_aphris'), 'garrison_151', `【哥伦比亚】每叠加3层，本干员技力回复+${0.015 * mul}，攻击速度+${0.5 * mul}`,
-      { divide_num: 3, sp_recovery_per_sec: 0.015 * mul, attack_speed: 0.5 * mul },
-      { key: 'act1autochess_gar_eff_attrByBond', bond_id: ID });
+    for (const [stem, bond, name, amount] of [['aphris', ID, '哥伦比亚', mul], ['aphris_preci', 'preciShip', '精准', 2 * mul]]) {
+      add(stem, columbiaChessId('char_4229_aphris'), 'garrison_23', `<战斗中>自身每消耗2发子弹，使已激活的【${name}】层数+${amount}`,
+        { at_root: 1, consume_count: 2, bond_add_count: amount },
+        { key: 'act1autochess_gar_event_consume_ammo', range_id: '0-1', bond_id: bond, bond_type: 'bond_by_id', bond_add_type: 'by_count' });
+    }
     add('cairn', columbiaChessId('char_4214_cairn'), 'garrison_140', `<战斗中>前三次击倒敌人时，使已激活的【哥伦比亚】层数+${2 * mul}`,
       { bond_add_count: 2 * mul, check_cnt: 1, max_add_count_per_battle: 6 * mul },
       { key: 'act1autochess_gar_event_selfkillenemy', bond_type: 'bond_by_id', bond_id: ID, bond_add_type: 'by_count' },

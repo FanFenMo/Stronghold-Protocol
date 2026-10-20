@@ -71,16 +71,37 @@ test('指定层数各开放一次选择，三人装备成长保留初始50%增�
 test('科技装备移除旧过载、削攻、锁血与浮空参数', () => {
   const pioneer = columbiaTechItem('pioneer');
   assert.deepEqual(pioneer.normal, { atkScale: 1.15, perThree: 0.01, cap: 2.0 });
+  assert.deepEqual(pioneer.base, { atkFlat: 200, aroundAtk: 75 });
   for (const it of COLUMBIA_TECH_ITEMS) assert.equal(it.overload, undefined);
   assert.deepEqual(columbiaTechItem('mapland').normal, { healRatio: 0.15 });
   assert.deepEqual(columbiaTechItem('shield').base, { hp: 2000, block: 3, aroundHp: 500 });
   assert.equal(columbiaTechItem('shield').normal.hp, undefined);
   assert.equal(columbiaTechItem('graymatter').base.atkPct, 0.45);
+  assert.equal(columbiaTechItem('graymatter').base.aroundAtkRatio, 0.15);
   assert.equal(columbiaTechItem('graymatter').normal.atkPct, undefined);
   assert.deepEqual(columbiaTechItem('dover').base, { healUp: 0.5, healTargets: 1 });
   assert.equal(columbiaTechItem('dover').normal.healUp, undefined);
   assert.equal(columbiaTechItem('shield').normal.lockHpSeconds, undefined);
   assert.equal(columbiaTechItem('antigrav').normal.floatSeconds, undefined);
+  assert.equal(columbiaTechItem('antigrav').base.skillDurationPct, 0.3);
+});
+
+test('谬因v1.3每消耗两发弹药分别叠加哥伦比亚与精准，旧属性成长被替换', () => {
+  for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+    const c = DATA.chess[`chess_columbia_aphris_${suffix}`];
+    const traits = c.garrisonIds.map(id => DATA.garrisons[id]);
+    assert.equal(traits.length, 2);
+    for (const [i, bond] of [ID, 'preciShip'].entries()) {
+      const g = traits.find(g => g.bbStr.bond_id === bond);
+      assert.equal(g.effectKey, 'act1autochess_gar_event_consume_ammo');
+      assert.equal(g.bb.consume_count, 2);
+      assert.equal(g.bb.bond_add_count, (i + 1) * mul);
+      assert.equal(g.bbStr.range_id, '0-1');
+      assert.equal(g.bb.max_add_count_per_battle, undefined);
+      assert.equal(g.bb.sp_recovery_per_sec, undefined);
+      assert.equal(g.bb.attack_speed, undefined);
+    }
+  }
 });
 
 test('溯光星源不再叠加哥伦比亚，原有奥术灵巧与双星保留', () => {

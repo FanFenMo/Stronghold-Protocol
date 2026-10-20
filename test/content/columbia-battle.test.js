@@ -70,14 +70,14 @@ test('梅兰德仅在六人档治疗最低生命百分比成员，基础攻速�
 test('拓荒者基础攻击与四格光环保留，六人档第三次攻击开始叠伤', () => {
   const h = field([tech('pioneer')], 2), u = h.unit('carrier'), e = h.b.enemies[0];
   u.base.atk = 100; u.markDirty();
-  close(u.s.atk, 550); close(h.unit('patient').s.atk, 225);
+  close(u.s.atk, 400); close(h.unit('patient').s.atk, 112.5);
   const damage = [];
   for (let i = 0; i < 3; i++) {
     const before = e.hp; h.b.forceAttack(u, [e]); damage.push(before - e.hp);
   }
-  close(damage[0], 673.75); close(damage[1], 673.75); close(damage[2], 682);
+  close(damage[0], 490); close(damage[1], 490); close(damage[2], 496);
   h.b.kill(h.unit('filler3'));
-  const before = e.hp; h.b.forceAttack(u, [e]); close(before - e.hp, 550);
+  const before = e.hp; h.b.forceAttack(u, [e]); close(before - e.hp, 400);
 });
 
 test('多维尔基础治疗+50%，六人档才扩散，扩散不递归', () => {
@@ -108,11 +108,11 @@ test('反重力基础延长技能并回技力，六人档才提供技能范围�
         skill: { spCost: 100, duration: 10, trigger: { rule: 'NEVER' } } }),
     } } });
     const u = h.unit('carrier'), patient = h.unit('patient');
-    close(u.skill.duration, 17.5); close(u.s.spRecovery, 1.375);
+    close(u.skill.duration, 14.5); close(u.s.spRecovery, 1.375);
     u.skill.activate('test', { free: true });
-    close(u.skill.timeLeft, 17.5);
+    close(u.skill.timeLeft, 14.5);
     close(patient.s.aspd, tier === 2 ? 160 : 100);
-    h.run(17.7);
+    h.run(14.7);
     close(patient.s.aspd, 100); close(u.s.spRecovery, 1.375);
     assert.deepEqual(h.b.errors, []);
   }
@@ -132,9 +132,44 @@ test('灰质引擎仅汇总上下左右四格的攻击，排除对角线且不�
     patient: record('patient', { stats: { atk: 100, maxHp: 2000, blockCnt: 0 } }),
     filler0: record('filler0', { stats: { atk: 200, maxHp: 2000, blockCnt: 0 } }),
   } } });
-  close(h.unit('carrier').s.atk, 135);
+  close(h.unit('carrier').s.atk, 67.5);
   h.b.kill(h.unit('patient'));
-  h.run(0.2); close(h.unit('carrier').s.atk, 90);
+  h.run(0.2); close(h.unit('carrier').s.atk, 45);
+});
+
+test('谬因真实弹药按两发叠层，多目标攻击不多计，跨技能累计且分别检查盟约激活', () => {
+  for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+    for (const active of [[], [ID], ['preciShip'], [ID, 'preciShip']]) {
+      const id = `chess_columbia_aphris_${suffix}`;
+      const bonds = Object.fromEntries([ID, 'preciShip'].map(bond => [bond,
+        { active: active.includes(bond), tier: active.includes(bond) ? 1 : 0, count: active.includes(bond) ? 3 : 0, layers: 0 }]));
+      const h = makeBattle({ autoFinish: false, timeLimit: 1000, bonds,
+        defs: { enemies: { dummy: enemyRec({ key: 'dummy', hp: 10000000, atk: 0, speed: 0 }) } },
+        units: [{ chessId: id, row: 9, col: 2, skillIndex: 2 }],
+        enemies: [{ key: 'dummy', pos: [12, 9] }, { key: 'dummy', pos: [12, 10] }],
+      });
+      h.step();
+      const u = h.unit(id);
+      assert.equal(u.skill.kind, 'ammo');
+      assert.equal(u.skill.activate('test', { free: true }), true);
+      h.run(3.1);
+      const shoot = () => h.b.forceAttack(u, h.b.enemies);
+      const gains = () => h.result().perPlayer.p1.layerGains;
+      shoot();
+      assert.deepEqual(gains(), {}, '一发子弹即使命中多个目标也不触发');
+      shoot();
+      const expected = pairs => Object.fromEntries(active.map(bond => [bond, pairs * mul * (bond === ID ? 1 : 2)]));
+      assert.deepEqual(gains(), expected(1));
+      shoot();
+      u.skill.end('test');
+      assert.equal(u.skill.activate('test', { free: true }), true);
+      h.run(3.1);
+      shoot();
+      assert.equal(h.hooksOf('ammoUsed').filter(c => c.unit === u).length, 4);
+      assert.deepEqual(gains(), expected(2), '上一轮技能剩余的一发耗弹进度继续累计');
+      assert.deepEqual(h.b.errors, []);
+    }
+  }
 });
 
 test('双星是干员特性：两名星源不产生共享，星极可分别与两种星源联动', () => {
