@@ -9,7 +9,7 @@ const ID = 'columbiaShip';
 const tech = columbiaTechItemId;
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, a + ' ~= ' + b);
 const record = (id, more = {}) => chessRec({ id, bonds: [ID], skill: null,
-  stats: { atk: 0, maxHp: 2000, blockCnt: 0 }, ...more });
+  stats: { atk: 0, maxHp: 2000, blockCnt: 0, def: 0 }, ...more });
 function field(items, tier = 1, extra = {}) {
   const filler = Object.fromEntries(Array.from({ length: 4 }, (_, i) => ['filler' + i, record('filler' + i)]));
   const { defs = {}, ...rest } = extra;
