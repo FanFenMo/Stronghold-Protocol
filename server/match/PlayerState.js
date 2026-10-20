@@ -1734,7 +1734,9 @@ export class PlayerState {
         slots,
         // `source` 'merge' = the promotion reward (晋升奖励); any other offer (a strategy, an item, a 特质) carries the
         // `label` the bar shows instead; `queued` = offers waiting behind it (player report #6 after 0.1.0)
-        rewardOffer: offer ? { tier: offer.tier, source: offer.source === 'merge' ? 'merge' : 'special', label: offer.label || null, queued: this.offers.length - 1, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
+        rewardOffer: offer ? { tier: offer.tier, source: offer.source === 'merge' ? 'merge' : 'special', label: offer.label || null,
+          ...(offer.source === COLUMBIA_TECH_SOURCE ? { persistent: true } : {}),
+          queued: this.offers.length - 1, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
       },
       hand: this.hand.map((p) => (p ? this.pieceView(p) : null)),
       temp: this.temp.map((p) => (p ? this.pieceView(p) : null)),

@@ -234,7 +234,7 @@ export function RewardCards({ offer, priv, editable, onPick, onDetail, onLater, 
       <span class="rwtag__micro">${head.micro}</span>
       <span class="rwtag__sub">${head.sub}</span>
       ${head.more ? html`<span class="rwtag__sub rwtag__more">${head.more}</span>` : null}
-      <button type="button" class="rwtag__later" onClick=${onLater} title="稍后选择（回合结束后消失）"><${Icon} name="minus" />稍后</button>
+      <button type="button" class="rwtag__later" onClick=${onLater} title=${offer.persistent ? '稍后选择（保留至后续休整期）' : '稍后选择（回合结束后消失）'}><${Icon} name="minus" />稍后</button>
     </div>
     <div class="shopbar__rwcards">
       ${offer.slots.map((s, i) => {

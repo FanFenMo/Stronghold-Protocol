@@ -97,6 +97,7 @@ test('未领取的哥伦比亚候选跨休整期保留，其他奖励仍到期�
   for (const id of MEMBERS) deployMember(h, ps, id);
   ps.addLayers(COLUMBIA_BOND, 20);
   const offer = structuredClone(ps.offers[0]);
+  assert.equal(ps.privateView().shop.rewardOffer.persistent, true);
   ps.pushItemOffer(['chess_item_1_01_e_a']);
   ps.endPrep();
   assert.deepEqual(ps.offers, [offer]);

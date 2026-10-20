@@ -248,7 +248,7 @@ test('ctx.triggerGarrisons re-runs another piece\'s 特质 (asUid copies, 投资
 test('garrisonHooks widens a garrison to extra hooks ("<进入休整期时><休整期结束时>")', () => {
   const reg = builtins();
   const hooks = [];
-  const id = 'chess_char_2_02_a';
+  const id = 'chess_char_2_13_a';
   const g = DATA.garrisons[DATA.chess[id].garrisonIds.find((x) => DATA.garrisons[x].eventType === 'SERVER_PREP_START')];
   reg.garrison(g.effectKey, { garrisonHooks: (gar) => (gar.garrisonId === g.garrisonId ? ['onRoundStart', 'onPrepEnd'] : null), run(ctx) { hooks.push(ctx.hook); } });
   const { m, ps } = prepSolo({ seed: 912, registry: reg });
