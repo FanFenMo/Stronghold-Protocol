@@ -1884,8 +1884,10 @@ export class Match {
     if (this.phase !== PHASE.PREP) return;
     this.setDeadline(0);
     const alive = this.alivePlayers();
+    this._endingPrep = true;
     for (const ps of alive) this.dispatch(ps, 'onPrepEnd', { round: this.round });
     for (const ps of alive) ps.endPrep();
+    this._endingPrep = false;
     const r = this.round;
     if (r === this.gd.middleBossRound) {
       this.startFinalAssault(false);

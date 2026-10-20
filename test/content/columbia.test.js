@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { DATA } from '../match/harness.js';
 import { applyColumbiaData, COLUMBIA_MEMBERS } from '../../tools/columbia-data.mjs';
 import {
-  COLUMBIA_BOND, COLUMBIA_TECH_CAP, COLUMBIA_TECH_STEP, COLUMBIA_SHARE_RATIO,
+  COLUMBIA_BOND, COLUMBIA_TECH_CAP, COLUMBIA_TECH_LAYERS,
   COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaEquipmentBonus, columbiaTechItem, columbiaTechItemId,
 } from '../../shared/columbia.js';
 
@@ -56,19 +56,16 @@ test('六件科技装备：仅哥伦比亚可用、不可合并、不进商店',
   }
 });
 
-test('每50层一件、6件封顶；三人装备成长，六人固定5%共享', () => {
-  assert.equal(columbiaTechCount(0), 0);
-  assert.equal(columbiaTechCount(49), 0);
-  assert.equal(columbiaTechCount(50), 1);
-  assert.equal(columbiaTechCount(150), 3);
-  assert.equal(columbiaTechCount(300), COLUMBIA_TECH_CAP);
+test('指定层数各开放一次选择，三人装备成长保留初始50%增幅', () => {
+  assert.deepEqual(COLUMBIA_TECH_LAYERS, [20, 50, 100, 170, 250, 350]);
+  for (const [i, layer] of COLUMBIA_TECH_LAYERS.entries()) {
+    assert.equal(columbiaTechCount(layer - 1), i);
+    assert.equal(columbiaTechCount(layer), i + 1);
+  }
   assert.equal(columbiaTechCount(999), COLUMBIA_TECH_CAP, '封顶不随层数继续增长');
-  assert.equal(COLUMBIA_TECH_STEP, 50);
-
-  assert.equal(columbiaEquipmentBonus(0), 0);
-  assert.equal(columbiaEquipmentBonus(100), 0.3);
-  assert.equal(columbiaEquipmentBonus(300), 0.9);
-  assert.equal(COLUMBIA_SHARE_RATIO, 0.05);
+  assert.equal(columbiaEquipmentBonus(0), 0.5);
+  assert.equal(columbiaEquipmentBonus(100), 0.8);
+  assert.equal(columbiaEquipmentBonus(300), 1.4);
 });
 
 test('科技装备移除旧过载、削攻、锁血与浮空参数', () => {
@@ -76,6 +73,12 @@ test('科技装备移除旧过载、削攻、锁血与浮空参数', () => {
   assert.deepEqual(pioneer.normal, { atkScale: 1.15, perThree: 0.01, cap: 2.0 });
   for (const it of COLUMBIA_TECH_ITEMS) assert.equal(it.overload, undefined);
   assert.deepEqual(columbiaTechItem('mapland').normal, { healRatio: 0.15 });
+  assert.deepEqual(columbiaTechItem('shield').base, { hp: 2000, block: 3, aroundHp: 500 });
+  assert.equal(columbiaTechItem('shield').normal.hp, undefined);
+  assert.equal(columbiaTechItem('graymatter').base.atkPct, 0.45);
+  assert.equal(columbiaTechItem('graymatter').normal.atkPct, undefined);
+  assert.deepEqual(columbiaTechItem('dover').base, { healUp: 0.5, healTargets: 1 });
+  assert.equal(columbiaTechItem('dover').normal.healUp, undefined);
   assert.equal(columbiaTechItem('shield').normal.lockHpSeconds, undefined);
   assert.equal(columbiaTechItem('antigrav').normal.floatSeconds, undefined);
 });
@@ -93,14 +96,20 @@ test('溯光星源不再叠加哥伦比亚，原有奥术灵巧与双星保留',
   assert.equal(src.bbStr.bond, 'skillfulShip,arcaneShip');
 });
 
-test('v1.1成员盟约、星极奥术叠层与响石独行归属同步', () => {
+test('v1.2响石坚守、霍尔海雅独行及赫默休整结束叠层同步', () => {
   for (const suffix of ['a', 'b']) {
     for (const [stem, bonds] of [
-      ['astesi', [ID, 'arcaneShip']], ['cairn', [ID, 'soloShip']],
-      ['heyak', [ID]], ['aphris', [ID, 'preciShip']],
+      ['astesi', [ID, 'arcaneShip']], ['cairn', [ID, 'steadShip']],
+      ['heyak', [ID, 'soloShip']], ['aphris', [ID, 'preciShip']],
     ]) assert.deepEqual(DATA.chess[`chess_columbia_${stem}_${suffix}`].bonds, bonds);
     assert.equal(DATA.garrisons[`garrison_custom_columbia_astesi_${suffix}`].bbStr.bond, `${ID},arcaneShip`);
     assert.equal(DATA.garrisons[`garrison_custom_columbia_cairn_${suffix}`].bbStr.bond_id, ID);
+    const silent = DATA.garrisons[`garrison_custom_columbia_silent_${suffix}`];
+    assert.equal(silent.eventType, 'SERVER_PREP_FIN');
+    assert.equal(silent.bbStr.bond, `visiShip,${ID}`);
+    assert.equal(silent.bbStr.count, suffix === 'a' ? '2,3' : '4,6');
+    assert.deepEqual(DATA.chess[`chess_char_2_02_${suffix}`].garrisonIds, [silent.garrisonId]);
+    assert.ok(!DATA.garrisons[`garrison_80_${suffix}`].owners.includes(`chess_char_2_02_${suffix}`));
   }
 });
 

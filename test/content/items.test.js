@@ -1136,7 +1136,7 @@ test('merging: two identical normal items become the golden one (upgradeNum 2); 
 });
 
 // ---------------------------------------------------------------------------------------------------------------
-// 哥伦比亚科技装备记录；成长与共享的战斗行为由专项回归覆盖。
+// 哥伦比亚科技装备记录；基础成长与六人档专属效果由专项回归覆盖。
 
 test('哥伦比亚科技装备：仅哥伦比亚可用、不重复、只由盟约发放，基础数值齐全', () => {
   const ids = COLUMBIA_TECH_ITEMS.map((it) => columbiaTechItemId(it.key, false));

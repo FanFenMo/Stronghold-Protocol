@@ -49,8 +49,7 @@ import {
 import { mitigate, hasHp, periodicDamage, isHpLoss } from '../../damage.js';
 import { hypot } from '../../detmath.js';
 import { columbiaItemKey, installColumbiaItem } from './columbia.js';
-import { equipmentMultiplier, equipmentMods, equipmentScopes, sharedEquipmentState } from './columbia-policy.js';
-import { installColumbiaSharing } from './columbia-sharing.js';
+import { equipmentMultiplier, equipmentMods, equipmentScopes, installEquipmentGrowth } from './columbia-policy.js';
 
 // =====================================================================================================================
 // data helpers
@@ -429,8 +428,7 @@ const BY_BUFF = {
     if (!(d > 0)) return;
     S.stat('drain', null, { interval: 1, onTick: ({ unit }) => {
       if (!unit.deployed) return;
-      const shared = sharedEquipmentState(battle).get(unit.ownerId);
-      if (!(shared?.solvent && shared.members.includes(unit))) battle.dealDamage(unit, unit, periodicDamage(d));
+      battle.dealDamage(unit, unit, periodicDamage(d));
       for (const a of battle.allies()) {
         if (a === unit || !ENEMY_RECORD.test(a.defId ?? '') || battle.time - (a.mem.solventAt ?? -Infinity) < 1 - 1e-6) continue;
         a.mem.solventAt = battle.time;
@@ -956,7 +954,7 @@ export function install(battle) {
     if (u.kind !== 'op') continue;
     for (const id of itemsOf(u)) installItem(battle, u, id);
   }
-  installColumbiaSharing(battle, runtime(battle));
+  installEquipmentGrowth(battle);
 }
 
 /**

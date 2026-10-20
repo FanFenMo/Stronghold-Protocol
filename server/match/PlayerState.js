@@ -83,12 +83,13 @@ import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains }
 import { itemKey } from './gamedata.js';
 import { bountyText } from './choices.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
-import { COLUMBIA_BOND, COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaTechItemId } from '../../shared/columbia.js';
+import { COLUMBIA_BOND, COLUMBIA_TECH_LAYERS, COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaTechItemId } from '../../shared/columbia.js';
 
 const HAND_SIZE = GEO.HAND_SIZE;
 const TEMP_SIZE = GEO.TEMP_SIZE;
 /** g.reward accepts idx 0..5 (shared/protocol.js) */
 const MAX_OFFER_SLOTS = 6;
+const COLUMBIA_TECH_SOURCE = `bond:${COLUMBIA_BOND}`;
 const OK = Object.freeze({ ok: true });
 const fail = (error, detail) => (detail ? { error, detail } : { error });
 
@@ -138,7 +139,7 @@ export class PlayerState {
     this.layers = {};
     /** computed bond states */
     this.bonds = {};
-    /** 哥伦比亚科技装备已发放的 key 列表（每满 30 层随机一件、不重复，至多 6 件） */
+    /** 已领取的哥伦比亚科技装备 key，不重复，至多六件。 */
     this.columbiaTech = [];
     this._grantingColumbiaTech = false;
     /**
@@ -850,29 +851,36 @@ export class PlayerState {
   }
 
   /**
-   * 哥伦比亚 (3) 档：每叠加 30 层随机获得一件科技装备，不重复，至多 6 件（shared/columbia.js）。
-   *
-   * 在盟约重算后按累计层数补齐，覆盖先叠层后激活及战斗结算。整备区与临时整备区都满时
-   * 保留未领取名额，腾出空间后的下一次重算再试。随机数走本玩家专属的 `columbia` 流，不扰动
-   * setup / shop / waves / draft / bots / meta（黄金结果只受哥伦比亚自身影响）。
+   * 三人档在指定层数开放装备二选一；仅在可操作的休整期生成候选，跨门槛按顺序补领。
+   * 候选在领取前保持不变，未领取的选择跨休整期保留；最后只剩一种时直接发放。
+   * 仍使用玩家独立的 columbia 随机流，不影响商店和波次。
    */
   _grantColumbiaTech() {
     const st = this.bonds[COLUMBIA_BOND];
-    if (!st?.active || this._grantingColumbiaTech) return;
+    if (!st?.active || this._grantingColumbiaTech || this.m.phase !== PHASE.PREP || this.ready || this.m._endingPrep) return;
+    if (this.offers.some(offer => offer.source === COLUMBIA_TECH_SOURCE)) return;
     const owned = this.columbiaTech;
     const due = columbiaTechCount(st.layers);
     if (owned.length >= due) return;
-    // acquireItem 会重入 recompute；本次补发完成前由外层循环统一结算，避免重复发奖。
+    // 最后一件直接领取时 acquireItem 会重入 recompute。
     this._grantingColumbiaTech = true;
     try {
       while (owned.length < due) {
-        if (freeSlot(this.hand) < 0 && freeSlot(this.temp) < 0) return;
-        const rng = this._techRng || (this._techRng = createRng(deriveSeed(this.m.seed, `columbia:${this.playerId}`)));
         const pool = COLUMBIA_TECH_ITEMS.filter((it) => !owned.includes(it.key));
-        const pick = pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
-        const piece = this.acquireItem(columbiaTechItemId(pick.key, false), { source: `bond:${COLUMBIA_BOND}`, deferMerge: true });
-        if (!piece) return;
-        owned.push(pick.key);
+        if (pool.length === 1) {
+          if (freeSlot(this.hand) < 0 && freeSlot(this.temp) < 0) return;
+          const piece = this.acquireItem(columbiaTechItemId(pool[0].key), { source: COLUMBIA_TECH_SOURCE });
+          if (piece) owned.push(pool[0].key);
+          return;
+        }
+        const rng = this._techRng || (this._techRng = createRng(deriveSeed(this.m.seed, `columbia:${this.playerId}`)));
+        const ids = [];
+        for (let i = 0; i < 2; i++) {
+          const [pick] = pool.splice(Math.min(pool.length - 1, Math.floor(rng() * pool.length)), 1);
+          ids.push(columbiaTechItemId(pick.key));
+        }
+        this.pushItemOffer(ids, { source: COLUMBIA_TECH_SOURCE, label: `哥伦比亚科技装备 · ${COLUMBIA_TECH_LAYERS[owned.length]}层` });
+        return;
       }
     } finally {
       this._grantingColumbiaTech = false;
@@ -1471,6 +1479,9 @@ export class PlayerState {
     if (price > this.funds) return fail(ERR.NO_FUNDS);
     slot.sold = true;
     this.offers.shift();
+    if (offer.source === COLUMBIA_TECH_SOURCE) {
+      this.columbiaTech.push(COLUMBIA_TECH_ITEMS.find(it => columbiaTechItemId(it.key) === slot.id).key);
+    }
     if (price > 0) this.spend(price);
     if (slot.kind === 'item') this.acquireItem(slot.id, { source: 'reward' });
     else this.acquireChess(slot.id, { source: 'reward' });
@@ -1550,7 +1561,7 @@ export class PlayerState {
     this.resolveTemp();
     this.prepsEnded++;
     for (const uid of [...this._tempDue.keys()]) if (!this.temp.some((p) => p && p.uid === uid)) this._tempDue.delete(uid);
-    this.offers = [];
+    this.offers = this.offers.filter(offer => offer.source === COLUMBIA_TECH_SOURCE);
     this.clearUnfrozenShop();
     if (!this.gd.leftoverKeptBands.includes(this.bandId)) this.funds = 0;
     this.ready = true;

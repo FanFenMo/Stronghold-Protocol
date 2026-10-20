@@ -280,13 +280,28 @@ test('SERVER_ADD_BOND_CHESS_ALL at prep start / end (赫默 / 蒂比 80, 伊内�
     }
   }
   const s = setup();
-  give(s.m, s.ps, 'chess_char_2_02_a', 'board', [10, 4]);
+  give(s.m, s.ps, 'chess_char_2_13_a', 'board', [10, 4]);
   give(s.m, s.ps, 'chess_char_4_14_b', 'board', [11, 4]);
-  s.activate(CH('chess_char_2_02_a').bonds[0], CH('chess_char_4_14_b').bonds[0]);
+  s.activate(CH('chess_char_2_13_a').bonds[0], CH('chess_char_4_14_b').bonds[0]);
   s.roundStart();
-  assert.equal(s.G(CH('chess_char_2_02_a').bonds[0]), 2, '赫默 +2 at round start');
+  assert.equal(s.G(CH('chess_char_2_13_a').bonds[0]), 2, '蒂比 +2 at round start');
   s.prepEnd();
-  assert.equal(s.G(CH('chess_char_4_14_b').bonds[0]), 10 + (CH('chess_char_2_02_a').bonds[0] === CH('chess_char_4_14_b').bonds[0] ? 2 : 0), '莱恩哈特 精锐 +10 at prep end');
+  assert.equal(s.G(CH('chess_char_4_14_b').bonds[0]), 10 + (CH('chess_char_2_13_a').bonds[0] === CH('chess_char_4_14_b').bonds[0] ? 2 : 0), '莱恩哈特 精锐 +10 at prep end');
+});
+
+test('赫默在休整结束分别增加已激活的远见与哥伦比亚，普通精锐及未激活情况独立处理', () => {
+  for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+    for (const active of [[], ['visiShip'], ['columbiaShip'], ['visiShip', 'columbiaShip']]) {
+      const s = setup();
+      give(s.m, s.ps, `chess_char_2_02_${suffix}`, 'board', [10, 4]);
+      s.activate(...active);
+      s.roundStart();
+      onlyGains(s, {}, '休整开始不再增加层数');
+      s.prepEnd();
+      onlyGains(s, Object.fromEntries(active.map(id => [id, (id === 'visiShip' ? 2 : 3) * mul])));
+      s.m.dispose();
+    }
+  }
 });
 
 test('SERVER_ADD_BOND_METHOD round_gain_char (小满 31, 山 34, 夕 119): operators gained this round × multi', () => {

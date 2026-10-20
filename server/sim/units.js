@@ -157,6 +157,8 @@ export class Unit {
       baseRangeExtend: Math.max(0, fin(Math.round(permRangeExtend), 0)),   // permanent part (initial range)
       massLevel: Math.max(0, fin(fin(b.massLevel, 0) + a('massFlat'), 0)),
       maxTargets: a('maxTargets'),
+      healTargets: a('healTargets'),
+      skillDurationPct: a('skillDurationPct'),
       // DESIGN §5.3 lists `taunt` as a buff flag (+aggro) as well as a numeric mod: the flag counts as +1 level
       taunt: (Number.isFinite(b.tauntLevel) ? b.tauntLevel : 0) + a('taunt') + (flags.taunt === true ? 1 : 0),
       dodgePhys: clamp(a('dodgePhys'), 0, 1),

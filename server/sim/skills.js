@@ -88,7 +88,7 @@ export class SkillRuntime {
     this.id = s.id ?? d.id ?? 'skill';
     this.name = s.name ?? d.name ?? '';
     this.kind = s.kind ?? 'instant';
-    this.duration = Number.isFinite(+s.duration) ? +s.duration : (d.duration > 0 ? d.duration : 0);
+    this.baseDuration = Number.isFinite(+s.duration) ? +s.duration : (d.duration > 0 ? d.duration : 0);
     this.ammo = Math.max(0, Math.floor(+s.ammo || 0));
     this.baseSpCost = Math.max(0, Number.isFinite(+s.spCost) ? +s.spCost : (d.spCost ?? 0));
     this.initSp = Math.max(0, Number.isFinite(+s.initSp) ? +s.initSp : (d.initSp ?? 0));
@@ -225,6 +225,8 @@ export class SkillRuntime {
   }
 
   get ready() { return !this.noSkill && this.kind !== 'passive' && this.charges >= 1; }
+
+  get duration() { return this.baseDuration * Math.max(0, 1 + (this.unit.s.skillDurationPct ?? 0)); }
 
   get isTimed() { return this.kind === 'duration' || this.kind === 'ammo' || this.kind === 'toggle'; }
 

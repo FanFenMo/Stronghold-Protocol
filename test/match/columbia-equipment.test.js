@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DATA, makeMatch, give, giveItem, legalTileFor } from './harness.js';
-import { COLUMBIA_BOND, COLUMBIA_TECH_ITEMS, columbiaTechItemId } from '../../shared/columbia.js';
+import { COLUMBIA_BOND, COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaTechItemId } from '../../shared/columbia.js';
 
 const MEMBERS = ['chess_columbia_quartz_a', 'chess_columbia_halo_a', 'chess_char_2_02_a'];
+const SOURCE = 'bond:' + COLUMBIA_BOND;
 const TECH_IDS = new Set(COLUMBIA_TECH_ITEMS.map(it => columbiaTechItemId(it.key)));
 const techItems = ps => [...ps.hand, ...ps.temp].filter(p => p && TECH_IDS.has(p.id));
 
@@ -19,103 +20,108 @@ function deployMember(h, ps, id) {
   return { piece, row, col };
 }
 
-for (const layers of [49, 50, 150, 999]) {
-  test(`哥伦比亚未激活时累积${layers}层，部署第三名成员立即补齐科技装备且重算不重复`, () => {
+function takeTechOffers(ps) {
+  while (ps.offers[0]?.source === SOURCE) {
+    const ids = ps.offers[0].slots.map(slot => slot.id);
+    assert.equal(ids.length, 2);
+    assert.equal(new Set(ids).size, 2);
+    assert.ok(ids.every(id => !ps.columbiaTech.some(key => columbiaTechItemId(key) === id)));
+    assert.deepEqual(ps.pickReward(0), { ok: true });
+  }
+}
+
+for (const layers of [19, 20, 50, 170, 999]) {
+  test('先累积' + layers + '层后激活，休整期按门槛依次二选一，最后一种直接领取', () => {
     const { h, ps } = prepColumbia();
     ps.addLayers(COLUMBIA_BOND, layers);
     for (const id of MEMBERS.slice(0, 2)) deployMember(h, ps, id);
     assert.equal(ps.bonds[COLUMBIA_BOND].active, false);
+    assert.equal(ps.offers.length, 0);
+    deployMember(h, ps, MEMBERS[2]);
     assert.equal(techItems(ps).length, 0);
-    assert.deepEqual(ps.columbiaTech, []);
-
-    const third = deployMember(h, ps, MEMBERS[2]);
-    const expected = Math.min(6, Math.floor(layers / 50));
-    assert.equal(ps.bonds[COLUMBIA_BOND].active, true);
-    assert.equal(ps.columbiaTech.length, expected);
-    const granted = techItems(ps).map(p => p.id).sort();
-    assert.equal(granted.length, expected);
-    assert.equal(new Set(granted).size, expected);
-    const view = ps.privateView();
-    assert.deepEqual([...view.hand, ...view.temp].filter(p => p && TECH_IDS.has(p.id)).map(p => p.id).sort(), granted);
-
+    const first = JSON.stringify(ps.offers);
     ps.recompute(); ps.recompute();
-    const idx = ps.hand.findIndex(p => p == null);
-    assert.deepEqual(h.m.handle(ps.playerId, { t: 'g.move', uid: third.piece.uid, to: { area: 'hand', idx } }), { ok: true });
-    assert.equal(ps.bonds[COLUMBIA_BOND].active, false);
-    assert.deepEqual(h.m.handle(ps.playerId, { t: 'g.move', uid: third.piece.uid,
-      to: { area: 'board', row: third.row, col: third.col } }), { ok: true });
-    assert.deepEqual(techItems(ps).map(p => p.id).sort(), granted);
+    assert.equal(JSON.stringify(ps.offers), first, '重算不刷新候选');
+    takeTechOffers(ps);
+    const expected = columbiaTechCount(layers);
     assert.equal(ps.columbiaTech.length, expected);
-    h.invariants();
-    h.m.dispose();
+    assert.equal(techItems(ps).length, expected);
+    assert.equal(new Set(ps.columbiaTech).size, expected);
+    ps.recompute();
+    assert.equal(ps.offers.length, 0);
+    h.invariants(); h.m.dispose();
   });
 }
 
-test('哥伦比亚已激活时从49跨到50层发装，跨多个里程碑补齐且销毁装备不重发', () => {
+test('20/50/100/170/250/350层各领取一次，销毁装备不返还领取次数', () => {
   const { h, ps } = prepColumbia();
   for (const id of MEMBERS) deployMember(h, ps, id);
-  ps.addLayers(COLUMBIA_BOND, 49);
-  assert.equal(techItems(ps).length, 0);
-  ps.addLayers(COLUMBIA_BOND, 1);
-  assert.equal(techItems(ps).length, 1);
-  ps.addLayers(COLUMBIA_BOND, 125);
-  assert.equal(techItems(ps).length, 3);
-  assert.equal(new Set(ps.columbiaTech).size, 3);
+  let before = 0;
+  for (const [i, layer] of [20, 50, 100, 170, 250, 350].entries()) {
+    ps.addLayers(COLUMBIA_BOND, layer - before - 1);
+    assert.equal(ps.columbiaTech.length, i);
+    assert.equal(ps.offers.length, 0);
+    ps.addLayers(COLUMBIA_BOND, 1);
+    takeTechOffers(ps);
+    assert.equal(ps.columbiaTech.length, i + 1);
+    before = layer;
+  }
   const item = techItems(ps)[0];
-  assert.deepEqual(h.m.handle(ps.playerId, { t: 'g.destroy', uid: item.uid }), { ok: true });
+  assert.deepEqual(ps.destroy(item.uid), { ok: true });
   ps.recompute();
-  assert.equal(techItems(ps).length, 2);
-  assert.equal(ps.columbiaTech.length, 3);
-  ps.addLayers(COLUMBIA_BOND, 125);
   assert.equal(ps.columbiaTech.length, 6);
-  assert.equal(new Set(ps.columbiaTech).size, 6);
   assert.equal(techItems(ps).length, 5);
-  h.invariants();
-  h.m.dispose();
+  assert.equal(ps.offers.length, 0);
+  h.invariants(); h.m.dispose();
 });
 
-test('哥伦比亚战斗结算跨过50层时发装，下一回合不重复领取', () => {
+test('战斗结算达到门槛后在下一休整期开放选择，不直接发装', () => {
   const { h, ps } = prepColumbia();
   for (const id of MEMBERS) deployMember(h, ps, id);
-  ps.addLayers(COLUMBIA_BOND, 49);
+  ps.addLayers(COLUMBIA_BOND, 19);
   ps.pendingLayerGains = { [COLUMBIA_BOND]: 1 };
   h.m.lastResults.set(ps.playerId, { leaked: [], perfect: true, layerGains: { [COLUMBIA_BOND]: 1 } });
   h.m.settle(null, null);
-  assert.equal(ps.layers[COLUMBIA_BOND], 50);
-  assert.equal(ps.pendingLayerGains, null);
-  assert.equal(techItems(ps).length, 1);
-  assert.equal(ps.columbiaTech.length, 1);
+  assert.equal(ps.layers[COLUMBIA_BOND], 20);
+  assert.equal(ps.offers.length, 0);
+  assert.equal(techItems(ps).length, 0);
   h.toPrep(2);
-  assert.equal(techItems(ps).length, 1);
+  assert.equal(ps.offers[0].source, SOURCE);
+  takeTechOffers(ps);
   assert.equal(ps.columbiaTech.length, 1);
-  h.invariants();
+  h.invariants(); h.m.dispose();
+});
+
+test('未领取的哥伦比亚候选跨休整期保留，其他奖励仍到期清理', () => {
+  const { h, ps } = prepColumbia();
+  for (const id of MEMBERS) deployMember(h, ps, id);
+  ps.addLayers(COLUMBIA_BOND, 20);
+  const offer = structuredClone(ps.offers[0]);
+  ps.pushItemOffer(['chess_item_1_01_e_a']);
+  ps.endPrep();
+  assert.deepEqual(ps.offers, [offer]);
+  h.m.enterPrep();
+  assert.deepEqual(ps.offers, [offer]);
+  takeTechOffers(ps);
+  assert.equal(ps.columbiaTech.length, 1);
   h.m.dispose();
 });
 
-test('哥伦比亚两个整备区都满时保留名额，腾出空间后补发且不重复提示', () => {
+test('整备区满时二选一保持原候选和未领取次数，腾出空间后可领取', () => {
   const { h, ps } = prepColumbia();
   for (const id of MEMBERS) deployMember(h, ps, id);
-  const fillers = Object.values(DATA.items).filter(it => !TECH_IDS.has(it.id) &&
-    ![...ps.hand, ...ps.temp].some(p => p?.id === it.id));
-  for (const area of ['hand', 'temp']) {
-    while (ps[area].some(p => p == null)) giveItem(h.m, ps, fillers.shift().id, area);
-  }
-  const toasts = h.allTo(ps.playerId, 'm.toast').length;
-  ps.addLayers(COLUMBIA_BOND, 100);
-  ps.recompute();
+  const fillers = Object.values(DATA.items).filter(it => !TECH_IDS.has(it.id));
+  while (ps.hand.some(p => p == null)) giveItem(h.m, ps, fillers.shift().id);
+  ps.addLayers(COLUMBIA_BOND, 20);
+  const offer = structuredClone(ps.offers[0]);
+  assert.deepEqual(ps.pickReward(0), { error: 'HAND_FULL' });
+  assert.deepEqual(ps.offers, [offer]);
   assert.deepEqual(ps.columbiaTech, []);
-  assert.equal(h.allTo(ps.playerId, 'm.toast').length, toasts);
-  const first = ps.hand.find(p => p.kind === 'item');
-  assert.deepEqual(h.m.handle(ps.playerId, { t: 'g.destroy', uid: first.uid }), { ok: true });
+  assert.deepEqual(ps.destroy(ps.hand.find(p => p.kind === 'item').uid), { ok: true });
+  assert.deepEqual(ps.offers, [offer]);
+  takeTechOffers(ps);
   assert.equal(ps.columbiaTech.length, 1);
-  assert.equal(techItems(ps).length, 1);
-  const second = ps.temp.find(p => p.kind === 'item');
-  assert.deepEqual(h.m.handle(ps.playerId, { t: 'g.destroy', uid: second.uid }), { ok: true });
-  assert.equal(ps.columbiaTech.length, 2);
-  assert.equal(techItems(ps).length, 2);
-  assert.equal(new Set(ps.columbiaTech).size, 2);
-  h.invariants();
-  h.m.dispose();
+  h.invariants(); h.m.dispose();
 });
 
 for (const tech of COLUMBIA_TECH_ITEMS) {

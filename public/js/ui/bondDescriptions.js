@@ -1,5 +1,5 @@
 import { prosperityHealBonus } from '../../../shared/prosperity.js';
-import { COLUMBIA_TECH_STEP, COLUMBIA_TECH_CAP, COLUMBIA_SHARE_RATIO, columbiaEquipmentBonus } from '../../../shared/columbia.js';
+import { COLUMBIA_TECH_LAYERS, COLUMBIA_TECH_CAP, columbiaEquipmentBonus } from '../../../shared/columbia.js';
 
 const highlight = (n, percent = false) => `<@bond.value>${Number((n * (percent ? 100 : 1)).toFixed(2))}${percent ? '%' : ''}</>`;
 
@@ -87,8 +87,8 @@ export function bondDescriptionClauses(bond, { layers = 0, tier = 0, active = fa
       add(`【繁盛】干员治疗效果+${highlight(prosperityHealBonus(L), true)}，上限200层。`);
       add('累计对其他干员的实际治疗；范围内有敌人时，每秒投掷生命球并清空计数，造成一次周围五格真实伤害，并为范围内友方恢复生命。40层时爆炸范围扩大至九格。', 2); break;
     case 'columbiaShip':
-      add(`哥伦比亚干员装备效果提升${highlight(columbiaEquipmentBonus(L), true)}，每100层再提升30%；每${COLUMBIA_TECH_STEP}层随机获得一件不重复科技装备，仅哥伦比亚可用，至多${COLUMBIA_TECH_CAP}件。`);
-      add(`在场所有哥伦比亚干员共享可共享装备效果，每人获取装备总加成的${COLUMBIA_SHARE_RATIO * 100}%；哥伦比亚科技装备不参与共享。`, 2); break;
+      add(`哥伦比亚干员装备效果提升${highlight(columbiaEquipmentBonus(L), true)}，每100层再提升30%；达到${COLUMBIA_TECH_LAYERS.join('/')}层时各获得一次科技装备选择，休整期开始或休整期内达标时随机二选一，不重复，最后一种直接领取；仅哥伦比亚可用，至多${COLUMBIA_TECH_CAP}件。`);
+      add('激活哥伦比亚科技装备的专属效果。', 2); break;
   }
   return clauses;
 }

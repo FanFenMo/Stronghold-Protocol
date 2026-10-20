@@ -1,114 +1,140 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeBattle, chessRec, enemyRec } from '../helpers/battleHarness.js';
-import { makeMatch, give, DATA } from '../match/harness.js';
 import { columbiaTechItemId } from '../../shared/columbia.js';
 import { itemGrants } from '../../server/sim/content/items/battle.js';
-
+import { acquireTargets } from '../../server/sim/ai.js';
 
 const ID = 'columbiaShip';
 const tech = columbiaTechItemId;
-const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} ~= ${b}`);
+const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, a + ' ~= ' + b);
 const record = (id, more = {}) => chessRec({ id, bonds: [ID], skill: null,
   stats: { atk: 0, maxHp: 2000, blockCnt: 0 }, ...more });
 function field(items, tier = 1, extra = {}) {
+  const filler = Object.fromEntries(Array.from({ length: 4 }, (_, i) => ['filler' + i, record('filler' + i)]));
+  const { defs = {}, ...rest } = extra;
   const h = makeBattle({ autoFinish: false, timeLimit: 1000,
-    defs: { chess: { carrier: record('carrier'), patient: record('patient') },
-      enemies: { dummy: enemyRec({ key: 'dummy', hp: 100000, speed: 0, atk: 0 }) } },
-    bonds: { [ID]: { count: tier === 2 ? 6 : 3, tier, active: true, layers: 0 } },
-    units: [{ chessId: 'carrier', row: 10, col: 4, items }, { chessId: 'patient', row: 10, col: 5 }],
-    enemies: [{ key: 'dummy', pos: [10, 8] }], ...extra });
+    defs: { ...defs, chess: { carrier: record('carrier'), patient: record('patient'), ...filler, ...defs.chess },
+      enemies: { dummy: enemyRec({ key: 'dummy', hp: 100000, speed: 0, atk: 0 }), ...defs.enemies } },
+    bonds: { [ID]: { count: tier === 2 ? 6 : 3, tier, active: tier > 0, layers: 0 } },
+    units: [{ chessId: 'carrier', row: 10, col: 4, items }, { chessId: 'patient', row: 10, col: 5 },
+      ...[[11, 4], [12, 3], [12, 4], [12, 5]].map(([row, col], i) => ({ chessId: 'filler' + i, row, col }))],
+    enemies: [{ key: 'dummy', pos: [10, 8] }], ...rest });
   h.step(); return h;
 }
 
-test('三人档真实层数入口发装，跨多个里程碑不重复且最多六件', () => {
-  const h = makeMatch({ mode: 'solo', fake: true }).start().toPrep(1), ps = h.ps('p_0');
-  h.m.gd.modeInactiveBonds.delete(ID);
-  for (const [id, tile] of [['chess_columbia_quartz_a', [10, 3]], ['chess_columbia_halo_a', [10, 4]], ['chess_char_2_02_a', [10, 5]]]) give(h.m, ps, id, 'board', tile);
-  ps.recompute();
-  assert.equal(ps.bonds[ID].tier, 1);
-  ps.addLayers(ID, 50);
-  assert.equal(ps.columbiaTech.length, 1);
-  ps.hand.fill(null); ps.temp.fill(null);
-  ps.addLayers(ID, 250);
-  assert.equal(ps.columbiaTech.length, 6);
-  assert.equal(new Set(ps.columbiaTech).size, 6);
-  ps.addLayers(ID, 100);
-  assert.equal(ps.columbiaTech.length, 6);
+test('基础效果在未激活盟约时生效，三人档不激活任何旧专属效果', () => {
+  for (const tier of [0, 1]) {
+    const shield = field([tech('shield')], tier);
+    close(shield.unit('carrier').s.maxHp, tier ? 5000 : 4000);
+    close(shield.unit('carrier').s.def, 0); close(shield.unit('carrier').s.res, 0);
+    const map = field([tech('mapland')], tier), patient = map.unit('patient');
+    close(map.unit('carrier').s.atk, tier ? 300 : 200);
+    close(map.unit('carrier').s.aspd, tier ? 175 : 150);
+    patient.hp = 500;
+    map.b.dealDamage(map.unit('carrier'), map.b.enemies[0], { amount: 100, type: 'true' });
+    close(patient.hp, 500);
+    const gray = field([tech('graymatter')], tier);
+    gray.b.dealDamage(gray.unit('carrier'), gray.b.enemies[0], { amount: 1000, type: 'true', isAttack: true });
+    close(gray.b.enemies[0].elem.neural, 0);
+    close(gray.unit('carrier').findBuff('item:' + tech('graymatter') + ':growth').mods.atkPct, 0);
+    assert.deepEqual(shield.b.errors, []); assert.deepEqual(map.b.errors, []); assert.deepEqual(gray.b.errors, []);
+  }
 });
 
-test('六人档不再给50攻速或过载；灰质引擎累计实际伤害并产生神经损伤', () => {
-  const h = field([tech('graymatter'), tech('pioneer')], 2);
+test('六人档激活灰质引擎伤害叠攻与神经损伤，成员退场即停止', () => {
+  const h = field([tech('graymatter')], 2);
   const u = h.unit('carrier'), e = h.b.enemies[0];
-  close(u.s.aspd, 100);
-  close(u.s.atk, 0);
   h.b.dealDamage(u, e, { amount: 1000, type: 'true', isAttack: true });
   assert.ok(e.elem.neural > 0);
-  close(u.findBuff(`item:${tech('graymatter')}:atk`).mods.atkPct, 0.46);
+  close(u.findBuff('item:' + tech('graymatter') + ':growth').mods.atkPct, 0.015);
+  h.b.kill(h.unit('filler3'));
+  close(u.findBuff('item:' + tech('graymatter') + ':growth').mods.atkPct, 0);
+  const before = e.elem.neural;
+  h.b.dealDamage(u, e, { amount: 1000, type: 'true', isAttack: true });
+  close(e.elem.neural, before);
 });
 
-test('梅兰德治疗最低生命比例成员，不再削减敌人攻击力', () => {
-  const h = field([tech('mapland')]);
+test('梅兰德仅在六人档治疗最低生命百分比成员，基础攻速与攻击保持', () => {
+  const h = field([tech('mapland')], 2);
   const u = h.unit('carrier'), patient = h.unit('patient'), e = h.b.enemies[0];
   patient.hp = 500;
   h.b.dealDamage(u, e, { amount: 100, type: 'true' });
-  close(patient.hp, 515);
-  assert.equal(e.findBuff(`item:${tech('mapland')}:atkDown`), null);
+  close(patient.hp, 522.5);
+  h.b.kill(h.unit('filler3'));
+  h.b.dealDamage(u, e, { amount: 100, type: 'true' });
+  close(patient.hp, 522.5);
+  close(u.s.atk, 300); close(u.s.aspd, 175);
 });
 
-test('拓荒者按攻击次数提升倍率，第三次攻击开始获得首层加成', () => {
-  const h = field([tech('pioneer')]), u = h.unit('carrier'), e = h.b.enemies[0];
+test('拓荒者基础攻击与四格光环保留，六人档第三次攻击开始叠伤', () => {
+  const h = field([tech('pioneer')], 2), u = h.unit('carrier'), e = h.b.enemies[0];
   u.base.atk = 100; u.markDirty();
+  close(u.s.atk, 550); close(h.unit('patient').s.atk, 225);
   const damage = [];
   for (let i = 0; i < 3; i++) {
-    const before = e.hp;
-    h.b.forceAttack(u, [e]);
-    damage.push(before - e.hp);
+    const before = e.hp; h.b.forceAttack(u, [e]); damage.push(before - e.hp);
   }
-  close(damage[0], 115); close(damage[1], 115); close(damage[2], 116);
+  close(damage[0], 673.75); close(damage[1], 673.75); close(damage[2], 682);
+  h.b.kill(h.unit('filler3'));
+  const before = e.hp; h.b.forceAttack(u, [e]); close(before - e.hp, 550);
 });
 
-test('多维尔按实际治疗扩散，扩散治疗不会再次扩散', () => {
-  const h = field([tech('dover')]), u = h.unit('carrier'), patient = h.unit('patient');
-  u.hp = 1000; patient.hp = 1000;
-  h.b.heal(u, u, 100);
-  close(u.hp, 1120);
-  close(patient.hp, 1018);
+test('多维尔基础治疗+50%，六人档才扩散，扩散不递归', () => {
+  for (const tier of [1, 2]) {
+    const h = field([tech('dover')], tier), u = h.unit('carrier'), patient = h.unit('patient');
+    u.hp = 1000; patient.hp = 1000;
+    h.b.heal(u, u, 100);
+    close(u.hp, 1175); close(patient.hp, tier === 2 ? 1039.375 : 1000);
+    assert.deepEqual(h.b.errors, []);
+  }
 });
 
-test('反重力不再浮空，保留技能期间光环并在技能结束后移除', () => {
-  const h = field([tech('antigrav')], 1, {
-    defs: { chess: { carrier: record('carrier', { rangeGrid: [[0, 0], [0, 1]],
-      skill: { spCost: 100, duration: 10, trigger: { rule: 'NEVER' } } }), patient: record('patient') },
-      enemies: { dummy: enemyRec({ key: 'dummy', hp: 100000, speed: 0, atk: 0 }) } },
-    enemies: [{ key: 'dummy', pos: [10, 5] }],
-  });
-  const u = h.unit('carrier'), patient = h.unit('patient'), e = h.b.enemies[0];
-  u.skill.activate('test', { free: true });
-  assert.ok(!e.s.flags.levitate);
-  close(patient.s.aspd, 140);
-  h.run(10.2);
-  close(patient.s.aspd, 100);
-});
-
-test('过载护盾增加生命与双抗，不再提供锁血', () => {
-  const h = field([tech('shield')]);
-  const u = h.unit('carrier');
-  close(u.s.maxHp, 4000);
-  close(u.s.res, 24);
-  h.b.dealDamage(null, u, { type: 'true', amount: 5000 });
-  assert.equal(u.alive, false);
-});
-
-test('三人档科技装备随层数成长，护盾法抗上限30，拓荒者只放大额外伤害', () => {
-  const h = field([tech('shield'), tech('pioneer')], 1, {
+test('多维尔治疗人数始终只加一，三人增幅不增加治疗人数或攻击目标', () => {
+  const h = field([tech('dover')], 1, {
+    defs: { chess: { carrier: record('carrier', { rangeGrid: [[0, 0], [0, 1], [1, 0]] }) } },
     bonds: { [ID]: { count: 3, tier: 1, active: true, layers: 500 } },
   });
-  const u = h.unit('carrier'), e = h.b.enemies[0];
-  close(u.s.maxHp, 7000); close(u.s.res, 30);
-  u.base.atk = 100; u.markDirty();
-  const before = e.hp;
-  h.b.forceAttack(u, [e]); close(before - e.hp, 137.5);
+  for (const name of ['carrier', 'patient', 'filler0']) h.unit(name).hp = 500;
+  const u = h.unit('carrier');
+  close(u.s.healTargets, 1); close(u.s.maxTargets, 0); close(u.s.healingDealtMul, 2.5);
+  assert.equal(acquireTargets(h.b, u, { heal: { mode: 'single' }, dmgType: 'heal' }).length, 2);
+});
+
+test('反重力基础延长技能并回技力，六人档才提供技能范围光环', () => {
+  for (const tier of [1, 2]) {
+    const h = field([tech('antigrav')], tier, { defs: { chess: {
+      carrier: record('carrier', { rangeGrid: [[0, 0], [0, 1]],
+        skill: { spCost: 100, duration: 10, trigger: { rule: 'NEVER' } } }),
+    } } });
+    const u = h.unit('carrier'), patient = h.unit('patient');
+    close(u.skill.duration, 17.5); close(u.s.spRecovery, 1.375);
+    u.skill.activate('test', { free: true });
+    close(u.skill.timeLeft, 17.5);
+    close(patient.s.aspd, tier === 2 ? 160 : 100);
+    h.run(17.7);
+    close(patient.s.aspd, 100); close(u.s.spRecovery, 1.375);
+    assert.deepEqual(h.b.errors, []);
+  }
+});
+
+test('护盾基础生命、阻挡及八格生命光环保留，六人档退出撤销双抗', () => {
+  const h = field([tech('shield')], 2), u = h.unit('carrier');
+  close(u.s.maxHp, 5000); close(u.s.blockCnt, 5);
+  close(h.unit('patient').s.maxHp, 2750);
+  close(u.s.def, 45); close(u.s.res, 30);
+  h.b.kill(h.unit('filler3'));
+  close(u.s.def, 0); close(u.s.res, 0); close(u.s.maxHp, 5000);
+});
+
+test('灰质引擎仅汇总上下左右四格的攻击，排除对角线且不递归借攻', () => {
+  const h = field([tech('graymatter')], 1, { defs: { chess: {
+    patient: record('patient', { stats: { atk: 100, maxHp: 2000, blockCnt: 0 } }),
+    filler0: record('filler0', { stats: { atk: 200, maxHp: 2000, blockCnt: 0 } }),
+  } } });
+  close(h.unit('carrier').s.atk, 135);
+  h.b.kill(h.unit('patient'));
+  h.run(0.2); close(h.unit('carrier').s.atk, 90);
 });
 
 test('双星是干员特性：两名星源不产生共享，星极可分别与两种星源联动', () => {
@@ -157,7 +183,7 @@ test('双星只联动同一玩家的在场特性成员，不向队友借用装�
   assert.deepEqual(h.b.errors, []);
 });
 
-test('科技装备在战斗中也拒绝非哥伦比亚干员，即使盟约已过载', () => {
+test('科技装备在战斗中也拒绝非哥伦比亚干员，即使六人档已激活', () => {
   const h = field([tech('shield'), tech('graymatter')], 2, { enemies: [], defs: { chess: {
     carrier: record('carrier', { bonds: [] }), patient: record('patient'),
   } } });

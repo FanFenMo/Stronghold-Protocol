@@ -153,7 +153,7 @@ export function acquireTargets(b, u, prof) {
     if (!cands.length) return cands;
     let n = prof.heal.mode === 'multi' ? Math.max(1, prof.heal.count || 3) : 1;
     if (prof.maxTargets > n) n = Math.floor(prof.maxTargets);   // skill targeting override (e.g. heal 2 targets)
-    return cands.slice(0, n + Math.max(0, Math.floor(u.s.maxTargets)));
+    return cands.slice(0, n + Math.max(0, Math.floor(u.s.maxTargets)) + Math.max(0, Math.floor(u.s.healTargets)));
   }
   // fortress: melee while blocking, ranged splash otherwise
   if (prof.fortress) {

@@ -1,10 +1,10 @@
 import { COLUMBIA_BOND, columbiaEquipmentBonus } from '../../../../shared/columbia.js';
-import { bondActive, bondLayers, isMember, battleStore } from '../support/index.js';
+import { bondActive, bondLayers, isMember, battleStore, isOp, onField, baseChessId } from '../support/index.js';
 
 export const equipmentMultiplier = (battle, unit) => isMember(battle, unit, COLUMBIA_BOND) &&
   bondActive(battle, unit.ownerId, COLUMBIA_BOND) ? 1 + columbiaEquipmentBonus(bondLayers(battle, unit.ownerId, COLUMBIA_BOND)) : 1;
 
-const ADDITIVE = new Set(['atkPct', 'hpPct', 'defPct', 'atkFlat', 'hpFlat', 'defFlat', 'resFlat', 'aspd', 'spRecoveryFlat', 'resIgnorePct']);
+const ADDITIVE = new Set(['atkPct', 'hpPct', 'defPct', 'atkFlat', 'atkFinal', 'hpFlat', 'defFlat', 'resFlat', 'aspd', 'spRecoveryFlat', 'resIgnorePct', 'blockCnt', 'skillDurationPct']);
 const MULTIPLIERS = new Set(['atkMul', 'hpMul', 'defMul', 'dmgDealtMul', 'healingDealtMul']);
 
 export function equipmentMods(mods, multiplier) {
@@ -16,14 +16,16 @@ export function equipmentMods(mods, multiplier) {
 
 export const equipmentScopes = battle => battleStore(battle, 'items:columbia:scopes', () => new Set());
 
-// 共享只取实际佩戴装备；科技装备、其他盟约专属装备和消耗道具不在名单内。
-export const SHARED_ITEMS = new Set([
-  'chess_item_1_01_e', 'chess_item_1_02_e', 'chess_item_1_05_e',
-  'chess_item_2_03_e', 'chess_item_2_04_e',
-  'chess_item_3_01_e', 'chess_item_3_02_e', 'chess_item_3_04_e', 'chess_item_3_05_e',
-  'chess_item_3_06_e', 'chess_item_3_07_e', 'chess_item_3_08_e', 'chess_item_3_09_e', 'chess_item_3_10_e',
-  'chess_item_4_03_e', 'chess_item_4_06_e', 'chess_item_4_09_e',
-  'chess_item_5_01_e', 'chess_item_5_02_e', 'chess_item_5_03_e', 'chess_item_5_09_e', 'chess_item_6_01_e',
-]);
+export function columbiaSpecialActive(battle, unit) {
+  if (!onField(unit) || !bondActive(battle, unit.ownerId, COLUMBIA_BOND, 2)) return false;
+  const members = battle.allyUnits.filter(u => isOp(u) && u.ownerId === unit.ownerId && onField(u) && isMember(battle, u, COLUMBIA_BOND));
+  return new Set(members.map(baseChessId)).size >= 6;
+}
 
-export const sharedEquipmentState = battle => battleStore(battle, 'items:columbia:sharing', () => new Map());
+/** 层数变化时更新所有装备；包括双星及其他临时借用的装备。 */
+export function installEquipmentGrowth(battle) {
+  const refresh = () => { for (const scope of equipmentScopes(battle)) scope.refreshMods(); };
+  for (const event of ['battleStart', 'deploy', 'death', 'layerGain']) battle.on(event, refresh, { priority: -100 });
+  battle.every(0.1, refresh);
+  refresh();
+}
