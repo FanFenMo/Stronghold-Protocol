@@ -52,7 +52,7 @@ describe('the 孤岛风云 prisoners draw confined → warning → freed (headle
   let srv, browser;
   before(async () => {
     const puppeteer = (await import('puppeteer-core')).default;
-    const { startServer } = await import('../../server/index.js');
+    const { startServer } = await import('../helpers/server.js');
     srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
     browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-first-run', '--force-device-scale-factor=1'] });
     mkdirSync(OUT, { recursive: true });

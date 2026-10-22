@@ -15,7 +15,7 @@ import { buildBattleSpec, createBattleFromSpec, compactResult, resultDigest } fr
 import { validateClientResult, specBounds, HeadlessPacer, HeadlessJob, runHeadless } from '../../server/match/fields.js';
 import { VirtualScheduler } from '../../server/match/scheduler.js';
 import { GameData } from '../../server/match/gamedata.js';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { TestClient } from '../helpers/wsClient.js';
 import { FakeBattle } from './fakeBattle.js';
 import { DATA, makeMatch, checkInvariants } from './harness.js';

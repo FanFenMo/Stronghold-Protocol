@@ -3,7 +3,7 @@
 // server file. The browser-side data injection (simdata.js setSimData / getSimData) is exercised in Node.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer, DATA_SHIM_JS } from '../../server/index.js';
+import { startServer, DATA_SHIM_JS } from '../helpers/server.js';
 import * as simdata from '../../server/sim/simdata.js';
 
 let srv = null;

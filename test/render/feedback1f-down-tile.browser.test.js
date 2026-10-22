@@ -25,7 +25,7 @@ describe('a knocked-out operator is drawn on the tile it lies on (real sim frame
   let srv, browser;
   before(async () => {
     const puppeteer = (await import('puppeteer-core')).default;
-    const { startServer } = await import('../../server/index.js');
+    const { startServer } = await import('../helpers/server.js');
     srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
     browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-first-run'] });
     mkdirSync(OUT, { recursive: true });

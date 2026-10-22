@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { DATA } from '../match/harness.js';
 import { chessRec } from '../helpers/battleHarness.js';
 import { DataSource } from '../../server/sim/simdata.js';

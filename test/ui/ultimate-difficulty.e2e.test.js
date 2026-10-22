@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { buildBattleSpec, createBattleFromSpec } from '../../server/sim/spec.js';
 import { DataSource } from '../../server/sim/simdata.js';
 import { chessRec, enemyRec, flatStage } from '../helpers/battleHarness.js';

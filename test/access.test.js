@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { PassThrough } from 'node:stream';
-import { startServer } from '../server/index.js';
+import { startServer } from './helpers/server.js';
 import { promptAccess } from '../server/access-prompt.js';
 import { installAccessGuard } from '../public/js/ui/accessGuard.js';
 

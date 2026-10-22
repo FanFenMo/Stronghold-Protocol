@@ -37,7 +37,7 @@ export function registerSupportMeta(registry) {
           refreshes: rs.refreshes | 0, buys: rs.buys | 0, sells: rs.sells | 0, spent: rs.spent | 0,
           gainedChess: rs.gainedChess | 0, arts: rs.arts | 0,
         },
-        matchBands: [ctx.bandId(), ...mates.map((t) => t.bandId())].filter(Boolean),
+        matchBands: [...ctx.bandIds(), ...mates.flatMap(t => t.bandIds())],
         teammates: mates.map((t) => ({ playerId: t.playerId, bandId: t.bandId() })),
       };
     },

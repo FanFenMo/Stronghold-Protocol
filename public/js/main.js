@@ -46,6 +46,8 @@ import { settingsStore } from './ui/settings.js';
 import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
+import { ShopHost } from './screens/trophyShop.js';
+import { installProfileSync } from './ui/profile.js';
 import { installLoadoutSync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 import { installAccessGuard } from './ui/accessGuard.js';
@@ -218,7 +220,12 @@ function wireNet() {
   net.on('m.public', (msg) => { matchAt = Date.now(); store.patch('match', { public: payload(msg) }); maybeFinishRestore(); });
   net.on('m.private', (msg) => { matchAt = Date.now(); store.patch('match', { private: payload(msg) }); });
   net.on('m.field', (msg) => store.patch('match', { field: payload(msg) }));
-  net.on('m.result', (msg) => store.patch('match', { result: payload(msg) }));
+  net.on('m.result', (msg) => {
+    const result = payload(msg);
+    const state = store.get();
+    recordResult(result, { myId: state.me.playerId, roomMode: state.room?.mode, now: Date.now() });
+    store.patch('match', { result });
+  });
   net.on('m.toast', (msg) => {
     const kind = ['info', 'success', 'warn', 'error'].includes(msg.kind) ? msg.kind : 'info';
     toast(msg.text, kind);
@@ -284,6 +291,7 @@ function App() {
     <${GuideHost} />
     <${StatsHost} />
     <${LoadoutHost} />
+    <${ShopHost} />
   </div>`;
 }
 
@@ -339,6 +347,7 @@ async function boot() {
 
   wireNet();
   installLoadoutSync({ net });
+  installProfileSync();
   installStatsRecorder(store);
   net.attachBrowserHooks();
   // Audio: unlock on first gesture, BGM follows the route / match phase (js/audio.js).

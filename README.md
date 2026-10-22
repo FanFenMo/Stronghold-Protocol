@@ -66,7 +66,7 @@ English summary: [below](#english).
 
 整合包里已经包含代码、运行依赖和全部美术 / 音频（含官方 3D 棋盘贴图），解压就能玩，不需要再下载任何东西。
 
-1. **安装 Node.js 22 或 24（LTS）**
+1. **安装 Node.js 22.13.0 及更新的 22.x，或 Node.js 24 及更新版本**
    - Windows：在 PowerShell 里运行 `winget install OpenJS.NodeJS.LTS`，或到 <https://nodejs.org/zh-cn/download> 下载安装包。
    - macOS：`brew install node@22`，或到官网下载安装包。
    - Linux：发行版的包管理器、nvm 或 fnm。

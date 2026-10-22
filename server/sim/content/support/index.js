@@ -133,7 +133,7 @@ export function contentInfo(battle, pid) {
 export function matchBands(battle, pid) {
   const mb = contentInfo(battle, pid).matchBands;
   if (Array.isArray(mb) && mb.length) return mb;
-  return (battle.players || []).map((p) => p.bandId).filter(Boolean);
+  return (battle.players || []).flatMap(p => [p.bandId, ...(p.extraBands || [])]).filter(Boolean);
 }
 
 // =====================================================================================================================

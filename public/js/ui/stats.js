@@ -1,6 +1,6 @@
 // Local match statistics: every match the local player took part in is appended as one record to localStorage
-// (`sp.pref.stats`). Per-browser only — the server keeps matches in memory and has no identity, so there is nowhere
-// else for cross-match numbers to live; nothing here is ever sent anywhere. The stats page labels itself 本机数据 and
+// (`sp.pref.stats`). These local records are separate from the server's anonymous trophy wallet; nothing in this
+// module is uploaded as a source of wallet credit. The stats page labels itself 本机数据 and
 // offers JSON export / import for moving between devices. (Ported from PR #323 by @2321Robin, reworked for 0.2.2.)
 //
 // Two kinds of record (`end`):

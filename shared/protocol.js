@@ -294,6 +294,11 @@ export const C2S = {
   // session & lobby
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6), $optional: ['token', 'version'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
+  'profile.bind': { token: v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v), $optional: ['token'] },
+  'profile.get': {},
+  'shop.get': {},
+  'shop.buy': { productId: isId, requestId: v => typeof v === 'string' && /^[a-f0-9]{32}$/.test(v) },
+  'profile.ledger': { before: v => Number.isSafeInteger(v) && v > 0, $optional: ['before'] },
   'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), ultimateLevel: isUltimateLevel, $optional: ['ultimateLevel'] },
   'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
@@ -365,6 +370,8 @@ export const C2S = {
 // Server → client message types (documentation + client dispatch table keys).
 export const S2C = [
   'welcome', 'ok', 'error', 'pong',
+  'profile.wallet', 'profile.storageError',
+  'm.shopReward',
   'room.state', 'room.closed',
   'm.public', 'm.private', 'm.field', 'm.toast', 'm.ticker', 'm.emote', 'm.result',
   // m.unitStats { seq, round, units: [unitStatsEntry] } — the answer to g.unitStats (the requester only)

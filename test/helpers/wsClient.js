@@ -14,6 +14,7 @@
 import WebSocket from 'ws';
 
 const REPLY_TYPES = new Set(['ok', 'error', 'welcome', 'pong']);
+const profileTokens = new Map();
 
 export class TestClient {
   /**
@@ -135,6 +136,16 @@ export class TestClient {
   async hello(name, token, extra = {}) {
     const reply = await this.request({ t: 'hello', name, version: 1, ...(token ? { token } : {}), ...extra });
     if (reply.t !== 'welcome') throw new Error(`hello failed: ${JSON.stringify(reply)}`);
+    if (reply.profileRequired) {
+      const saved = profileTokens.get(reply.token);
+      let bound = await this.request({ t: 'profile.bind', ...(saved ? { token: saved } : {}) });
+      if (bound.t !== 'ok') throw new Error(`profile binding failed: ${bound.code}`);
+      this.profileToken = bound.profile.token || saved;
+      if (bound.profile.token) bound = await this.request({ t: 'profile.bind', token: this.profileToken });
+      if (bound.t !== 'ok') throw new Error(`profile confirmation failed: ${bound.code}`);
+      this.profile = bound.profile;
+      profileTokens.set(reply.token, this.profileToken);
+    }
     return reply;
   }
 

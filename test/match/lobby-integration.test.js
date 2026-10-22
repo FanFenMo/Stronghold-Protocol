@@ -5,7 +5,7 @@
 // server-run fallback (SP_COMBAT=server) that still streams b.snap.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { getData } from '../../server/data.js';
 import { Match } from '../../server/match/Match.js';
 import { TestClient } from '../helpers/wsClient.js';

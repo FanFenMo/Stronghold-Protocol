@@ -1,4 +1,4 @@
-import { W_BAND, W_PENDING } from '../../shared/strategies.js';
+import { W_BAND, W_PENDING, strategyIds } from '../../shared/strategies.js';
 
 const countOf = s => Math.max(1, Math.trunc(s.count || 1));
 const ordinary = (gd, s) => !s.tag && !s.bounty && !s.mods?.bountyId && !s.mods?.bountyCoins
@@ -13,7 +13,7 @@ export function planWTransfers(m, players) {
   const candidates = m.wave.spawns.filter(s => ordinary(m.gd, s));
   const total = candidates.reduce((n, s) => n + countOf(s), 0);
   for (const ps of players) {
-    if (ps.bandId !== W_BAND || ps.counters[W_PENDING] !== m.round) continue;
+    if (!strategyIds(ps).includes(W_BAND) || ps.counters[W_PENDING] !== m.round) continue;
     ps.counters[W_PENDING] = 0;
     if (!total) continue;
     let k = m.rngMeta.int(total), chosen;

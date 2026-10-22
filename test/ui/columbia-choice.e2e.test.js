@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import P from 'puppeteer-core';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { Client, sleep, problemsOf } from '../e2e/client.mjs';
 import { give, legalTileFor } from '../match/harness.js';
 const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';

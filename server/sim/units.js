@@ -187,6 +187,12 @@ export class Unit {
       flags: flags || EMPTY,
     };
     s.flags.stun = !!(flags.stun || flags.freeze || flags.sleep || flags.levitate);
+    if (this.fixedStats) {
+      s.atk = this.fixedStats.atk;
+      s.def = this.fixedStats.def;
+      s.aspd = this.fixedStats.aspd;
+      s.interval = (s.bat * 100) / s.aspd;
+    }
     this._s = s;
     this._dirty = false;
     if (this.alive && prevMax > 0 && Math.abs(prevMax - maxHp) > 1e-9) {

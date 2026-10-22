@@ -77,7 +77,7 @@
 //     code; a player never switches to spectating in place (ALREADY). Disconnect / grace / reconnect / expiry work as for
 //     a player seat (the seat is kept and given back on resume).
 
-import { randomBytes, randomInt } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, modeIdFor } from '../shared/constants.js';
 import { ultimateLevelFor, ultimateAvailable } from '../shared/ultimateDifficulty.js';
 import { checkLoadout } from '../shared/protocol.js';
@@ -86,6 +86,7 @@ import { checkSupportOperators, EMPTY_SUPPORT_OPERATORS } from '../shared/suppor
 import { encode, isDroppable, isErrCode, sendRaw, sendSession } from './net.js';
 import { getData as defaultGetData, lookup } from './data.js';
 import { Match as DefaultMatch } from './match/Match.js';
+import { ProfileService } from './profileService.js';
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -200,9 +201,10 @@ export class Lobby {
    *   now?: () => number,
    *   seedFn?: () => number,
    *   options?: Partial<typeof LOBBY_DEFAULTS>,
+    *   profiles?: import('./profiles.js').ProfileStore | null,
    * }} opts
    */
-  constructor({ registry, log = noopLog, MatchClass = DefaultMatch, getData = defaultGetData, now = Date.now, seedFn, options = {} }) {
+  constructor({ registry, log = noopLog, MatchClass = DefaultMatch, getData = defaultGetData, now = Date.now, seedFn, options = {}, profiles = null }) {
     this.registry = registry;
     this.log = log;
     this.MatchClass = MatchClass;
@@ -218,6 +220,7 @@ export class Lobby {
     this.resyncTimers = new Map();
     /** per-network limit warnings: at most one log line per 10 s (the rest are counted) */
     this.limitLog = { at: -Infinity, suppressed: 0 };
+    this.profiles = profiles ? new ProfileService(profiles, this) : null;
   }
 
   /** @param {string} code @returns {Room | null} */
@@ -283,6 +286,8 @@ export class Lobby {
    * @returns {{ ok: true } | { error: string, detail?: string }}
    */
   onMessage(session, msg) {
+    if (msg.t.startsWith('profile.')) return this.profiles?.handle(session, msg) ?? fail(ERR.INTERNAL, '玩家档案未启用');
+    if (msg.t.startsWith('shop.')) return this.profiles?.shop(session, msg) ?? fail(ERR.INTERNAL, '玩家档案未启用');
     switch (msg.t) {
       case 'room.create': return this.create(session, msg);
       case 'room.join': return this.join(session, msg);
@@ -542,6 +547,7 @@ export class Lobby {
     if (room.difficulty === 'ABYSS' && !ultimateAvailable(room.ultimateLevel)) return fail(ERR.BAD_MSG, '该终极模拟难度未完待续');
     const humans = room.activeHumans();
     for (const s of humans) {
+      if (this.profiles && !this.registry.byId(s.playerId)?.profileConfirmed) return fail(ERR.NOT_READY, '玩家匿名档案尚未连接');
       if (s.playerId !== room.hostId && (!s.connected || !s.ready)) return fail(ERR.NOT_READY);
     }
     const bots = room.seats.filter((s) => s && s.isBot);
@@ -623,6 +629,8 @@ export class Lobby {
     }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
     const ctx = { live: true, ended: false, disposed: false, match: null, lastPublic: null, sharedResult: null, results: new Map() };
+    ctx.profileMatch = { matchId: randomUUID(), startedAt: this.now(), participants: Object.fromEntries(
+      seats.filter(s => !s.isBot).map(s => [s.playerId, this.registry.byId(s.playerId)?.profileId]).filter(([, id]) => id)) };
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     try {
@@ -638,6 +646,7 @@ export class Lobby {
         seed,
         // the room's match number: with the seed it keeps battleIds unique across the room's matches (DESIGN §14)
         matchNo: room.matchCount + 1,
+        matchId: ctx.profileMatch.matchId,
         data: this.safeData(),
         log: this.log,
         now: this.now,
@@ -668,6 +677,7 @@ export class Lobby {
   onMatchEnd(room, ctx, summary) {
     if (ctx.ended || !ctx.live || room.matchCtx !== ctx || room.disposed) return;
     ctx.ended = true;
+    if (this.profiles && summary) this.profiles.settle({ ...ctx.profileMatch, summary });
     room.lastSummary = summary ?? null;
     room.match = null;
     room.matchCtx = null;

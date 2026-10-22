@@ -155,6 +155,7 @@ import {
 import { buildBattleSpec, createBattleFromSpec, resultDigest, compactResult as compactForVerify, battleProgress, uniteLeft } from '../sim/spec.js';
 import { CreditPool } from './finalAssault.js';
 import { buildResult } from './results.js';
+import { trophySpawns, trophyFragmentRound, saveWithTrophy } from './trophyShop.js';
 import { botPrepBeginSteps, botPrepEndSteps, botPickBand, botPickCard } from './bot.js';
 
 const BOT_REHEARSAL_DEFAULT = 3;
@@ -238,6 +239,7 @@ export class Match {
     }
     this.opts = opts;
     this.roomCode = opts.roomCode ?? '----';
+    this.matchId = opts.matchId ?? null;
     this.mode = opts.mode === 'solo' ? 'solo' : 'coop';
     this.difficulty = opts.difficulty;
     this.modeId = opts.modeId || modeIdFor(this.mode, opts.difficulty);
@@ -1935,8 +1937,8 @@ export class Match {
   _normalBattle(ps) { return this.newBattle(this._normalOpts(ps)); }
 
   normalSpawnsFor(ps) {
-    return applyWTransfers(this.gd, withBounties(this.gd, this.round, this.wave, ps.bounties, ps.playerId),
-      this.wTransfers?.get(ps.playerId));
+    return trophySpawns(ps, applyWTransfers(this.gd, withBounties(this.gd, this.round, this.wave, ps.bounties, ps.playerId),
+      this.wTransfers?.get(ps.playerId)));
   }
 
   /** Battle options of a player's normal field (after the onBattleStart handlers). */
@@ -2934,8 +2936,9 @@ export class Match {
     for (const ps of alive) {
       const r = this.lastResults.get(ps.playerId) || { leaked: [], perfect: true, coins: 0, layerGains: {}, killed: 0, damageDealt: 0 };
       const counted = (r.leaked || []).filter((l) => l && l.counted !== false).length;
-      const loss = uniteRan && plan.leakers.includes(ps) ? Math.min(cap, survivors.get(ps.playerId) || 0) : Math.min(cap, counted);
+      const loss = trophyFragmentRound(ps) ? 0 : uniteRan && plan.leakers.includes(ps) ? Math.min(cap, survivors.get(ps.playerId) || 0) : Math.min(cap, counted);
       ps.lp -= loss;
+      if (trophyFragmentRound(ps)) ps.lp += Math.min(30, counted);
       ps.stats.lpLost += loss;
       ps.stats.leaks += counted;
       ps.stats.kills += Number(r.killed) || 0;
@@ -2970,6 +2973,7 @@ export class Match {
       ps.recompute();
     }
     for (const ps of alive) {
+      if (ps.lp <= 0 && saveWithTrophy(ps)) ps.lp = 1;
       if (ps.lp <= 0) {
         ps.lp = 0;
         ps.eliminate(this.round);
@@ -3134,6 +3138,10 @@ export class Match {
     const n = Number(amount);
     if (this.teamLp == null || !Number.isFinite(n) || !(n > 0)) return;
     this.teamLp = Math.max(0, this.teamLp - n);
+    if (this.teamLp === 0) {
+      const saved = this.alivePlayers().find(ps => saveWithTrophy(ps));
+      if (saved) this.teamLp = 1;
+    }
     if (this._bossLazyPublic()) { this._bossPublic(); return; }
     this._syncTeamLp();
     this.markPublic();

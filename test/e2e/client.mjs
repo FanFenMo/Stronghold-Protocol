@@ -68,7 +68,7 @@ export function freePort() {
 export async function startRealServer(opts = {}) {
   const port = Number.isInteger(opts.port) && opts.port > 0 ? opts.port : await freePort();
   const entry = opts.fast ? path.join(ROOT, 'test/e2e/fastServer.mjs') : path.join(ROOT, 'server/index.js');
-  const env = { ...process.env, PORT: String(port), HOST: '127.0.0.1' };
+  const env = { ...process.env, PORT: String(port), HOST: '127.0.0.1', SP_STORAGE_DIR: path.join(OUT, 'profiles', String(port)) };
   // under `node --test` the runner's marker would turn fastServer.mjs into a no-op module (it is not a test file)
   delete env.NODE_TEST_CONTEXT;
   if (opts.fast) {

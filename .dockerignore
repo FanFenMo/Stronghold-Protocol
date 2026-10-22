@@ -4,6 +4,7 @@
 .claude
 node_modules
 .cache
+storage
 .venv*
 **/__pycache__
 test

@@ -1,0 +1,34 @@
+.modal__box.tshop-modal { max-height: 92vh; max-width: 96vw; }
+.tshop-modal .modal__title { width: 100%; }
+.tshop-close { color: var(--text-hi); background: transparent; border: 0; cursor: pointer; font-size: .3rem; min-width: .4rem; min-height: .4rem; }
+.tshop-modal .modal__body { overflow-y: auto; max-height: 76vh; }
+.tshop-heading { display: flex; align-items: center; justify-content: space-between; gap: .4rem; width: 100%; }
+.tshop-heading > span { margin-left: auto; font-size: .19rem; white-space: nowrap; color: var(--mint-400); }
+.tshop-heading .num { font-size: .32rem; }
+.tshop-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .13rem; padding-bottom: .12rem; border-bottom: 1px solid var(--line); }
+.tshop-toolbar > span { margin-right: auto; color: var(--text-md); }
+.tshop-status, .tshop-note, .tshop-tier { color: var(--text-md); font-size: .14rem; line-height: 1.6; }
+.tshop-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .16rem; align-items: start; }
+.tshop-product { min-width: 0; display: flex; flex-direction: column; padding: .18rem; border: 1px solid var(--mint-700); background: rgba(9, 22, 22, .85); }
+.tshop-product h3 { margin: 0 0 .16rem; font-size: .19rem; font-weight: 600; line-height: 1.7; }
+.tshop-expand { color: var(--text-hi); display: flex; align-items: center; justify-content: space-between; gap: .1rem; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; }
+.tshop-expand strong { font-size: .19rem; line-height: 1.7; }
+.tshop-expand > span { color: var(--mint-400); font-size: .13rem; white-space: nowrap; }
+.tshop-selection { color: var(--mint-400); font-size: .16rem; margin: .2rem 0; }
+.tshop-buy { display: flex; align-items: center; gap: .1rem; margin-top: auto; padding-top: .17rem; }
+.tshop-price { color: var(--mint-400); flex: 1; white-space: nowrap; }
+.tshop-count { color: var(--text-md); font-family: var(--font-mono); font-size: .13rem; }
+.tshop-wheelframe { position: relative; height: 2.15rem; margin: .16rem 0; overflow: hidden; perspective: 500px; background: rgba(0, 0, 0, .22); }
+.tshop-wheel { height: 100%; overflow-y: auto; scrollbar-width: none; scroll-snap-type: y mandatory; padding-block: .86rem; box-sizing: border-box; position: relative; }
+.tshop-wheel::-webkit-scrollbar { display: none; }
+.tshop-wheelfocus { position: absolute; top: .86rem; left: 0; right: 0; height: .43rem; pointer-events: none; border-block: 1px solid var(--mint-700); background: rgba(23, 249, 183, .07); }
+.tshop-option { display: block; width: 100%; height: .43rem; min-height: .43rem; padding: 0 .1rem; border: 0; background: transparent; color: var(--text-md); scroll-snap-align: center; cursor: pointer; transform: rotateX(var(--shop-tilt)); opacity: calc(1 - var(--shop-distance) * .23); font: inherit; font-size: .17rem; white-space: nowrap; }
+.tshop-option.is-selected { color: var(--mint-400); font-weight: 700; }
+.tshop-reward { position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: none; overflow: hidden; color: #fff8d2; text-shadow: 0 0 18px #ffd56e; animation: shop-reward-in 3.5s ease both; }
+.tshop-reward strong { font-size: .55rem; position: relative; }
+.tshop-reward > span { font-size: .2rem; position: relative; margin-top: .15rem; }
+.tshop-reward__light { position: absolute; width: 12rem; height: 12rem; background: repeating-conic-gradient(from 0deg, transparent 0deg 15deg, #ffda6b60 15deg 25deg, transparent 25deg 40deg); mask-image: radial-gradient(circle, #000, transparent 65%); animation: shop-reward-spin 8s linear infinite; }
+@keyframes shop-reward-spin { to { transform: rotate(180deg); } }
+@keyframes shop-reward-in { 0%, 100% { opacity: 0; } 12%, 80% { opacity: 1; } }
+@media (max-width: 900px) { .tshop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .tshop-reward__light { animation: none; } .tshop-option { transform: none; } }

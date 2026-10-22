@@ -33,6 +33,7 @@ export class BattlePlayers {
       half: mirror || (Number(p.colOffset) || 0) >= 8 ? 'R' : 'L',
       bonds: clone(p.bonds ?? {}),
       bandId: p.bandId ?? null,
+      extraBands: clone(p.extraBands ?? []),
       playerEffects: clone(p.playerEffects ?? []),
       lpForBoss: p.lpForBoss ?? null,
       dp: this.flags.dpInit,
@@ -157,6 +158,7 @@ export class BattlePlayers {
     // a DIY slot has no body of its own (甄选干员): it fights only as a 自选 piece (its `diy` pick)
     if (def.raw?.isDiy && !def.diyFor) { this.log(`自选 slot ${inp.chessId} without a pick`); return null; }
     const u = this._makeAlly(ps, def, 'op', r, c, { uid: inp.uid, dir });
+    if (inp.fixedStats) { u.fixedStats = { ...inp.fixedStats }; u.markDirty(); }
     u.items = [...(inp.items ?? [])];
     u.carry = inp.carryState ?? null;
     // 练度 (自持有, 0.2.2): the owned operator's ×ATK / ×DEF / ×max HP (units.js Πmul) — never a 补位 stand-in's nor a

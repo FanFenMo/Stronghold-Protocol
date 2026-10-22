@@ -41,6 +41,8 @@ import { boardOrder, parseKey, tileKey } from './board.js';
 import { pieceBonds as bondsOfPiece } from './bondsMeta.js';
 import { registerAllMeta } from '../sim/content/index.js';
 import { registerBuiltins } from './builtinMeta.js';
+import { strategyIds } from '../../shared/strategies.js';
+import { trophySixShop } from './trophyShop.js';
 
 export const HOOKS = Object.freeze([
   'onRoundStart', 'onIncome', 'onPrepStart', 'onPrepEnd', 'onGain', 'onSold', 'onRefresh', 'onPrice', 'onBuy',
@@ -208,10 +210,10 @@ export class EffectDispatcher {
       // 1. globals
       for (const [key, h] of reg.globals()) this._call(ps, key, h, hook, { kind: 'global', key }, ev);
       // 2. band
-      if (ps.bandId) {
-        const key = `band:${ps.bandId}`;
+      for (const bandId of strategyIds(ps)) {
+        const key = `band:${bandId}`;
         const h = reg.get(key);
-        if (h) this._call(ps, key, h, hook, { kind: 'band', key, bandId: ps.bandId, band: this.m.gd.band(ps.bandId) }, ev);
+        if (h) this._call(ps, key, h, hook, { kind: 'band', key, bandId, band: this.m.gd.band(bandId) }, ev);
       }
       // 3. bonds
       for (const bondId of this.m.gd.bondIds) {
@@ -449,6 +451,7 @@ export function makeCtx(m, ps, source, hook, ev = null) {
     lp: () => ps.lp,
     alive: () => ps.alive,
     bandId: () => ps.bandId,
+    bandIds: () => strategyIds(ps),
     shopLevel: () => ps.shop.level,
     bond: (id) => (ps.bonds[id] ? { ...ps.bonds[id] } : null),
     bonds: () => Object.fromEntries(Object.entries(ps.bonds).map(([k, v]) => [k, { ...v }])),
@@ -607,6 +610,11 @@ export function makeCtx(m, ps, source, hook, ev = null) {
       if (slot == null) { ps.shop.slots[i] = null; ps.dirty(); return true; }
       const kind = slot.kind === 'item' ? 'item' : 'chess';
       if (kind === 'chess' ? !gd.chess(slot.id) : !gd.item(slot.id)) return false;
+      if (trophySixShop(ps) && (kind !== 'chess' || gd.tierOf(slot.id) !== 6 || !ps.canUseChess(slot.id))) {
+        ps.shop.slots[i] = ps._rollChessSlot();
+        ps.dirty();
+        return true;
+      }
       const basePrice = Number.isFinite(slot.price) ? Math.max(0, Math.trunc(slot.price)) : kind === 'chess' ? gd.chessPrice(slot.id) : gd.itemPrice(slot.id);
       ps.shop.slots[i] = { kind, id: slot.id, basePrice, frozen: !!slot.frozen, sold: false };
       ps.dirty();

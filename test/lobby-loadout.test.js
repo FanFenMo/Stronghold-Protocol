@@ -5,7 +5,7 @@
 import { describe, test, before, after, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { startServer } from '../server/index.js';
+import { startServer } from './helpers/server.js';
 import { StubMatch } from '../server/match/StubMatch.js';
 import { getData } from '../server/data.js';
 import { TestClient } from './helpers/wsClient.js';

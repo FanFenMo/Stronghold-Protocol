@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const skip = process.env.RENDER_E2E !== '1' || !existsSync(CHROME);
 test('real Spine held death matches forced updates; revival and late font rasterisation remain live', { skip, timeout: 90000 }, async () => {
-  const { startServer } = await import('../../server/index.js');
+  const { startServer } = await import('../helpers/server.js');
   const puppeteer = (await import('puppeteer-core')).default;
   const srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
   let browser;

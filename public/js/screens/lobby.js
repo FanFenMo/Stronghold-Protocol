@@ -18,6 +18,7 @@ import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, AvatarFrame
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
 import { LoadoutButton } from './loadout.js';
+import { ShopButton } from './trophyShop.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
@@ -320,6 +321,7 @@ export function LobbyScreen() {
         <${Button} variant="ghost" size="sm" onClick=${openStats}>统计数据<//>
         <${PwaInstallButton} /><${ResumeMatchButton} />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" />
+        <${ShopButton} size="sm" />
         <div class="me-chip">
           <${AvatarFrame} size="sm" name=${me.name} seat=${0} self=${true} />
           <div class="me-chip__text">

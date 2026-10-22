@@ -6,9 +6,10 @@ export const ROLLING_BAND = 'band_rolling_logs';
 export const MEDIC_TOKEN = 'char_605_cmedic';
 export const TOUCH_TOKEN = 'char_613_acmedc';
 export const W_PENDING = 'band:w:next_round';
+export const strategyIds = player => [player.bandId, ...(player.extraBands || [])].filter(Boolean);
 
 /** The server-granted field medic is independent of any operator or deployment slot. */
 export function isStrategyMedic(piece, bandId) {
-  return bandId === TOUCH_BAND && piece.kind === 'token' && piece.meta?.strategyBand === TOUCH_BAND
+  return (Array.isArray(bandId) ? bandId.includes(TOUCH_BAND) : bandId === TOUCH_BAND) && piece.kind === 'token' && piece.meta?.strategyBand === TOUCH_BAND
     && [MEDIC_TOKEN, TOUCH_TOKEN].includes(piece.id) && piece.count === 1;
 }

@@ -55,6 +55,8 @@ COPY --from=build /app/public ./public
 # research tables: read by server/sim/nodeData.js as a fallback
 COPY --from=build /app/docs/research ./docs/research
 
+RUN mkdir -p /app/storage && chown node:node /app/storage
+VOLUME ["/app/storage"]
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \

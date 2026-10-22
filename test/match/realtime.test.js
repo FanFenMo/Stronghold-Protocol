@@ -7,7 +7,7 @@
 // Clients act only on what the server tells them (m.public / m.private / b.start), like the browser UI.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { Match } from '../../server/match/Match.js';
 import { collectViolations } from '../../server/match/invariants.js';
 import { TestClient } from '../helpers/wsClient.js';

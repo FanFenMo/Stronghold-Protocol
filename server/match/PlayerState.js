@@ -71,7 +71,7 @@
 //     normal chess → moduleId null, elite → uniEquipId | 'none'); m.private exposes `loadout`.
 
 import { ERR, GEO, PHASE, layerGainRoom } from '../../shared/constants.js';
-import { TOUCH_BAND, MEDIC_TOKEN, TOUCH_TOKEN, isStrategyMedic } from '../../shared/strategies.js';
+import { TOUCH_BAND, MEDIC_TOKEN, TOUCH_TOKEN, isStrategyMedic, strategyIds } from '../../shared/strategies.js';
 import { checkLoadout, resolveLoadout } from '../../shared/protocol.js';
 import { FIELD, tileKey, parseKey, inField, canPlace, placeClass, boardOrder, freeSlot, pieceDir, parseDir, mergeTile, ownerRangeKeys } from './board.js';
 import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../shared/loadoutRecord.js';
@@ -83,6 +83,7 @@ import { computeBonds, bondList, bondSnapshot, activatedLayers, bondsWithGains }
 import { itemKey } from './gamedata.js';
 import { bountyText } from './choices.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
+import { newTrophyShopState, prepareTrophyRound, grantTrophyRound, trophySixShop } from './trophyShop.js';
 import { COLUMBIA_BOND, COLUMBIA_TECH_LAYERS, COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaTechItemId } from '../../shared/columbia.js';
 
 const HAND_SIZE = GEO.HAND_SIZE;
@@ -111,6 +112,8 @@ export class PlayerState {
     this.alive = true;
     this.lp = 0;
     this.bandId = null;
+    this.extraBands = [];
+    this.trophyShop = newTrophyShopState();
     this.funds = 0;
     this.pendingFunds = 0;
     this.ready = false;
@@ -505,13 +508,14 @@ export class PlayerState {
    * @param {string} chessId
    * @param {{ source?: string, toTemp?: boolean, fromPool?: boolean, silent?: boolean }} [opts]
    */
-  acquireChess(chessId, { source = 'grant', toTemp = false, fromPool = true, silent = false } = {}) {
+  acquireChess(chessId, { source = 'grant', toTemp = false, fromPool = true, silent = false, fixedStats = null } = {}) {
     const rec = this.gd.chess(chessId);
     if (!rec || !this.canUseChess(chessId)) return null;
     const base = this.gd.baseIdOf(chessId);
     const need = rec.isGolden ? this.gd.goldenCopies : 1;
     const taken = fromPool ? this.m.pool.take(base, need) : 0;
     const piece = this.newPiece('chess', chessId, { poolCopies: taken });
+    if (fixedStats) piece.fixedStats = { ...fixedStats };
     this.round.gainedChess++;
     let owned = piece;
     if (!rec.isGolden && this.completesChessMerge(chessId)) {
@@ -567,6 +571,8 @@ export class PlayerState {
       l.piece.items = [];
     }
     const elite = this.newPiece('chess', goldenId, { poolCopies: copies });
+    const fixed = consumed.find(l => l.piece.fixedStats)?.piece.fixedStats;
+    if (fixed) elite.fixedStats = { ...fixed };
     // this round's per-piece counters: the highest of the copies' (an elite made from 拉普兰德 that already saw their
     // first refresh this round does not fire again this round — [ASSUMED] conservative, pieceRoundCount)
     for (const l of consumed) {
@@ -893,6 +899,7 @@ export class PlayerState {
   /** Effective price of a shop slot after onPrice modifiers (never negative). */
   priceOf(slot) {
     if (!slot) return 0;
+    if (slot.kind === 'chess' && trophySixShop(this)) return 2;
     const ev = { slot, kind: slot.kind, id: slot.id, price: slot.basePrice };
     this.m.dispatch(this, 'onPrice', ev, { quiet: true });
     const p = Number(ev.price);
@@ -900,7 +907,9 @@ export class PlayerState {
   }
 
   _rollChessSlot() {
-    const id = this.m.pool.roll(this.m.rngShop, { maxTier: this.shop.level, filter: id => this.canUseChess(id) });
+    const special = trophySixShop(this);
+    const id = this.m.pool.roll(this.m.rngShop, { maxTier: special ? 6 : this.shop.level,
+      ...(special ? { tier: 6 } : {}), filter: id => this.canUseChess(id) });
     return id ? { kind: 'chess', id, basePrice: this.gd.chessPrice(id), frozen: false, sold: false } : null;
   }
 
@@ -914,12 +923,15 @@ export class PlayerState {
    * (manual refresh). Slot counts follow the current level.
    */
   rollShop({ keepFrozen = false } = {}) {
-    const { chess: nChess, item: nItem } = this.gd.shopSlots(this.shop.level);
+    let { chess: nChess, item: nItem } = this.gd.shopSlots(this.shop.level);
+    if (trophySixShop(this)) { nChess += nItem; nItem = 0; }
     const old = this.shop.slots;
     const layout = this.shop.layout || { chess: old.length, item: 0 };
     const oldChess = old.slice(0, layout.chess);
     const oldItems = old.slice(layout.chess);
-    const keep = (s, kind) => (keepFrozen && s && s.kind === kind && !s.sold && s.frozen ? { ...s } : null);
+    const six = trophySixShop(this);
+    const keep = (s, kind) => (keepFrozen && s && s.kind === kind && !s.sold && s.frozen
+      && (!six || kind !== 'chess' || this.gd.tierOf(s.id) === 6) ? { ...s } : null);
     // frozen slots keep their position; sold / empty / unfrozen positions are rerolled
     const slots = [];
     for (let i = 0; i < nChess; i++) slots.push(keep(oldChess[i], 'chess') ?? this._rollChessSlot());
@@ -995,6 +1007,10 @@ export class PlayerState {
     this.stats.refreshes++;
     this.round.refreshes++;
     this.m.dispatch(this, 'onRefresh', { slots: this.shop.slots, free, price });
+    if (trophySixShop(this)) {
+      this.shop.slots = this.shop.slots.map(slot => slot && slot.kind === 'chess' && this.gd.tierOf(slot.id) === 6
+        ? slot : this._rollChessSlot());
+    }
     this._afterSpend(price, 'refresh');
     this.dirty();
     return OK;
@@ -1264,7 +1280,7 @@ export class PlayerState {
     if (occ) return fail(ERR.BAD_TILE, 'occupied');
     // owner must be on the board for its summons to be deployable
     const owner = [...this.board.values()].find((p) => p.uid === piece.ownerUid);
-    if (!owner && !isStrategyMedic(piece, this.bandId)) return fail(ERR.BAD_TARGET, 'owner not deployed');
+    if (!owner && !isStrategyMedic(piece, strategyIds(this))) return fail(ERR.BAD_TARGET, 'owner not deployed');
     if ((piece.count || 1) > 1) {
       piece.count -= 1;
       const one = this.newPiece('token', piece.id, { count: 1, ownerUid: piece.ownerUid, dir });
@@ -1530,6 +1546,7 @@ export class PlayerState {
   // round lifecycle helpers (called by Match)
 
   startRound(r) {
+    prepareTrophyRound(this, r);
     this.round = { refreshes: 0, buys: 0, sells: 0, spent: 0, gainedChess: 0, arts: 0 };
     this.pendingLayerGains = null; // settled (or lapsed) at the last SETTLE
     if (r > 1) this.shop.upgradePrice = Math.max(0, this.shop.upgradePrice - 1);
@@ -1539,6 +1556,7 @@ export class PlayerState {
     this.m.dispatch(this, 'onIncome', ev);
     const nonNeg = (v) => (Number.isFinite(v) && v > 0 ? Math.trunc(v) : 0);
     this.addFunds(nonNeg(ev.income) + nonNeg(ev.pending), { reason: 'income' });
+    grantTrophyRound(this, r);
     // temp is NOT wiped here: the last prep's deadline resolved what the player could act on (endPrep); what overflowed
     // after it (battle-result grants, SETTLE merges, returned equipment) is shown and usable in this prep (tempDue).
     // Likewise reward offers of the last prep already expired at its end; what is still queued was earned after it —
@@ -1563,7 +1581,7 @@ export class PlayerState {
     for (const uid of [...this._tempDue.keys()]) if (!this.temp.some((p) => p && p.uid === uid)) this._tempDue.delete(uid);
     this.offers = this.offers.filter(offer => offer.source === COLUMBIA_TECH_SOURCE);
     this.clearUnfrozenShop();
-    if (!this.gd.leftoverKeptBands.includes(this.bandId)) this.funds = 0;
+    if (![this.bandId, ...this.extraBands].some(id => this.gd.leftoverKeptBands.includes(id))) this.funds = 0;
     this.ready = true;
     this.dirty();
   }
@@ -1593,10 +1611,10 @@ export class PlayerState {
 
   /** Touch's own medical unit can be dragged from the bench, with no operator owner or deployment slot. */
   syncStrategyMedic({ create = false } = {}) {
-    if (this.bandId !== TOUCH_BAND) return;
+    if (!strategyIds(this).includes(TOUCH_BAND)) return;
     const elites = [...this.board.values()].filter(p => p.kind === 'chess' && this.gd.chess(p.id).isGolden).length;
     const id = elites >= 2 ? TOUCH_TOKEN : MEDIC_TOKEN;
-    const medic = [...this.board.values(), ...this.hand, ...this.temp].find(p => p && isStrategyMedic(p, this.bandId));
+    const medic = [...this.board.values(), ...this.hand, ...this.temp].find(p => p && isStrategyMedic(p, strategyIds(this)));
     if (medic) medic.id = id;
     else if (create) this.stow(this.newPiece('token', id, { meta: { strategyBand: TOUCH_BAND } }), { allowTemp: true });
   }
@@ -1636,6 +1654,7 @@ export class PlayerState {
     for (const { r, c, piece } of boardOrder(this.board)) {
       if (piece.kind === 'chess') {
         const u = { uid: piece.uid, kind: 'chess', chessId: piece.id, row: r, col: c, dir: pieceDir(piece), items: (piece.items || []).map((i) => i.id) };
+        if (piece.fixedStats) u.fixedStats = { ...piece.fixedStats };
         // DESIGN §16: the equipped skill / module (elite only) from the loadout (defaults when absent)
         const lo = this.loadoutFor(this.gd.chess(piece.id));
         u.skillIndex = lo.skillIndex;
@@ -1658,6 +1677,10 @@ export class PlayerState {
       units,
       bonds: bondSnapshot(reached ? this.bondsView() : this.bonds),
       bandId: this.bandId,
+      ...(this.extraBands.length ? { extraBands: [...this.extraBands] } : {}),
+      ...(this.trophyShop.attack ? { trophyAttack: this.trophyShop.attack } : {}),
+      ...(this.trophyShop.slowThrough !== undefined && (this.trophyShop.slowThrough === null || this.m.round <= this.trophyShop.slowThrough)
+        ? { trophySlow: true } : {}),
       playerEffects: this.effects.filter((e) => e.battle !== false).map((e) => ({
         id: e.id, key: e.key ?? null, source: e.iconKind ?? null, params: e.params ?? null, counter: e.counter ?? null, data: e.data ?? null,
       })),
@@ -1681,13 +1704,16 @@ export class PlayerState {
       ownerUid: p.kind === 'token' ? p.ownerUid ?? null : null,
     };
     if (rc) { v.row = rc[0]; v.col = rc[1]; v.dir = pieceDir(p); }
+    if (p.fixedStats) v.fixedStats = { ...p.fixedStats };
     return v;
   }
 
   effectsView() {
     const out = [];
-    const band = this.bandId ? this.gd.band(this.bandId) : null;
-    if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId });
+    for (const id of [this.bandId, ...this.extraBands]) {
+      const band = id ? this.gd.band(id) : null;
+      if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId });
+    }
     for (const e of this.effects) {
       if (e.hidden) continue;
       const v = { id: e.id, name: e.name || e.id, desc: e.desc || '', iconKind: e.iconKind || 'choice', iconId: e.iconId || e.id };

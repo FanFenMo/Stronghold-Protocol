@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { computeBuildTag, buildTag, resetBuildTag, BUILD_INPUTS } from '../server/index.js';
+import { computeBuildTag, buildTag, resetBuildTag, BUILD_INPUTS } from './helpers/server.js';
 
 /** A throwaway root with the browser runtime layout (one file per BUILD_INPUTS entry). */
 function fixture() {

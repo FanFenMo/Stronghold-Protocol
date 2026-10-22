@@ -46,6 +46,7 @@ import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 import { createAccess } from './access.js';
 import { promptAccess } from './access-prompt.js';
+import { ProfileStore } from './profiles.js';
 
 /** Repository root. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -610,6 +611,7 @@ function makeLogger(quiet) {
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
  *   access?: { username: string, password: string },
+ *   profiles?: import('./profiles.js').ProfileStore | false, profilePath?: string,
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: WebSocketServer,
  *                     lobby: Lobby, network: Network, registry: SessionRegistry, close: () => Promise<void> }>}
@@ -636,7 +638,9 @@ export async function startServer(opts = {}) {
   for (const k of ['lobbyGraceMs', 'maxRooms', 'maxRoomsPerAddr', 'maxMatchesPerAddr', 'resyncMinGapMs', 'soloReconnectWindowMs']) {
     if (opts[k] != null) lobbyOptions[k] = opts[k];
   }
-  const lobby = new Lobby({ registry, log, MatchClass: opts.MatchClass, getData: () => data, seedFn: opts.seedFn, options: lobbyOptions });
+  const profiles = opts.profiles === false ? null : opts.profiles || new ProfileStore(
+    opts.profilePath || path.join(process.env.SP_STORAGE_DIR || path.join(ROOT, 'storage'), 'player-data.sqlite'));
+  const lobby = new Lobby({ registry, log, MatchClass: opts.MatchClass, getData: () => data, seedFn: opts.seedFn, options: lobbyOptions, profiles });
   const network = new Network({ registry, handler: lobby, log, options: netOptions });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, log });
   const access = createAccess(opts.access);
@@ -719,6 +723,7 @@ export async function startServer(opts = {}) {
     });
   } catch (e) {
     network.close(); // stop heartbeat/sweep timers of the half-built server
+    lobby.profiles?.close();
     access.clear();
     throw e;
   }
@@ -735,6 +740,7 @@ export async function startServer(opts = {}) {
       access.clear();
       try { lobby.shutdown('shutdown'); } catch (e) { log.error('[shutdown] lobby', e); }
       network.close();
+      lobby.profiles?.close();
       await new Promise((resolve) => {
         server.close(() => resolve());
         server.closeIdleConnections?.();

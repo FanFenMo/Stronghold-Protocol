@@ -20,12 +20,12 @@
 node tools/setup.mjs
 ```
 
-然后在仓库里（**任意平台**，只要有 Node 22+ 且能上网下载官方 Node 归档）执行：
+然后在仓库里（**任意平台**，使用 Node 22.13.0 及更新的 22.x 或 Node 24 及更新版本，且能上网下载官方 Node 归档）执行：
 
 ```bash
 node scripts/make-windows-bundle.mjs                    # 产物默认在 <仓库上一级>/Stronghold-Protocol-Windows
 node scripts/make-windows-bundle.mjs --out D:\Game\Stronghold-Protocol-Windows --force
-node scripts/make-windows-bundle.mjs --no-node          # 目标机器已装 Node 22+ 时不必带便携 Node
+node scripts/make-windows-bundle.mjs --no-node          # 目标机器已装上述支持版本时不必带便携 Node
 node scripts/make-windows-bundle.mjs --node-version v22.23.3 --sha256 <64 位十六进制>   # 换 Node 版本
 ```
 

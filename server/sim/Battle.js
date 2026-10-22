@@ -49,6 +49,7 @@ import { GEO } from '../../shared/constants.js';
 import { ultimateLevelFor, ultimateRules } from '../../shared/ultimateDifficulty.js';
 import { installUltimatePoison } from './ultimatePoison.js';
 import { installUltimateCombat } from './ultimateCombat.js';
+import { installTrophyCombat } from './trophyCombat.js';
 import { createRng } from './rng.js';
 import { Grid } from './grid.js';
 import { ProjectileSystem } from './projectiles.js';
@@ -180,6 +181,7 @@ export class Battle {
     for (const u of this.allyUnits) if (!u.kit) this._setupUnit(u);
     installUltimatePoison(this);
     installUltimateCombat(this);
+    installTrophyCombat(this);
     if (typeof opts.setup === 'function') this._safe(() => opts.setup(this), 'opts.setup');
   }
 

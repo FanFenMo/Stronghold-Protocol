@@ -446,7 +446,7 @@ Noto Sans SC 这类网页字体（\`index.html\` 里那条外链这次没有改�
 ${tree}
 \`\`\`
 
-卸载＝直接删掉整个文件夹（不写注册表、不放系统目录）。存档/昵称在该电脑的浏览器 localStorage 里。
+昵称和匿名档案凭证在该电脑的浏览器 localStorage 里；奖杯和消费流水在主机 app\\storage\\player-data.sqlite 中。删除游戏前请备份 app\\storage；也可通过 SP_STORAGE_DIR 将数据保存在游戏文件夹之外。商店中可导出匿名档案恢复凭证，凭证不包含奖杯余额，恢复时读取主机上的原数据。
 `;
 }
 

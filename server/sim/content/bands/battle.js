@@ -39,6 +39,7 @@ import {
 } from '../support/index.js';
 import { weaknessRetype, addShieldLayer, PRIO_RESPAWN, reviveNow } from '../items/battle.js';
 import { spawnMapChar } from '../tokens.js';
+import { strategyIds } from '../../../../shared/strategies.js';
 
 export const AMEDIC_BAND = 'band_amedic';
 /**
@@ -246,7 +247,7 @@ function installMapChars(battle) {
   if (!holders.length) return;
   battle.on('battleStart', () => {
     for (const ps of holders) {
-      if (ps.bandId === AMEDIC_BAND && ps.units.some(u => u.kind === 'token'
+      if (strategyIds(ps).includes(AMEDIC_BAND) && ps.units.some(u => u.kind === 'token'
         && ['char_605_cmedic', 'char_613_acmedc'].includes(u.defId))) continue;
       const elites = deployedOps(battle, ps.playerId).filter(isElite).length;
       for (const id of amedicCharsFor(elites, variants)) {
@@ -269,12 +270,14 @@ export function hasBattlePart(bandId) {
 
 export function install(battle) {
   for (const ps of battle.players) {
-    const band = ps.bandId ? bandRecord(ps.bandId) : null;
-    if (!band) continue;
-    for (const b of buffsOf(band)) {
-      const f = b.bbKey ? BY_KEY[b.bbKey] : null;
-      if (!f) continue;
-      try { f(battle, ps, b.p, ps.bandId); } catch (e) { battle._handlerError?.(`band:${ps.bandId}`, null, e); }
+    for (const bandId of strategyIds(ps)) {
+      const band = bandRecord(bandId);
+      if (!band) continue;
+      for (const b of buffsOf(band)) {
+        const f = b.bbKey ? BY_KEY[b.bbKey] : null;
+        if (!f) continue;
+        try { f(battle, ps, b.p, bandId); } catch (e) { battle._handlerError?.(`band:${bandId}`, null, e); }
+      }
     }
   }
   installMapChars(battle);

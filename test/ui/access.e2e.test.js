@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 import { CHROME, hasChrome, OUT } from '../e2e/client.mjs';
 
 test('browser login, refresh, room links and live server restart', {

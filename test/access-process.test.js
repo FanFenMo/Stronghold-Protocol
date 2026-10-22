@@ -2,10 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 function launch(t, port = 0) {
+  const storage = mkdtempSync(path.join(tmpdir(), 'stronghold-access-'));
   const child = spawn(process.execPath, ['server/index.js'], {
-    cwd: new URL('..', import.meta.url), env: { ...process.env, PORT: String(port), HOST: '127.0.0.1' },
+    cwd: new URL('..', import.meta.url), env: { ...process.env, PORT: String(port), HOST: '127.0.0.1', SP_STORAGE_DIR: storage },
     stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
   });
   let text = '';
@@ -13,7 +17,7 @@ function launch(t, port = 0) {
   child.stderr.on('data', (chunk) => { text += chunk; });
   const exited = new Promise((resolve) => child.once('exit', resolve));
   const stop = async () => { if (child.exitCode === null) child.kill(); await exited; };
-  t.after(stop);
+  t.after(async () => { await stop(); rmSync(storage, { recursive: true, force: true }); });
   return {
     child, stop, text: () => text,
     async wait(re) {

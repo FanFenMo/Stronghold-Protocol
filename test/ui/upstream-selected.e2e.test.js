@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { startServer } from '../../server/index.js';
+import { startServer } from '../helpers/server.js';
 
 const chrome = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 test('selected upstream UI: roster, cultivation persistence, settings, reroll and local stats load in Chrome',

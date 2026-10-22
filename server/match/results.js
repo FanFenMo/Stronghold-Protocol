@@ -121,7 +121,8 @@ export function buildResult(m, outcome) {
         perfectRounds: ps.stats.perfectRounds,
       },
       title: titles.get(ps.playerId) ?? null,
-      trophies: trophiesFor(gd, roundsPassed, cleared && hiddenCleared),
+      trophies: trophiesFor(gd, roundsPassed, cleared && hiddenCleared)
+        + (roundsPassed >= 12 ? 2 * (ps.trophyShop.counts.round12 || 0) : 0),
       reward: rewardFor(gd, roundsPassed),
     };
   });

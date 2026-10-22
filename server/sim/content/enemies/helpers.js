@@ -289,6 +289,7 @@ export function spawnChildren(b, parent, key, n, opts = {}) {
   const route = opts.route ?? remainingRoute(parent);
   const cnt = Math.max(0, Math.min(20, Math.floor(n)));
   const mods = modsWithoutBounty(opts.mods ?? parent.mods ?? null);
+  if (parent.mods?.trophyFragments && key === 'enemy_1208_msfji_2') mods.trophyDoubleHits = true;
   for (let i = 0; i < cnt; i++) {
     const off = cnt > 1 ? (i - (cnt - 1) / 2) * 0.2 : 0;
     const pos = opts.pos ?? [parent.y, parent.x + off];

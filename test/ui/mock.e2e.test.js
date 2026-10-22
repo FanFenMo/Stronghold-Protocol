@@ -43,7 +43,7 @@ describe('in-match UI (mock harness, headless Chrome)', { skip: !ENABLED && 'set
   let base;
 
   before(async () => {
-    const { startServer } = await import('../../server/index.js');
+    const { startServer } = await import('../helpers/server.js');
     const puppeteer = (await import('puppeteer-core')).default;
     srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
     base = `http://127.0.0.1:${srv.port}`;

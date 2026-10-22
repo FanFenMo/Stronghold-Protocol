@@ -47,7 +47,8 @@ const times = (artsOnly = false) => ({
     const s = Number(e.mods && e.mods.supplyHpMul);
     const scaledHits = e.base.maxHp / (Number.isFinite(s) && s > 0 ? s : 1);
     const growth = Math.max(0, scaledHits - e.def.maxHp);
-    setHits(e, scaledHits - growth * 0.5);
+    const hits = Math.max(1, Math.round(scaledHits - growth * 0.5));
+    setHits(e, hits * (e.mods?.trophyDoubleHits ? 2 : 1));
     hitCount(b, e, true, artsOnly);
   },
 });

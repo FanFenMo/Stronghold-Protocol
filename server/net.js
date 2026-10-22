@@ -84,6 +84,8 @@ export class Session {
   constructor({ playerId, token, name, now = Date.now() }) {
     /** @type {string} public id, shared with other players */
     this.playerId = playerId;
+    this.profileId = null;
+    this.profileConfirmed = false;
     /** @type {string} secret 128-bit hex reconnect token (only ever sent to its owner) */
     this.token = token;
     /** @type {string} sanitized nickname */
@@ -618,7 +620,7 @@ export class Network {
       // surface as an error toast in the browser)
       if (msg.t === 'b.progress' && !validRid(rid)) return;
       this.reply(conn, errorMsg(isErrCode(res.error) ? res.error : ERR.INTERNAL, rid, res.detail));
-    } else if (validRid(rid)) this.reply(conn, { t: 'ok', rid });
+    } else if (validRid(rid)) this.reply(conn, { ...(res?.data || {}), t: 'ok', rid });
   }
 
   /** @param {Connection} conn @param {any} msg @param {number} now */
@@ -654,6 +656,7 @@ export class Network {
     session.limitKey = conn.key;
 
     const welcome = { t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
+    if (this.handler.profiles) welcome.profileRequired = true;
     if (validRid(rid)) welcome.rid = rid;
     this.reply(conn, welcome);
     try {
