@@ -55,7 +55,7 @@ for (const kind of ['normal', 'unite', 'boss', 'hidden']) for (const def of [0, 
     assert.equal(food.findBuff(key), null);
     assert.ok(marker.findBuff(key));
     assert.equal(food.findBuff('test:ordinary').shield, 10000);
-    assert.equal(marker.s.atk, 1200);
+    assert.equal(marker.s.atk, 1400);
     assert.equal(marker.s.blockCnt, 4);
     assert.equal(h.hooksOf('egirDevour').length, 1);
     const damage = h.hooksOf('damaged')[0];
@@ -73,8 +73,8 @@ test('overlapping devour chains damage food once and consume one Clementia barri
     assert.equal(h.unit(4).hp, 2500);
     assert.ok(h.unit(4).alive);
     assert.deepEqual(h.hooksOf('damaged').filter(c => c.target === h.unit(4)).map(c => c.amount), [1500]);
-    assert.equal(h.unit(1).s.atk, 1240);
-    assert.equal(h.unit(2).s.atk, 300);
+    assert.equal(h.unit(1).s.atk, 1480);
+    assert.equal(h.unit(2).s.atk, 500);
     assert.equal(h.unit(4).findBuff(key), null);
     assert.equal(h.b.errorCount, 0);
     checkInvariants(h.b);
@@ -87,7 +87,7 @@ test('shared-field devour uses the food owner\'s barrier, including a teammate w
     assert.equal(h.unit(4).hp, 8000 - loss);
     assert.equal(h.unit(4).findBuff('test:ordinary').shield, 10000);
     assert.equal(h.unit(4).findBuff(key), null);
-    assert.equal(h.unit(1).s.atk, 1200);
+    assert.equal(h.unit(1).s.atk, 1400);
     assert.equal(h.b.errorCount, 0);
     checkInvariants(h.b);
   }
