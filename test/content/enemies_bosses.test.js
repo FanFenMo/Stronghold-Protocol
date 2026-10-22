@@ -279,11 +279,11 @@ const TIMES_KEYS = ['enemy_1196_msfyin', 'enemy_1196_msfyin_2', 'enemy_1198_msfs
   'enemy_1202_msfzhi', 'enemy_1202_msfzhi_2', 'enemy_1204_msfhu', 'enemy_1204_msfhu_2', 'enemy_1208_msfji', 'enemy_1208_msfji_2', 'enemy_1210_msfden', 'enemy_1210_msfden_2'];
 for (const key of TIMES_KEYS) {
   const artsOnly = /1204/.test(key);
-  test(`${nm(key)}: 频次 — needs ${E[key].stats.maxHp} × the round's HP ${artsOnly ? 'arts/true ' : ''}hits, unblockable`, () => {
+  test(`${nm(key)}: 频次 — base hits plus half the round's HP growth, ${artsOnly ? 'arts/true ' : ''}hits, unblockable`, () => {
     const h = arena({ units: [{ chessId: 't_gun', row: 12, col: 3 }], hooks: ['death'], mods: { hpMul: 3 } });
     h.step();
-    const e = put(h, key, [10, 7], { mods: { hpMul: 3 } });   // the round's HP multiplier (攻坚装备) scales the hit count (PR #272)
-    const n = E[key].stats.maxHp * 3;
+    const e = put(h, key, [10, 7], { mods: { hpMul: 3 } });   // +200% HP becomes +100% hits.
+    const n = E[key].stats.maxHp * 2;
     assert.equal(e.s.maxHp, n);
     assert.ok(e.s.flags.unblockable);
     const g = h.unit('t_gun');
@@ -305,20 +305,21 @@ test('频次 器物 vs the round effects: the 14 kitTimes keys are exactly 补�
   for (const id of ['aceffect_enemy_1', 'aceffect_enemy_3', 'aceffect_enemy_4', 'aceffect_enemy_5']) assert.deepEqual([...excludeOf(id)], ['enemy_9012_acloon'], id);
 });
 
-test('频次 器物: hits = data × hpMul / supplyHpMul (补给线\'s share out, 攻坚装备 kept), rounded [ASSUMED]; a 频次 enemy\'s death spawn inherits that', () => {
+test('频次 器物: halve positive HP growth after excluding 补给线, then round; death spawns inherit the same growth', () => {
   const h = arena();
   h.step();
-  // co-op 终极 R6: hp 1.2⁴ × 1.08 (补给线) — the mirror takes 1.2⁴ only: 30 × 2.0736 = 62.2 → 62
+  // Supplied 补给线 share is excluded first: 30 × 2.0736 = 62.208; half the growth gives 46.104 → 46.
   const mods = { hpMul: 2.239488, atkMul: 1.4641, speedMul: 0, supplyHpMul: 1.08 };
   const jin = put(h, 'enemy_1200_msfjin', [10, 7], { mods });
-  assert.equal(jin.s.maxHp, 62);
+  assert.equal(jin.s.maxHp, 46);
   const parent = put(h, 'enemy_1199_sfjin', [10, 9], { mods });
   approx(parent.s.maxHp, E.enemy_1199_sfjin.stats.maxHp * 2.239488, 1e-9, '身观 itself takes 补给线');
   h.b.kill(parent, null);
   h.step();
   const child = h.enemies().find((e) => e.defId === 'enemy_1200_msfjin' && e !== jin);
   assert.ok(child, '身观 leaves its 青铜镜');
-  assert.equal(child.s.maxHp, 62);
+  assert.equal(child.s.maxHp, 46);
+  assert.equal(put(h, 'enemy_1200_msfjin', [11, 7], { mods: { hpMul: 1.1 } }).s.maxHp, 32, '+10% HP becomes +5% hits before rounding: 31.5 → 32');
   // solo 标准 (攻坚装备III, HP ×0.75): fewer hits — 2 → 1.5 → 2, 3 → 2.25 → 2, 30 → 22.5 → 23
   for (const [key, n] of [['enemy_1196_msfyin', 2], ['enemy_1196_msfyin_2', 2], ['enemy_1200_msfjin', 23]]) assert.equal(put(h, key, [11, 7], { mods: { hpMul: 0.75 } }).s.maxHp, n, key);
   assert.equal(put(h, 'enemy_1196_msfyin', [11, 8]).s.maxHp, 2, 'no mods: the data\'s count');

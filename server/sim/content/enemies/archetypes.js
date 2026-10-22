@@ -37,17 +37,17 @@ const unblockable = () => ({ spawn(b, e) { b.addBuff(e, { key: 'ab:unblockable',
 const runWhenHit = (v) => ({ taken(c, b, e, a) { if (a.on || !(v > 0)) return; a.on = true; b.addBuff(e, { key: 'ab:duckRun', persist: true, mods: { moveMul: 1 + v } }); } });
 
 /**
- * 频次 (the 14 器物 keys, kitTimes): maxHp = hits = the data's max HP × the spawn's HP multiplier. The round effects reach
- * these units like any enemy (攻坚装备 / II / III leave out only 炎佑), but not 补给线 / 补给线II, whose `enemy_exclude` lists
- * exactly these 14 keys (activity_table aceffect_enemy_2 / 2_2, data/effects.json): that share (`mods.supplyHpMul`, co-op
- * 终极 R5–R15) comes out again — a 频次 enemy's death spawn inherits the parent's mods, so it travels with them. Whole hits:
- * setHits rounds [ASSUMED: no source says how a fractional count rounds]. Until 0.2.1 the count was the data's whatever
- * the difficulty (PR #272).
+ * 频次 (the 14 器物 keys, kitTimes): keep the data's base hit count and halve only positive HP growth from all spawn
+ * multipliers together. A death spawn inherits the parent's mods; any supplied 补给线 share (`mods.supplyHpMul`) is
+ * excluded before halving growth. HP reductions keep their original strength. setHits rounds only the final count
+ * to whole hits [ASSUMED: no source says how a fractional count rounds].
  */
 const times = (artsOnly = false) => ({
   spawn(b, e) {
     const s = Number(e.mods && e.mods.supplyHpMul);
-    setHits(e, e.base.maxHp / (Number.isFinite(s) && s > 0 ? s : 1));
+    const scaledHits = e.base.maxHp / (Number.isFinite(s) && s > 0 ? s : 1);
+    const growth = Math.max(0, scaledHits - e.def.maxHp);
+    setHits(e, scaledHits - growth * 0.5);
     hitCount(b, e, true, artsOnly);
   },
 });
