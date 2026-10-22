@@ -35,18 +35,21 @@ for (const suffix of ['a', 'b']) {
         await c.waitFor(s => s.phase === 'PREP' && s.hand >= 6, 'six-operator hand');
         await sleep(1800);
         const pieces = await c.handPieces('chess'), mul = suffix === 'a' ? 1 : 2;
-        for (const [id, count, texts] of [
-          [highmore, 1, ['每次击倒敌人或我方干员时', `层数+${3 * mul}`, '每回合最多触发5次']],
-          [ids[1], 2, [`层数+${2 * mul}`, '每击杀1名敌人', `最多叠加${20 * mul}层`]],
-          [ids[4], 3, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', `层数+${5 * mul}`, `层数+${10 * mul}`, `层数+${2 * mul}`, `最多叠加${30 * mul}层`]],
+        for (const [id, name, count, texts] of [
+          [highmore, '海霓', 1, ['每次击倒敌人或我方干员时', `层数+${3 * mul}`, '每回合最多触发5次']],
+          [ids[1], '幽灵鲨', 2, [`层数+${2 * mul}`, '每击杀1名敌人', `最多叠加${20 * mul}层`]],
+          [ids[4], '归溟幽灵鲨', 3, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', `层数+${5 * mul}`, `层数+${10 * mul}`, `层数+${2 * mul}`, `最多叠加${30 * mul}层`]],
         ]) {
           const piece = pieces.find(p => p.id === id), pt = await c.piecePoint(piece.uid);
           await c.page.mouse.click(pt.x, pt.y);
+          await c.page.waitForFunction(name => document.querySelector('.dpanel .dhead__name')?.textContent === name, {}, name);
           await c.page.waitForSelector('.dpanel .dgarrison');
           const descs = await c.page.$$eval('.dpanel .dgarrison', els => els.map(el => el.textContent));
           assert.equal(descs.length, count);
           for (const text of texts) assert.ok(descs.join('\n').includes(text), `${id}: ${text}: ${descs}`);
           await c.shot(id === highmore ? 'highmore-detail' : id === ids[1] ? 'specter-detail' : 'specter2-detail');
+          await c.page.keyboard.press('Escape');
+          await c.page.waitForSelector('.dpanel', { hidden: true });
         }
         for (const id of ids) {
           const p = pieces.find(p => p.id === id);
