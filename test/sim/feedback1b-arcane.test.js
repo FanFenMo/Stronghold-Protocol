@@ -76,11 +76,12 @@ test('奥术 with 3 different members: targets below 50 % HP take ×1.4·(1.2 + 
   const res = run(m.newBattle(m._normalOpts(ps)), ps.playerId);
   const base = (L) => BB.base_damage_scale + BB.damage_scale_per_stack * L;
   const seen = res.hits.filter((x) => x.mul > 0).map((x) => x.mul);
-  // L = 0 at the start; 海霓 "<战斗中>首次击倒敌人…【奥术】层数+3" raises it during the fight (bonds/addon live layers)
-  const match = (v) => [0, 3].flatMap((L) => [['base', L, base(L)], ['low', L, BB.power_weak_scale * base(L)]]).find(([, , w]) => Math.abs(v - w) < 1e-9);
+  // 海霓每次击倒增加3层，每场最多五次；目标跨过半血时仍使用当前层数的弱点倍率。
+  const match = (v) => [0, 3, 6, 9, 12, 15].flatMap((L) => [['base', L, base(L)], ['low', L, BB.power_weak_scale * base(L)]]).find(([, , w]) => Math.abs(v - w) < 1e-9);
   for (const v of seen) assert.ok(match(v), `unexpected multiplier ×${v}`);
   const kinds = new Set(seen.map((v) => match(v).slice(0, 2).join(':')));
-  for (const k of ['base:0', 'low:0', 'base:3', 'low:3']) assert.ok(kinds.has(k), `${k} seen (${[...kinds]})`);
+  for (const k of ['base:0', 'low:0']) assert.ok(kinds.has(k), `${k} seen (${[...kinds]})`);
+  for (const kind of ['base', 'low']) assert.ok([...kinds].some(k=>k.startsWith(kind+':')&&k!==kind+':0'), `${kind} damage uses increased live layers (${[...kinds]})`);
   assert.ok(Math.abs(BB.power_weak_scale * base(0) - 1 - BB.base_damage_scale_show_ex) < 1e-9, 'the shown +68 %');
   m.dispose();
 });

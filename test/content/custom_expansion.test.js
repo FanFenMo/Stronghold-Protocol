@@ -103,10 +103,12 @@ test('custom roster survives rebuild overlay idempotently and retains exactly th
   for(const bb of [aegir.bb,aegir.buffs.find(b=>b.bbStr?.key==='act1autochess_bond_eff_egir').bb,
     files.effects.bondeffect_egir.params,files.effects.bondeffect_egir.buffs.find(b=>b.bbStr?.key==='act1autochess_bond_eff_egir').bb]) {
     assert.equal(bb.relay_bond_char_cnt,5);assert.equal(bb.relay_damage_per_hop,.8);
-    assert.equal(bb.devour_base_atk_scale,.4);assert.equal(bb.devour_atk_scale_per_layer,.006);
+    assert.equal(bb.devour_base_atk_scale,.8);assert.equal(bb.devour_atk_scale_per_layer,.006);
     assert.ok(!Object.keys(bb).some(key=>key.startsWith('burn_')));
   }
-  assert.ok(aegir.desc.includes('40%＋每层0.6%，100层为100%')&&!/[（()）]/.test(aegir.desc)&&!aegir.desc.includes('真伤'));
+  assert.ok(aegir.desc.includes('基础攻击力的{1:0%}')&&!/[（()）]/.test(aegir.desc));
+  assert.doesNotMatch(aegir.desc,/每层|100层|首次|中间干员|真伤/);
+  assert.deepEqual(aegir.effectDescParams.find(p=>p.index===1),{index:1,format:'0%',base:'devour_base_atk_scale',perStack:'devour_atk_scale_per_layer'});
   for(const [id,per,cap]of [['garrison_38_a',2,18],['garrison_38_b',4,36]]) {
     const g=files.garrisons[id];
     assert.equal(g.effectKey,'act1autochess_gar_event_selfkillenemy');
