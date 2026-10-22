@@ -36,8 +36,7 @@ function fight({ depth = 2, count = 5, layers = 0, bandId, source = {}, terminal
 }
 const hits = (h, u) => h.hooksOf('damaged').filter(c => c.source === u && c.target.side === 'enemy');
 const kill = (h, u) => {
-  h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
-  if (u.alive) h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
+  for (let i = 0; i < 4 && u.alive; i++) h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
   assert.equal(u.alive, false);
 };
 
@@ -286,8 +285,8 @@ for (const suffix of ['a', 'b']) for (const [base, skillIndex, tag] of [
   });
 }
 
-test('devour ATK starts at 40%, reaches 100% at 100 layers and grows linearly; block is always added, layers never are', () => {
-  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.4],[50,.7],[100,1],[300,2.2],[500,3.4],[700,4.6]]) {
+test('devour ATK starts at 80%, reaches 140% at 100 layers and grows linearly; block is always added, layers never are', () => {
+  for (const bandId of [null, 'band_clementia']) for (const count of [3, 5, 6]) for (const [layers, scale] of [[0,.8],[50,1.1],[100,1.4],[300,2.6],[500,3.8],[700,5]]) {
     const { h, u, food } = fight({ bandId, count, layers, depth: 1 });
     close(u.s.atk, 1000 + food.base.atk * scale);
     assert.equal(u.s.blockCnt, 4);

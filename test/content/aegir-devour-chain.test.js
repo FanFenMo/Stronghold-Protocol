@@ -30,9 +30,9 @@ for (const kind of ['normal', 'unite', 'boss', 'hidden']) {
     assert.equal(h.unit(4).hp, 5000);
     assert.equal(h.unit(6).hp, 5000);
     assert.deepEqual(h.hooksOf('egirDevour').map(c => [c.source.uid, c.target.uid]), pairs(h));
-    assert.equal(h.unit(1).s.atk, 1200);
-    assert.equal(h.unit(2).s.atk, 1600);
-    assert.equal(h.unit(3).s.atk, 2000);
+    assert.equal(h.unit(1).s.atk, 1400);
+    assert.equal(h.unit(2).s.atk, 2200);
+    assert.equal(h.unit(3).s.atk, 3000);
     assert.equal(h.unit(1).s.blockCnt, 4);
     assert.equal(h.unit(2).s.blockCnt, 6);
     assert.equal(h.unit(3).s.blockCnt, 8);
@@ -49,8 +49,8 @@ test('equal-length overlapping chains use the original marking order', () => {
   ] });
   assert.deepEqual(pairs(h), [[1, 3]]);
   assert.equal(h.unit(3).hp, 5000);
-  assert.equal(h.unit(1).s.atk, 1200);
-  assert.equal(h.unit(2).s.atk, 1200);
+  assert.equal(h.unit(1).s.atk, 1400);
+  assert.equal(h.unit(2).s.atk, 1400);
   checkInvariants(h.b);
 });
 
@@ -68,8 +68,8 @@ for (const kind of ['unite', 'boss', 'hidden']) {
     assert.equal(h.unit(4).hp, 5000);
     assert.equal(h.unit(1).hp, h.unit(1).s.maxHp - 5000);
     assert.ok(h.hooksOf('egirDevour').every(c => c.playerId === 'p2'));
-    assert.equal(h.unit(1).s.atk, 1200);
-    assert.equal(h.unit(5).s.atk, 1600);
+    assert.equal(h.unit(1).s.atk, 1400);
+    assert.equal(h.unit(5).s.atk, 2200);
     assert.equal(h.b.errorCount, 0);
     checkInvariants(h.b);
   });

@@ -4,10 +4,11 @@ import { Client, hasChrome, startRealServer, problemsOf, sleep } from '../e2e/cl
 
 const enabled = process.env.SP_E2E === '1' && hasChrome();
 for (const suffix of ['a', 'b']) {
-  test(`Aegir v1.3 ${suffix}: traits and concise relay description display, five operators deploy and browser combat settles`,
+  test(`Aegir v1.4 ${suffix}: traits and concise relay description display, five operators deploy and browser combat settles`,
     { skip: !enabled && 'SP_E2E=1 + Chrome required', timeout: 180000 }, async () => {
       const ids = ['chess_char_1_04_', 'chess_char_2_07_', 'chess_char_3_05_', 'chess_char_4_12_', 'chess_char_5_13_'].map(id => id + suffix);
-      const srv = await startRealServer({ fast: { timerScale: 0.5, combatSpeed: 2, startRound: 1, chess: ids, stage: 'act2autochess_m01' } });
+      const highmore = `chess_char_3_09_${suffix}`;
+      const srv = await startRealServer({ fast: { timerScale: 0.5, combatSpeed: 2, startRound: 1, chess: [...ids, highmore], stage: 'act2autochess_m01' } });
       const P = (await import('puppeteer-core')).default;
       const offline = { async launch(opts) {
         const browser = await P.launch(opts), [page] = await browser.pages();
@@ -16,9 +17,9 @@ for (const suffix of ['a', 'b']) {
           ? r.respond({ status: 200, contentType: 'text/css', body: '' }) : r.continue());
         return browser;
       } };
-      const c = new Client(offline, srv.base, 'aegir', { prefix: `aegir-v13-${suffix}` });
+      const c = new Client(offline, srv.base, 'aegir', { prefix: `aegir-v14-${suffix}` });
       try {
-        await c.open(); await c.enter('阿戈尔 v1.3 验收');
+        await c.open(); await c.enter('阿戈尔 v1.4 验收');
         await c.click('.mode-card', '独立模拟'); await c.click('.diff-card', '险境模拟');
         await c.click('.create-box button', '开始独立模拟');
         await c.waitFor(s => !!s.room, 'solo room');
@@ -31,10 +32,11 @@ for (const suffix of ['a', 'b']) {
           .find(el => el.querySelector('.dband__name').textContent === '克莱门莎').scrollIntoView({ block: 'center' }));
         await c.click('.dband', '克莱门莎');
         await c.click('.draft-detail__btns .btn--primary', '确认选择');
-        await c.waitFor(s => s.phase === 'PREP' && s.hand >= 5, 'five-operator hand');
+        await c.waitFor(s => s.phase === 'PREP' && s.hand >= 6, 'six-operator hand');
         await sleep(1800);
         const pieces = await c.handPieces('chess'), mul = suffix === 'a' ? 1 : 2;
         for (const [id, count, texts] of [
+          [highmore, 1, ['每次击倒敌人或我方干员时', `层数+${3 * mul}`, '每回合最多触发5次']],
           [ids[1], 2, [`层数+${2 * mul}`, '每击杀1名敌人', `最多叠加${20 * mul}层`]],
           [ids[4], 3, [`层数+${4 * mul}`, `层数+${6 * mul}`, '切换为替身时', `层数+${5 * mul}`, `层数+${10 * mul}`, `层数+${2 * mul}`, `最多叠加${30 * mul}层`]],
         ]) {
@@ -44,7 +46,7 @@ for (const suffix of ['a', 'b']) {
           const descs = await c.page.$$eval('.dpanel .dgarrison', els => els.map(el => el.textContent));
           assert.equal(descs.length, count);
           for (const text of texts) assert.ok(descs.join('\n').includes(text), `${id}: ${text}: ${descs}`);
-          await c.shot(id === ids[1] ? 'specter-detail' : 'specter2-detail');
+          await c.shot(id === highmore ? 'highmore-detail' : id === ids[1] ? 'specter-detail' : 'specter2-detail');
         }
         for (const id of ids) {
           const p = pieces.find(p => p.id === id);
@@ -61,6 +63,7 @@ for (const suffix of ['a', 'b']) {
         const desc = await c.page.$eval('.bpop .bpop__desc', el => el.textContent);
         for (const text of ['依次吞噬身前干员', '基础攻击力的', '所在格或身前一格内的至多一名敌人视为自身攻击范围', '每次传递削减20%伤害']) assert.ok(desc.includes(text), desc);
         assert.ok(!desc.includes('真伤') && !/[（()）]/.test(desc), desc);
+        assert.doesNotMatch(desc, /首次|每人最多|中间节点|中间干员|64%|每层|100层|保留复活/);
         await c.shot('covenant-relay');
         await c.page.keyboard.press('Escape');
         await c.click('.readybtn'); await c.waitFor(s => s.phase === 'COMBAT', 'combat');

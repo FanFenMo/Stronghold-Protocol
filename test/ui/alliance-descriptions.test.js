@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DATA } from '../match/harness.js';
 import { bondDescriptionClauses } from '../../public/js/ui/bondDescriptions.js';
 import { mergeGarrisonDescriptions } from '../../public/js/ui/garrisonDescriptions.js';
-import { richTextPlain } from '../../public/js/ui/richText.js';
+import { richTextPlain, formatBondEffect } from '../../public/js/ui/richText.js';
 
 const clauses = (id, layers, tier = 1, active = true) => bondDescriptionClauses(DATA.bonds[id], { layers, tier, active });
 const text = list => list.map(c => richTextPlain(c.text)).join(' ');
@@ -23,13 +23,17 @@ test('all bonds have one concise description, complete tier requirements, no for
 });
 
 test('Aegir final HP and devour ATK update live; the five-member clause stays inactive at three', () => {
-  assert.match(text(clauses('egirShip', 0)), /生命值\+35%.*基础攻击力的40%/);
+  assert.match(text(clauses('egirShip', 0)), /生命值\+35%.*基础攻击力的80%/);
   const list = clauses('egirShip', 100);
-  assert.match(text(list), /生命值\+135%.*基础攻击力的100%/);
+  assert.match(text(list), /生命值\+135%.*基础攻击力的140%/);
   assert.match(text(list), /重叠吞噬链仅保留最长一条造成伤害，每名目标仅承受一次吞噬/);
   assert.deepEqual(list.map(c => c.active), [true, false]);
   assert.ok(clauses('egirShip', 100, 2).every(c => c.active));
-  assert.doesNotMatch(text(list), /灼烧|真伤|阻挡的非远程/);
+  assert.match(text(list), /被击倒时立即复活，每场最多3次/);
+  for (const desc of [text(list), formatBondEffect(DATA.bonds.egirShip, 100)]) {
+    assert.match(desc, /基础攻击力的140%/);
+    assert.doesNotMatch(desc, /灼烧|真伤|阻挡的非远程|首次|每人最多|每层|100层|64%|中间节点|中间干员|保留复活/);
+  }
 });
 
 test('layer gates, chance caps, prosperity blast size and small duration changes remain visible', () => {
@@ -78,6 +82,10 @@ test('matching kill triggers merge gains while different triggers and separate c
 });
 
 for (const [suffix, mul] of [['a', 1], ['b', 2]]) test(`merged traits ${suffix} retain triggers, per-bond caps and elite values`, () => {
+  const highmore = traits(`chess_char_3_09_${suffix}`);
+  assert.equal(highmore.length, 1);
+  assert.match(highmore[0].desc, new RegExp(`每次击倒敌人或我方干员时.*层数\\+${3 * mul}.*每回合最多触发5次`));
+  assert.doesNotMatch(highmore[0].desc, /首次/);
   const aphris = traits(`chess_columbia_aphris_${suffix}`);
   assert.equal(aphris.length, 1);
   assert.match(aphris[0].desc, new RegExp(`每消耗2发子弹.*哥伦比亚】层数\\+${mul}.*精准】层数\\+${2 * mul}`));

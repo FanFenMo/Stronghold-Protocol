@@ -18,6 +18,13 @@ export function applyAegirTraitData({ garrisons, chess }) {
     if (!list.includes(g.garrisonId)) first ? list.unshift(g.garrisonId) : list.push(g.garrisonId);
   };
   for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+    const highmore = garrisons[`garrison_131_${suffix}`];
+    highmore.desc = `<战斗中>每次击倒敌人或我方干员时，使已激活的【阿戈尔】【奥术】层数+${3 * mul}，每回合最多触发5次`;
+    highmore.descRaw = highmore.desc;
+    highmore.bb.check_cnt = 1;
+    highmore.bb.bond_add_count = 3 * mul;
+    highmore.bb.max_add_count_per_battle = 15 * mul;
+
     const shark = `chess_char_2_07_${suffix}`;
     const g = garrisons[`garrison_46_${suffix}`];
     g.effectKey = key;

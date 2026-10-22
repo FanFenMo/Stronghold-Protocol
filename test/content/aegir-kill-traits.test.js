@@ -23,6 +23,28 @@ function enemyKill(h, unit = h.unit(1)) {
   assert.ok(!victim.alive);
 }
 
+for (const [suffix, mul] of [['a', 1], ['b', 2]]) {
+  test(`Highmore ${suffix}: enemy and ally knock-outs share five triggers; bonds check activation independently and reset each battle`, () => {
+    const id = `chess_char_3_09_${suffix}`;
+    for (const active of [[], ['egirShip'], ['arcaneShip'], ['egirShip', 'arcaneShip']]) {
+      const h = field(id, { bonds: Object.fromEntries(['egirShip', 'arcaneShip'].map(b => [b, on(active.includes(b))])) });
+      const expected = n => Object.fromEntries(active.map(b => [b, Math.min(n, 5) * 3 * mul]));
+      enemyKill(h);
+      assert.deepEqual(gains(h), expected(1));
+      h.b.kill(h.unit(2), h.unit(1));
+      assert.deepEqual(gains(h), expected(2), 'ally knock-outs count toward the same limit');
+      for (let n = 3; n <= 7; n++) {
+        enemyKill(h);
+        assert.deepEqual(gains(h), expected(n));
+      }
+      checkInvariants(h.b);
+    }
+    const next = field(id);
+    enemyKill(next);
+    assert.deepEqual(gains(next), { egirShip: 3 * mul, arcaneShip: 3 * mul });
+  });
+}
+
 for (const [id, per, cap] of [['chess_char_3_05_a', 2, 18], ['chess_char_3_05_b', 4, 36]]) {
   test(`Skadi ${id}: enemy attack kills retain gains to own active bonds and round caps`, () => {
     const h = field(id), own = DATA.chess[id].bonds;

@@ -17,7 +17,7 @@
 //                        6: every ammo used by a member → all members ATK +atk_per_consume (≤ max_atk_for_consume)
 //   阿戈尔 egirShip      members max HP +(base_max_hp + max_hp_per_stack·L) (直接乘算); battle start devour (see devour():
 //                        the marker's gained base ATK is a 最终加算, `atkFinal`, not scaled by its ATK +%);
-//                        5: max_free_respawn_cnt free redeploys, one per member on its first knock-out — the devour's
+//                        5: max_free_respawn_cnt shared free redeploys, including repeated knock-outs of one member — the devour's
 //                        knock-outs by board position once every devour is over (egirReviveScan), later ones at once
 //                        5: with no local target, attack one enemy on living food's own / facing-front tile, ×0.8 per hop
 //   叙拉古 siracusaShip  every member deployment: ASPD +(base + per·L) for (base_duration + per·L) s; 6: 隐匿 for the same
@@ -368,7 +368,7 @@ function egirDownAtStart(battle, u) {
  * 2026-10-05 after GitHub #140 comment 4): on a shared field (联防, boss) a teammate's operator — standing, or entering
  * 联防 down — is marked like an own one, gives the same base ATK / block count, and the chain goes on through it when it
  * is an 阿戈尔 (S.isMember: its own bonds). Its knock-out is its owner's (their bonds' revives, 不屈 …), credited to the
- * marker as usual. Devour grants block and base ATK scaled by 0.4 + 0.006 * current Aegir layers, but no layers.
+ * marker as usual. Devour grants block and base ATK scaled by 0.8 + 0.006 * current Aegir layers, but no layers.
  * Tokens / devices / empty tiles are never devoured.
  */
 function devour(battle, pid, bb, members) {
@@ -464,33 +464,10 @@ function installEgir(battle, pid, bb, members) {
   apply();
   onLayers(battle, pid, 'egirShip', apply);
   if (reached(battle, pid, 'egirShip', bb.relay_bond_char_cnt)) installAegirRelay(battle, bb, members);
-  // 5: "前3名【阿戈尔】干员首次被击倒时立刻复活" — 3 slots (bonds.json max_free_respawn_cnt), one per member at most, on its first
-  // knock-out ('killed') of the battle; a member never knocked out takes none (GitHub #105, #140 "没被吃的阿戈尔干员也会占用
-  // 复活名额"; the owner's decision of 2026-10-05). Which knock-outs take them — a community report the owner relayed on
-  // 2026-10-07 (DESIGN §25.22.5): 「第一步给所有鱼加盟约的血量，第二步是开始一个个大鱼吃小鱼，第三步是检测左下到右上哪些鱼睡着了
-  // 给他复活」. The members the battle-start devour knocks out wait until every player's devour pass on the field is over
-  // (`egirStart`); then those still down are revived by board position (egirReviveScan) while slots last, and the others
-  // stay down, their first knock-out spent. A knock-out later in the fight takes a slot left, at once, in time order.
-  // Until 0.2.0 the devour's knock-outs took the slots in knock-out order (DESIGN §24.3), so the food knocked out first
-  // — often the end of a chain, marked by every 阿戈尔 behind it — took them while a member further left stayed down.
-  // Within the window a knock-out is otherwise like any other: 被击倒 triggers fire (克莱门莎, 幽灵鲨 …) and 不屈 rolls
-  // (priority 10); a member it redeploys is awake at the scan and takes no slot [ASSUMED: the scan takes the members
-  // still down, 「哪些鱼睡着了」]. However many members mark one, its pending marks are cancelled once it is knocked out
-  // (devour), so a multi-devoured member spends one slot at most. Its own saver acts first: a kit or item saver that
-  // prevents the knock-out is a `fatal` hook (斯卡蒂's DRE-Y −50, kit savers 10 … −60, 坚固维式重锤 PRIO_REVIVE −100), so the
-  // unit is never knocked out and no slot is used; a 复活 (M3茧甲 13, 埃芒加德 12 — items reviveNow, a knock-out and a free
-  // redeploy since 0.2.0) answers the knock-out before this hook and marks it `revivedBy`: that knock-out is not the
-  // member's first either — the slot waits for its first unanswered knock-out (the owner's decision of 2026-10-05: an
-  // operator's own revive uses no slot; [ASSUMED] for 埃芒加德, a band, as for M3茧甲, the item revive the owner named).
-  // An operator entering 联防 down (FORCED_EXIT) is not knocked out either; a 调和 member counts like any other. Each
-  // battle (normal, 联防, boss) counts its own. PRTS: the knocked-out unit's next deployment has 0 redeploy time and 0
-  // cost, i.e. it IS knocked out (被击倒 triggers fire) and redeploys where it lies (the engine's rest tile,
-  // Battle._layBody: the tile it was knocked out on — a raid-relocated member comes back where it fell —, or its own home
-  // when it fell on another board piece's home; PRTS 卫戍协议/帮助 §作战阶段 单位部署) with full HP, SP reset and `deploy`
-  // effects (卡西米尔 / 叙拉古). Death priority 11: before 不屈 (10), whose redeploy "also consumes a 复活 charge" — for a
-  // knock-out in the fight the slot is always the one used. Until 0.1.3 the slots were fixed at battle start for the
-  // first 3 members by position (§23.20); until 0.1.2 the first 3 knocked out took them but a revived member's pending
-  // marks could knock it out again (GitHub #33, fixed in devour since).
+  // v1.4: 每场共享三次复活，同一成员可重复消耗；没有实际击倒就保留次数。
+  // 开战吞噬结束后按棋盘位置复活仍倒地的成员，之后的击倒立即使用剩余次数。
+  // 自身保命、装备或策略先完成的复活不消耗阿戈尔次数；联防强制离场也不算击倒。
+  // priority 11 保持在不屈之前，复活仍走原位免费再部署，满血并重置技力。
   const max = reached(battle, pid, 'egirShip', bb.power_bond_char_cnt) ? Math.max(0, Math.floor(num(bb.max_free_respawn_cnt, 0))) : 0;
   const start = egirStart(battle);
   start.passes++;
@@ -506,7 +483,6 @@ function installEgir(battle, pid, bb, members) {
   }, { once: true });
   if (!(max > 0)) return;
   const memberOps = new Set(members.filter(S.isOp));
-  const knockedOut = new Set(); // members whose first knock-out of this battle has happened
   const batch = []; // members knocked out by a battle-start devour, revived (or not) once every pass is over
   let revives = 0;
   const revive = (u) => {
@@ -522,8 +498,7 @@ function installEgir(battle, pid, bb, members) {
   });
   battle.on('death', (c) => {
     const u = c.unit;
-    if (c.reason !== 'killed' || c.revivedBy || !memberOps.has(u) || knockedOut.has(u)) return;
-    knockedOut.add(u);
+    if (c.reason !== 'killed' || c.revivedBy || !memberOps.has(u)) return;
     if (start.depth > 0) { batch.push(u); return; }
     if (revives >= max || u.alive || u.removed) return;
     revive(u);
