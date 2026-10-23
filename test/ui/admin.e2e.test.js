@@ -115,7 +115,16 @@ test('管理员真实浏览器：游戏内名册、历史昵称搜索、在线�
   assert.equal(await c.page.evaluate(() => __SP__.store.get().me.playerId), mainId);
   await c.click('[data-testid="trophy-shop-open"]');
   await c.click('[data-testid="profile-copy"]');
-  await c.page.waitForFunction(() => document.body.textContent.includes('档案 ID 已复制'));
+  try {
+    await c.page.waitForFunction(() => document.body.textContent.includes('档案 ID 已复制'), { timeout: 5000 });
+  } catch (error) {
+    console.error('COPY_STATE', await c.page.evaluate(async () => ({ focused: document.hasFocus(), secure: isSecureContext,
+      active: document.activeElement?.outerHTML, text: document.querySelector('.tshop-toolbar')?.textContent,
+      toasts: [...document.querySelectorAll('.toast')].map(el => el.textContent), profile: (await import('/js/ui/profile.js')).profileStore.get(),
+      clipboard: await navigator.clipboard.readText() })));
+    await c.shot('copy-failed');
+    throw error;
+  }
   assert.equal(await c.page.evaluate(() => navigator.clipboard.readText()), own.profileId);
   assert.equal(await c.page.$eval('[data-testid="profile-id"]', el => getComputedStyle(el).userSelect), 'text');
   await c.click('.tshop-close');
