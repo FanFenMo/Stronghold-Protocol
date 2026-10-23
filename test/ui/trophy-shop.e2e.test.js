@@ -87,10 +87,10 @@ test('奖杯商店真实浏览器：浏览、滚轮、购买、共享档案、�
       assert.ok(await c.page.$$eval('.tshop-price', els => els.length === 8 && els.every(el => /^\d+ 奖杯$/.test(el.textContent))));
       await readableShop(c.page);
       await c.shot('large');
-      await c.page.setViewport({ width: 1920, height: 1080 });
+      await c.page.setViewport({ width: 1920, height: 1080, hasTouch: true });
       await readableShop(c.page);
       await c.shot('desktop');
-      await c.page.setViewport({ width: 1024, height: 768 });
+      await c.page.setViewport({ width: 1024, height: 768, hasTouch: true });
       const bounds = await c.page.$eval('.tshop-modal', el => {
         const r = el.getBoundingClientRect();
         return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: innerWidth, h: innerHeight };
@@ -98,7 +98,7 @@ test('奖杯商店真实浏览器：浏览、滚轮、购买、共享档案、�
       assert.ok(bounds.left >= 0 && bounds.top >= 0 && bounds.right <= bounds.w + 1 && bounds.bottom <= bounds.h + 1);
       await readableShop(c.page);
       await c.shot('tablet');
-      await c.page.setViewport({ width: 1920, height: 1080 });
+      await c.page.setViewport({ width: 1920, height: 1080, hasTouch: true });
       await c.click('.tshop-close');
 
       twin = new Client(P, srv.url, '同浏览器标签');
