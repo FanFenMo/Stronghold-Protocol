@@ -10,6 +10,8 @@ let accountPage = 1;
 let accountSearch = '';
 let accountsSequence = 0;
 let walletMode = 'grant';
+let accountsSnapshot = '';
+let matchesSnapshot = '';
 const embedded = new URLSearchParams(location.search).get('embedded') === '1';
 if (embedded) {
   document.documentElement.classList.add('embedded');
@@ -51,6 +53,9 @@ async function refreshAccounts() {
   try {
     const result = await request(`profiles?q=${encodeURIComponent(accountSearch)}&page=${accountPage}`);
     if (sequence !== accountsSequence) return;
+    const snapshot = JSON.stringify(result);
+    if (snapshot === accountsSnapshot) return;
+    accountsSnapshot = snapshot;
     $('account-total').textContent = result.total;
     const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
     $('accounts-page').textContent = `第 ${result.page} / ${pages} 页 · 共 ${result.total} 个账号`;
@@ -88,6 +93,9 @@ async function refreshMatches() {
   refreshing = true;
   try {
     const { matches } = await request('matches');
+    const snapshot = JSON.stringify(matches);
+    if (snapshot === matchesSnapshot) return;
+    matchesSnapshot = snapshot;
     $('match-count').textContent = matches.length;
     const nodes = matches.map(match => {
       const card = element('article', undefined, 'match');
@@ -145,7 +153,7 @@ function showWallet(result) {
   document.querySelectorAll('.account').forEach(card => card.setAttribute('aria-pressed', String(card.dataset.profileId === wallet.profileId)));
 }
 
-async function lookup(profileId, self = false) {
+async function lookup(profileId, self = false, scroll = true) {
   if (saving) return;
   const sequence = ++lookupSequence;
   wallet = null; pending = null;
@@ -158,7 +166,7 @@ async function lookup(profileId, self = false) {
     if (sequence !== lookupSequence) return;
     showWallet(result);
     notice('档案已载入。');
-    $('wallet-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (scroll) $('wallet-form').scrollIntoView({ block: 'start' });
   } catch (error) { if (sequence === lookupSequence) notice(error.message, true); }
 }
 
@@ -213,4 +221,4 @@ const timer = setInterval(() => { if (!document.hidden) { void refreshMatches();
 window.addEventListener('pagehide', () => clearInterval(timer));
 window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 const initial = new URLSearchParams(location.search).get('profile');
-if (initial) void lookup(initial);
+if (initial) void lookup(initial, false, false);

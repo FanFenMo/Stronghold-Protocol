@@ -41,6 +41,10 @@ async function openAdmin(c, selector = '[data-testid="admin-open"]') {
   const handle = await c.page.waitForSelector('#admin-frame');
   const frame = await handle.contentFrame();
   await frame.waitForSelector('#wallet-form:not([hidden])');
+  await c.page.waitForFunction(() => {
+    const box = document.querySelector('.admin-modal');
+    return box && [box, box.closest('.modal')].every(el => el.getAnimations().every(animation => animation.playState !== 'running'));
+  });
   return frame;
 }
 
@@ -135,9 +139,9 @@ test('管理员真实浏览器：游戏内名册、历史昵称搜索、在线�
   panel = await openAdmin(c, '.brief__foot [data-testid="admin-open"]');
   await panel.click('#refresh-matches');
   await panel.waitForFunction(() => document.querySelectorAll('.match').length === 2);
-  const watchTarget = c.browser.waitForTarget(target => target.url().includes('watch='));
   await panel.click(`a.watch-link[data-code="${room.code}"]`);
-  const watch = await (await watchTarget).page();
+  const watchTarget = await c.browser.waitForTarget(target => target.url().includes('watch='));
+  const watch = await watchTarget.page();
   watch.on('pageerror', error => errors.push(error.message));
   await watch.setViewport({ width: 1920, height: 1080 });
   await watch.waitForFunction(code => globalThis.__SP__?.store.get().room?.code === code
