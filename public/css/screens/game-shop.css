@@ -136,9 +136,24 @@
 .shopbar.is-locked .scard:not(.scard--sold) { cursor: help; } /* not editable: a tap opens the detail */
 .scard.is-disabled .scard__art, .scard.is-disabled .scard__itemart { filter: grayscale(.7) brightness(.6); }
 .scard.is-merge { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(255, 198, 0, .6), 0 0 .2rem rgba(255, 198, 0, .3); }
-.scard.is-frozen::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background: linear-gradient(180deg, rgba(159, 212, 255, .28), rgba(159, 212, 255, .12) 50%, rgba(159, 212, 255, .34));
-  box-shadow: inset 0 0 0 2px rgba(159, 212, 255, .8), inset 0 0 .3rem rgba(159, 212, 255, .5); }
+.scard:not(.scard--sold)::before, .scard:not(.scard--sold)::after {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 50%; z-index: 3; pointer-events: none;
+  background: linear-gradient(180deg, rgba(111, 150, 173, .12), rgba(109, 151, 173, .025) 45%, rgba(111, 150, 173, .14));
+  border-block: 1px solid rgba(155, 194, 210, .4); opacity: 0;
+  transition: transform 180ms cubic-bezier(.2,.7,.2,1), opacity 180ms ease;
+}
+.scard:not(.scard--sold)::before { left: 0; transform: translateX(-105%); border-right: 1px solid rgba(155, 194, 210, .25); }
+.scard:not(.scard--sold)::after { right: 0; transform: translateX(105%); border-left: 1px solid rgba(155, 194, 210, .25); }
+.scard.is-frozen::before, .scard.is-frozen::after { transform: translateX(0); opacity: 1; }
+.scard__seal-locks { position: absolute; inset: 4px; z-index: 4; pointer-events: none; opacity: 0; transition: opacity 180ms ease;
+  background: linear-gradient(#9dbbc9,#9dbbc9) top left/7px 1px no-repeat, linear-gradient(#9dbbc9,#9dbbc9) top left/1px 7px no-repeat,
+    linear-gradient(#9dbbc9,#9dbbc9) top right/7px 1px no-repeat, linear-gradient(#9dbbc9,#9dbbc9) top right/1px 7px no-repeat,
+    linear-gradient(#9dbbc9,#9dbbc9) bottom left/7px 1px no-repeat, linear-gradient(#9dbbc9,#9dbbc9) bottom left/1px 7px no-repeat,
+    linear-gradient(#9dbbc9,#9dbbc9) bottom right/7px 1px no-repeat, linear-gradient(#9dbbc9,#9dbbc9) bottom right/1px 7px no-repeat; }
+.scard.is-frozen .scard__seal-locks { opacity: .65; }
+.scard__shutter { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: #151b19;
+  border-left: 1px solid rgba(152, 183, 169, .5); transform: translateX(102%); }
+.scard__etch { position: absolute; inset: 1px; z-index: 5; pointer-events: none; border: 1px solid #a18b55; opacity: 0; }
 .scard__ice { position: absolute; left: 50%; bottom: .06rem; transform: translateX(-50%); z-index: 4; width: .3rem; height: .3rem; display: grid; place-items: center; background: #0c1a26; border: 1px solid var(--ice); color: var(--ice); }
 .scard__ice .icon { width: .2rem; height: .2rem; }
 .scard--item { --tc: var(--gold-2); }
@@ -228,3 +243,15 @@
 .shopbar.has-armed .scard:not(.is-armed):not(.scard--sold) { filter: brightness(.72); }
 .lvcard.is-armed { background: linear-gradient(180deg, #ffd65a, #e0a800); color: #1d1400; box-shadow: 0 0 0 2px #fff4c2, 0 0 .3rem rgba(255, 198, 0, .5); animation: pulse-gold 1.1s var(--ease-in-out) infinite; }
 .lvcard.is-armed .lvcard__label { letter-spacing: .12em; padding-left: .12em; }
+
+.shop-motion { position: fixed; inset: 0; z-index: 145; pointer-events: none; }
+.shop-motion__stamp { position: absolute; padding: 7px 0; text-align: center; color: #c1d2c4; background: rgba(12, 22, 17, .94);
+  border-block: 1px solid #718879; font-size: max(12px, .15rem); letter-spacing: .18em; }
+.shop-motion__portrait { position: absolute; height: auto; max-height: 80px; object-fit: contain; transform-origin: center;
+  filter: saturate(.65); border: 1px solid rgba(150, 175, 157, .45); background: rgba(12, 18, 15, .8); }
+.shop-motion__route { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.shop-motion__route path { fill: none; stroke: #8aa693; stroke-width: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .shopbar, .shopbar__reward { animation: none; }
+  .scard, .scard::before, .scard::after, .scard__seal-locks { transition: none; }
+}
