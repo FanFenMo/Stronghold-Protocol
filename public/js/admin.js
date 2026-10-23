@@ -1,9 +1,22 @@
+import { copyText } from './ui/clipboard.js';
+
 const $ = id => document.getElementById(id);
 let wallet = null;
 let saving = false;
 let lookupSequence = 0;
 let pending = null;
 let refreshing = false;
+let accountPage = 1;
+let accountSearch = '';
+let accountsSequence = 0;
+let walletMode = 'grant';
+const embedded = new URLSearchParams(location.search).get('embedded') === '1';
+if (embedded) {
+  document.documentElement.classList.add('embedded');
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') window.parent.postMessage('admin.close', location.origin);
+  });
+}
 
 function notice(message, error = false) {
   $('notice').textContent = message;
@@ -31,6 +44,44 @@ function element(tag, text, className) {
 const phases = { INFO_CHECK: '信息确认', BAND_DRAFT: '策略选择', PREP: '备战', COMBAT: '战斗',
   SETTLE: '结算', SP_DRAFT: '机变', ROUND_START: '回合开始', RESULT: '模拟结束' };
 const difficulties = { FUNNY: '标准', NORMAL: '险境', HARD: '绝境', ABYSS: '终极' };
+const oldNames = account => account.names.filter(row => row.name !== account.lastName).map(row => row.name);
+
+async function refreshAccounts() {
+  const sequence = ++accountsSequence;
+  try {
+    const result = await request(`profiles?q=${encodeURIComponent(accountSearch)}&page=${accountPage}`);
+    if (sequence !== accountsSequence) return;
+    $('account-total').textContent = result.total;
+    const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
+    $('accounts-page').textContent = `第 ${result.page} / ${pages} 页 · 共 ${result.total} 个账号`;
+    $('accounts-prev').disabled = result.page <= 1;
+    $('accounts-next').disabled = result.page >= pages;
+    const cards = result.profiles.map(account => {
+      const card = element('button', undefined, 'account');
+      card.type = 'button'; card.dataset.profileId = account.profileId;
+      card.setAttribute('aria-pressed', String(wallet?.profileId === account.profileId));
+      card.append(element('strong', `${account.lastName || '尚无昵称记录'}${account.online ? ' · 在线' : ' · 离线'}`));
+      const names = oldNames(account);
+      card.append(element('small', names.length ? `曾用名：${names.slice(0, 3).join('、')}${names.length > 3 ? ` 等 ${names.length} 个` : ''}` : '暂无其他昵称'));
+      card.append(element('span', `可用 ${account.balance} · 历史累计 ${account.lifetimeEarned}`),
+        element('code', account.profileId), element('small', `最近访问：${new Date(account.lastSeenAt).toLocaleString()}`));
+      card.addEventListener('click', () => lookup(account.profileId));
+      return card;
+    });
+    $('accounts').replaceChildren(...(cards.length ? cards : [element('p', '没有找到匹配的匿名账号。', 'hint')]));
+  } catch (error) { if (sequence === accountsSequence) notice(error.message, true); }
+}
+
+function setMode(mode) {
+  walletMode = mode;
+  const grant = mode === 'grant';
+  $('grant-fields').hidden = !grant;
+  $('set-fields').hidden = grant;
+  $('grant-amount').disabled = !grant;
+  $('balance').disabled = $('earned').disabled = grant;
+  $('save-wallet').textContent = grant ? '发放奖杯' : '保存奖杯修改';
+  document.querySelectorAll('[data-wallet-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.walletMode === mode)));
+}
 
 async function refreshMatches() {
   if (refreshing) return;
@@ -71,10 +122,16 @@ function showWallet(result) {
   wallet = result.profile;
   pending = null;
   $('profile-id').value = wallet.profileId;
-  $('wallet-id').textContent = `档案 ${wallet.profileId}`;
+  $('wallet-id').textContent = wallet.profileId;
+  $('wallet-name').textContent = result.account.lastName || '尚无昵称记录';
+  const names = oldNames(result.account);
+  $('wallet-names').textContent = names.length ? `曾用名：${names.join('、')}` : '暂无其他昵称';
+  $('wallet-summary').textContent = `可用奖杯 ${wallet.balance} · 历史累计 ${wallet.lifetimeEarned} · 建立于 ${new Date(result.account.createdAt).toLocaleString()}`;
   $('balance').value = wallet.balance;
   $('earned').value = wallet.lifetimeEarned;
   $('reason').value = '';
+  $('grant-amount').value = '';
+  setMode(walletMode);
   $('wallet-form').hidden = false;
   const title = element('h3', '最近奖杯流水');
   const rows = result.ledger.map(row => {
@@ -85,6 +142,7 @@ function showWallet(result) {
     return item;
   });
   $('ledger').replaceChildren(title, ...rows);
+  document.querySelectorAll('.account').forEach(card => card.setAttribute('aria-pressed', String(card.dataset.profileId === wallet.profileId)));
 }
 
 async function lookup(profileId, self = false) {
@@ -100,6 +158,7 @@ async function lookup(profileId, self = false) {
     if (sequence !== lookupSequence) return;
     showWallet(result);
     notice('档案已载入。');
+    $('wallet-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (error) { if (sequence === lookupSequence) notice(error.message, true); }
 }
 
@@ -114,10 +173,24 @@ function requestId() {
 $('lookup-form').addEventListener('submit', event => { event.preventDefault(); void lookup($('profile-id').value); });
 $('self-profile').addEventListener('click', () => lookup('', true));
 $('refresh-matches').addEventListener('click', refreshMatches);
+$('refresh-accounts').addEventListener('click', refreshAccounts);
+$('accounts-form').addEventListener('submit', event => {
+  event.preventDefault(); accountSearch = $('account-search').value.trim(); accountPage = 1; void refreshAccounts();
+});
+$('accounts-prev').addEventListener('click', () => { accountPage--; void refreshAccounts(); });
+$('accounts-next').addEventListener('click', () => { accountPage++; void refreshAccounts(); });
+document.querySelectorAll('[data-wallet-mode]').forEach(button => button.addEventListener('click', () => { if (!saving) setMode(button.dataset.walletMode); }));
+$('copy-profile').addEventListener('click', async () => {
+  if (!wallet) return;
+  notice(await copyText(wallet.profileId) ? '档案 ID 已复制。' : '复制失败，可选中档案 ID 手动复制。');
+});
 $('wallet-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!wallet || saving) return;
-  const values = { profileId: wallet.profileId, balance: Number($('balance').value), lifetimeEarned: Number($('earned').value),
+  const amount = Number($('grant-amount').value);
+  const values = { profileId: wallet.profileId,
+    balance: walletMode === 'grant' ? wallet.balance + amount : Number($('balance').value),
+    lifetimeEarned: walletMode === 'grant' ? wallet.lifetimeEarned + ($('grant-earned').checked ? amount : 0) : Number($('earned').value),
     revision: wallet.revision, reason: $('reason').value.trim() };
   if (!pending || JSON.stringify(pending.values) !== JSON.stringify(values)) pending = { values, requestId: requestId() };
   const body = { ...values, requestId: pending.requestId };
@@ -127,6 +200,7 @@ $('wallet-form').addEventListener('submit', async event => {
   try {
     showWallet(await request('profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }));
     notice('奖杯修改已保存，在线玩家余额已同步。');
+    void refreshAccounts();
   } catch (error) {
     if (error.status === 409) { wallet = null; pending = null; $('wallet-form').hidden = true; }
     notice(error.message, true);
@@ -134,7 +208,8 @@ $('wallet-form').addEventListener('submit', async event => {
 });
 
 void refreshMatches();
-const timer = setInterval(() => { if (!document.hidden) void refreshMatches(); }, 5000);
+void refreshAccounts();
+const timer = setInterval(() => { if (!document.hidden) { void refreshMatches(); void refreshAccounts(); } }, 5000);
 window.addEventListener('pagehide', () => clearInterval(timer));
 window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 const initial = new URLSearchParams(location.search).get('profile');

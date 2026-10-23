@@ -47,6 +47,7 @@ import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
 import { ShopHost } from './screens/trophyShop.js';
+import { AdminHost } from './ui/adminButton.js';
 import { installProfileSync } from './ui/profile.js';
 import { installLoadoutSync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
@@ -293,6 +294,7 @@ function App() {
     <${StatsHost} />
     <${LoadoutHost} />
     <${ShopHost} />
+    <${AdminHost} />
   </div>`;
 }
 

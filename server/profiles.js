@@ -16,7 +16,7 @@ export class ProfileStore {
     this.db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     try { this.transaction(() => {
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 3) throw new Error('玩家档案数据库版本高于当前程序支持的版本');
+      if (version > 4) throw new Error('玩家档案数据库版本高于当前程序支持的版本');
       if (version === 0) this.db.exec(`
         CREATE TABLE profiles (
           id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
@@ -66,6 +66,23 @@ export class ProfileStore {
         ) STRICT;
         PRAGMA user_version=3;
       `);
+      if (version < 4) {
+        this.db.exec(`
+          ALTER TABLE profiles ADD COLUMN last_name TEXT NOT NULL DEFAULT '';
+          CREATE TABLE profile_names (
+            profile_id TEXT NOT NULL REFERENCES profiles(id), name TEXT NOT NULL,
+            first_seen_at INTEGER NOT NULL, last_seen_at INTEGER NOT NULL,
+            PRIMARY KEY(profile_id, name)
+          ) STRICT;
+        `);
+        const oldNames = this.db.prepare(`SELECT p.profile_id, p.summary, m.started_at, m.settled_at
+          FROM match_players p JOIN matches m ON m.id=p.match_id ORDER BY m.settled_at, m.id, p.player_id`).all();
+        for (const row of oldNames) {
+          const name = JSON.parse(row.summary).name;
+          if (typeof name === 'string' && name.trim()) this.rememberName(row.profile_id, name, row.started_at, row.settled_at);
+        }
+        this.db.exec('PRAGMA user_version=4;');
+      }
     }); } catch (error) { this.db.close(); throw error; }
   }
 
@@ -80,7 +97,7 @@ export class ProfileStore {
     const id = randomUUID();
     const t = this.now();
     this.transaction(() => {
-      this.db.prepare('INSERT INTO profiles VALUES (?, ?, ?, ?)').run(id, digest(token), t, t);
+      this.db.prepare('INSERT INTO profiles(id, token_hash, created_at, seen_at) VALUES (?, ?, ?, ?)').run(id, digest(token), t, t);
       this.db.prepare('INSERT INTO wallets(profile_id) VALUES (?)').run(id);
       this.change(id, INITIAL_TROPHIES);
     });
@@ -98,6 +115,40 @@ export class ProfileStore {
   wallet(profileId) {
     const row = this.db.prepare('SELECT earned, balance, revision FROM wallets WHERE profile_id=?').get(profileId);
     return row ? { profileId, lifetimeEarned: row.earned, balance: row.balance, revision: row.revision } : null;
+  }
+
+  /** The caller's session name has already passed the ordinary hello sanitiser. */
+  recordName(profileId, name) {
+    if (!name) return;
+    const time = this.now();
+    this.transaction(() => this.rememberName(profileId, name, time, time));
+  }
+
+  rememberName(profileId, name, firstSeenAt, lastSeenAt) {
+    this.db.prepare(`INSERT INTO profile_names VALUES (?,?,?,?)
+      ON CONFLICT(profile_id,name) DO UPDATE SET
+        first_seen_at=MIN(first_seen_at, excluded.first_seen_at), last_seen_at=MAX(last_seen_at, excluded.last_seen_at)`)
+      .run(profileId, name, firstSeenAt, lastSeenAt);
+    this.db.prepare('UPDATE profiles SET last_name=?, seen_at=MAX(seen_at,?) WHERE id=?').run(name, lastSeenAt, profileId);
+  }
+
+  account(profileId) {
+    const row = this.db.prepare(`SELECT p.id AS profileId, p.last_name AS lastName,
+      p.created_at AS createdAt, p.seen_at AS lastSeenAt, w.balance, w.earned AS lifetimeEarned, w.revision
+      FROM profiles p JOIN wallets w ON w.profile_id=p.id WHERE p.id=?`).get(profileId);
+    if (!row) return null;
+    row.names = this.db.prepare(`SELECT name, first_seen_at AS firstSeenAt, last_seen_at AS lastSeenAt
+      FROM profile_names WHERE profile_id=? ORDER BY last_seen_at DESC, name`).all(profileId);
+    return row;
+  }
+
+  accounts({ search = '', page = 1, pageSize = 30 } = {}) {
+    const filter = `(?='' OR instr(lower(p.id),lower(?))>0 OR EXISTS (
+      SELECT 1 FROM profile_names n WHERE n.profile_id=p.id AND instr(lower(n.name),lower(?))>0))`;
+    const total = this.db.prepare(`SELECT COUNT(*) AS total FROM profiles p WHERE ${filter}`).get(search, search, search).total;
+    const ids = this.db.prepare(`SELECT p.id FROM profiles p WHERE ${filter}
+      ORDER BY p.created_at DESC, p.id LIMIT ? OFFSET ?`).all(search, search, search, pageSize, (page - 1) * pageSize);
+    return { profiles: ids.map(row => this.account(row.id)), total, page, pageSize };
   }
 
   purchaseRequests(matchId, playerId) {

@@ -6,6 +6,7 @@ import { PHASE } from '../../../shared/constants.js';
 import { TROPHY_SHOP_GROUPS } from '../../../shared/trophyShop.js';
 import { profileStore, acceptWallet, profileBackup, restoreProfile } from '../ui/profile.js';
 import { toast } from '../ui/toasts.js';
+import { copyText } from '../ui/clipboard.js';
 
 const shopStore = createStore({ open: false, snapshot: null, busy: null, reward: null });
 let rewardTimer;
@@ -153,7 +154,11 @@ export function ShopHost() {
       title=${html`<span class="tshop-heading"><strong>商店</strong><span>可用奖杯 <b class="num">${profile.profile?.balance ?? '—'}</b></span>
         <button type="button" class="tshop-close" onClick=${() => shopStore.set({ open: false })} aria-label="关闭商店">×</button></span>`}>
       <div class="tshop-toolbar"><span>历史累计获得：${profile.profile?.lifetimeEarned ?? '—'} 奖杯</span>
-        <span title="定向发放奖杯时提供此 ID">档案 ID：<code data-testid="profile-id">${profile.profile?.profileId ?? '—'}</code></span>
+        <span title="定向发放奖杯时提供此 ID">档案 ID：<code class="selectable" data-testid="profile-id">${profile.profile?.profileId ?? '—'}</code></span>
+        <${Button} size="sm" variant="ghost" data-testid="profile-copy" disabled=${profile.status !== 'ready'} onClick=${async () => {
+          const copied = await copyText(profile.profile.profileId);
+          toast(copied ? '档案 ID 已复制' : '复制失败，可选中档案 ID 手动复制', copied ? 'success' : 'warn');
+        }}>复制 ID<//>
         <${Button} size="sm" variant="ghost" disabled=${profile.status !== 'ready'} onClick=${downloadBackup}>备份档案凭证<//>
         <${Button} size="sm" variant="ghost" disabled=${inMatch || net.status !== 'online'} onClick=${() => file.current.click()}>恢复档案<//>
         <input ref=${file} type="file" accept="application/json,.json" hidden onChange=${async event => {

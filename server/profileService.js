@@ -30,12 +30,17 @@ export class ProfileService {
       const profile = resolved || this.store.create();
       session.profileId = profile.profileId;
       session.profileConfirmed = !!resolved;
+      this.recordName(session);
       return { ok: true, data: { profile } };
     }
     if (!session.profileId) return { error: ERR.BAD_TARGET, detail: '匿名档案尚未连接' };
     if (msg.t === 'profile.get') return { ok: true, data: { profile: this.store.wallet(session.profileId) } };
     if (msg.t === 'profile.ledger') return { ok: true, data: this.store.ledger(session.profileId, msg.before ?? null) };
     return { error: ERR.BAD_MSG };
+  }
+
+  recordName(session) {
+    if (session.profileId) this.store.recordName(session.profileId, session.name);
   }
 
   publish(wallet) {

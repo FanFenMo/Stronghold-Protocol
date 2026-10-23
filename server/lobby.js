@@ -250,6 +250,7 @@ export class Lobby {
    * @param {{ resumed: boolean, repeat: boolean }} info
    */
   onHello(session, { resumed, repeat }) {
+    this.profiles?.recordName(session);
     if (!resumed && !repeat) return;
     const room = this.roomOf(session);
     if (!room) {

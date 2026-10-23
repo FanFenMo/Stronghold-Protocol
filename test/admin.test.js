@@ -43,7 +43,7 @@ test('两套账密独立鉴权，普通玩家不能查询或修改管理数据�
   assert.equal(player.result.role, 'player');
   assert.equal(admin.result.role, 'admin');
   assert.notEqual(player.cookie, admin.cookie);
-  for (const url of ['matches', 'profile?id=invalid', 'self']) {
+  for (const url of ['matches', 'profiles', 'profile?id=invalid', 'self']) {
     assert.equal((await api(srv, url, player.cookie)).status, 403);
     assert.equal((await api(srv, url, admin.cookie + 'forged')).status, 401);
   }
@@ -164,7 +164,7 @@ test('奖杯修改与原因同事务持久化，可调低累计且不改变其�
   let store = new ProfileStore(filename);
   try {
     const profile = store.create(), other = store.create();
-    store.db.exec('DROP TABLE admin_adjustments; PRAGMA user_version=2;');
+    store.db.exec('DROP TABLE admin_adjustments; DROP TABLE profile_names; ALTER TABLE profiles DROP COLUMN last_name; PRAGMA user_version=2;');
     store.close(); store = new ProfileStore(filename);
     let saved = store.setWallet({ ...store.wallet(profile.profileId), balance: 55, lifetimeEarned: 77, reason: '补发', requestId: randomUUID() });
     const before = saved;

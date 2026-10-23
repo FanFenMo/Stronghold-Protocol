@@ -12,6 +12,7 @@ import { StepHeader, ExitModal } from '../ui/matchChrome.js';
 import { MatchInfo, matchInfoModel } from '../ui/matchInfo.js';
 import { LoadoutButton } from './loadout.js';
 import { ShopButton } from './trophyShop.js';
+import { AdminButton } from '../ui/adminButton.js';
 import { actions } from '../ui/gameActions.js';
 import { factionTypes, sortedPlayers, phaseTotalSeconds, matchLeaders } from '../ui/gameLogic.js';
 import { enemyIconUrl, factionIconUrl } from '../ui/assetUrls.js';
@@ -96,6 +97,7 @@ export function BriefingScreen() {
       <${SetupReroll} pub=${pub} />
         <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />
         <${ShopButton} size="lg" />
+        <${AdminButton} />
       <div class="brief-ready">
         <span class="brief-ready__txt">已就绪 <b class="num">${readyN}</b><span class="num">/${players.length}</span></span>
         <span class="brief-ready__pips">${players.map((p) => html`<i key=${p.playerId} class=${cx(p.ready && 'on', p.playerId === myId && 'me')} title=${p.name}><${Icon} name="user" /></i>`)}</span>

@@ -31,16 +31,29 @@ export function createAdminHandler({ access, lobby, log }) {
     }
     const store = lobby.profiles?.store;
     if (!store) { json(res, 503, { message: '玩家档案未启用' }); return true; }
+    if (rawPath === '/api/admin/profiles' && req.method === 'GET') {
+      const params = new URL(req.url, 'http://localhost').searchParams;
+      const search = (params.get('q') || '').trim();
+      const page = Number(params.get('page') || 1);
+      if (search.length > 80 || !Number.isSafeInteger(page) || page < 1 || page > 1000000) {
+        json(res, 400, { message: '账号搜索内容或页码不正确' }); return true;
+      }
+      const result = store.accounts({ search, page });
+      const online = new Set([...lobby.registry.byPlayerId.values()].filter(s => s.connected && s.profileConfirmed).map(s => s.profileId));
+      for (const profile of result.profiles) profile.online = online.has(profile.profileId);
+      json(res, 200, result);
+      return true;
+    }
     if (rawPath === '/api/admin/self' && req.method === 'GET') {
       const profile = store.resolve(req.headers['x-profile-token']);
-      json(res, profile ? 200 : 404, profile ? { profile, ledger: store.ledger(profile.profileId).rows }
+      json(res, profile ? 200 : 404, profile ? { profile, account: store.account(profile.profileId), ledger: store.ledger(profile.profileId).rows }
         : { message: '请先打开游戏并连接自己的匿名档案' });
       return true;
     }
     if (rawPath === '/api/admin/profile' && req.method === 'GET') {
       const profileId = new URL(req.url, 'http://localhost').searchParams.get('id') || '';
       const profile = PROFILE_ID.test(profileId) ? store.wallet(profileId) : null;
-      json(res, profile ? 200 : 404, profile ? { profile, ledger: store.ledger(profileId).rows } : { message: '匿名档案不存在，请核对完整档案 ID' });
+      json(res, profile ? 200 : 404, profile ? { profile, account: store.account(profileId), ledger: store.ledger(profileId).rows } : { message: '匿名档案不存在，请核对完整档案 ID' });
       return true;
     }
     if (rawPath === '/api/admin/profile' && req.method === 'POST') {
@@ -66,7 +79,7 @@ export function createAdminHandler({ access, lobby, log }) {
       try {
         const profile = store.setWallet(body);
         lobby.profiles.publish(profile);
-        json(res, 200, { profile, ledger: store.ledger(profile.profileId).rows });
+        json(res, 200, { profile, account: store.account(profile.profileId), ledger: store.ledger(profile.profileId).rows });
       } catch (error) {
         if (!error.status) log.error('[admin] wallet adjustment failed', error);
         json(res, error.status || 500, { message: error.status ? error.message : '奖杯修改保存失败，请稍后重试' });
