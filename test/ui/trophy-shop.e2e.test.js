@@ -145,11 +145,17 @@ test('奖杯商店真实浏览器：浏览、滚轮、购买、共享档案、�
       assert.equal(profiles.wallet(initial.profileId).lifetimeEarned, 26);
 
       const port = srv.port;
+      assert.deepEqual(problemsOf([c]), [], '停服前的正常浏览和购买不得产生页面错误');
+      const restartProblemStart = c.problems.length;
       await srv.close();
       profiles = new ProfileStore(database);
       srv = await startServer({ host: '127.0.0.1', port, quiet: true, profiles });
       await c.page.reload({ waitUntil: 'domcontentloaded' });
       const restored = await readyProfile(c.page);
+      // Requests from the old page may reach the deliberately closed port before the new process listens.
+      const restartProblems = c.problems.splice(restartProblemStart);
+      assert.ok(restartProblems.every(problem => problem.includes('net::ERR_CONNECTION_REFUSED')),
+        `主动停服窗口只能出现预期的连接拒绝：${JSON.stringify(restartProblems)}`);
       assert.equal(restored.profileId, initial.profileId);
       assert.equal(restored.balance, 35);
       assert.equal(restored.lifetimeEarned, 26);
