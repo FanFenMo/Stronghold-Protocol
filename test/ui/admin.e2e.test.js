@@ -8,11 +8,12 @@ import { Client, hasChrome, CHROME, OUT } from '../e2e/client.mjs';
 
 const access = { username: 'player', password: 'player-secret', admin: { username: 'manager', password: 'admin-secret' } };
 async function fill(page, selector, value) {
+  const keyboard = page.page().keyboard;
   await page.click(selector);
-  await page.keyboard.down('Control');
-  await page.keyboard.press('KeyA');
-  await page.keyboard.up('Control');
-  await page.keyboard.press('Backspace');
+  await keyboard.down('Control');
+  await keyboard.press('KeyA');
+  await keyboard.up('Control');
+  await keyboard.press('Backspace');
   await page.type(selector, String(value));
 }
 async function save(page, balance, earned, reason) {
