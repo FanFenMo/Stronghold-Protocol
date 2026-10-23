@@ -44,7 +44,7 @@ test('benchmark: 同心协议共享生命与实时攻击 + 70 enemies + 10 opera
   const tpl = ds.getWave('act1autochess_h05');
   const { routes } = spawnsFromTemplate(tpl);
   const keys = ['enemy_1422_lrsldr', 'enemy_1427_lrnazg', 'enemy_1005_yokai', 'enemy_1042_frostd', 'enemy_1425_lrcmra', 'enemy_1040_bombd'];
-  const spawns = Array.from({ length: 70 }, (_, i) => ({ time: (i % 10) * 0.2, enemyKey: keys[i % keys.length], route: i % routes.length, mods: { hpMul: 10 } }));
+  const spawns = Array.from({ length: 70 }, (_, i) => ({ time: (i % 10) * 0.2, enemyKey: keys[i % keys.length], routeIndex: i % routes.length, mods: { hpMul: 10 } }));
   for (let i = 0; i < 2; i++) { const warm = build(spawns, routes, 20, 500 + i, true); while (!warm.finished) warm.step(); }
   const battle = build(spawns, routes, 60, 501, true);
   const start = performance.now();
