@@ -12,7 +12,8 @@ export function planTrophyPurchase(match, ps, product) {
   if (product.group !== 'mystery') return null;
   const roll = rng.int(100);
   const kind = roll >= 95 ? 6 : Math.floor(roll / 19) + 1;
-  const round = rng.pick(kind === 3 ? rounds.filter(r => !match.gd.isBossRound(r)) : rounds);
+  const mysteryRounds = rounds.filter(r => r > 4 && (kind !== 3 || !match.gd.isBossRound(r)));
+  const round = rng.pick(mysteryRounds);
   const plan = { kind, round };
   if (kind === 1) plan.chessId = rng.pick(match.gd.visibleChess.filter(id => ps.canUseChess(id)));
   if (kind === 2) {
@@ -58,7 +59,7 @@ export function grantTrophyRound(ps, round) {
   if (!mystery || mystery.round !== round) return;
   if (mystery.kind === 1 && mystery.chessId) {
     const piece = ps.acquireChess(mystery.chessId, { source: 'trophy-shop', fromPool: false,
-      fixedStats: { atk: 79999, aspd: 325, def: 799 } });
+      fixedStats: { maxHp: 9999, hpRegen: 2000, atk: 79999, aspd: 325, def: 799 } });
     if (piece) ps.m.sendTo(ps.playerId, { t: 'm.shopReward', chessId: piece.id, name: ps.gd.chess(piece.id).name });
   }
   if (mystery.kind === 2 && mystery.bondId) {
