@@ -8,7 +8,10 @@ import { Client, hasChrome, CHROME, OUT } from '../e2e/client.mjs';
 
 const access = { username: 'player', password: 'player-secret', admin: { username: 'manager', password: 'admin-secret' } };
 async function fill(page, selector, value) {
-  await page.click(selector, { clickCount: 3 });
+  await page.click(selector);
+  await page.keyboard.down('Control');
+  await page.keyboard.press('KeyA');
+  await page.keyboard.up('Control');
   await page.keyboard.press('Backspace');
   await page.type(selector, String(value));
 }
@@ -56,6 +59,7 @@ test('管理员真实浏览器：正常游玩、独立管理窗口、自己和�
   await panel.waitForSelector('#wallet-form:not([hidden])');
   assert.equal(await panel.evaluate(() => window.opener === null), true);
   await save(panel, 50, 100, '管理员自身调整');
+  assert.equal(srv.lobby.profiles.store.wallet(own.profileId).balance, 50);
   await c.page.waitForFunction(async () => (await import('/js/ui/profile.js')).profileStore.get().profile.balance === 50, { polling: 100 });
   assert.equal(srv.lobby.profiles.store.wallet(own.profileId).lifetimeEarned, 100);
 
