@@ -31,7 +31,8 @@ test('管理员真实浏览器：正常游玩、独立管理窗口、自己和�
   const room = srv.lobby.roomOf(srv.registry.byId(hostWelcome.playerId));
   const c = new Client(P, srv.url, '管理博士', { prefix: 'admin' });
   t.after(async () => { await c.close(); await host.close(); await srv.close(); });
-  c.browser = await P.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--no-first-run'], protocolTimeout: 90000 });
+  c.browser = await P.launch({ executablePath: CHROME, headless: true,
+    args: ['--no-sandbox', '--no-first-run', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'], protocolTimeout: 90000 });
   c.page = await c.browser.newPage();
   await c.page.setViewport({ width: 1920, height: 1080 });
   await c.page.goto(srv.url, { waitUntil: 'domcontentloaded' });
@@ -55,7 +56,7 @@ test('管理员真实浏览器：正常游玩、独立管理窗口、自己和�
   await panel.waitForSelector('#wallet-form:not([hidden])');
   assert.equal(await panel.evaluate(() => window.opener === null), true);
   await save(panel, 50, 100, '管理员自身调整');
-  await c.page.waitForFunction(async () => (await import('/js/ui/profile.js')).profileStore.get().profile.balance === 50);
+  await c.page.waitForFunction(async () => (await import('/js/ui/profile.js')).profileStore.get().profile.balance === 50, { polling: 100 });
   assert.equal(srv.lobby.profiles.store.wallet(own.profileId).lifetimeEarned, 100);
 
   await panel.waitForSelector('button.player');
