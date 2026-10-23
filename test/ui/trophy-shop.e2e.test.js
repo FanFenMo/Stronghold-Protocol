@@ -38,7 +38,7 @@ test('奖杯商店真实浏览器：浏览、滚轮、购买、共享档案、�
       await c.page.focus('.tshop-wheel');
       await c.page.keyboard.press('End');
       await c.page.waitForFunction(() => document.querySelector('.tshop-option[aria-selected="true"]')?.textContent === '所有回合');
-      assert.ok(await c.page.$$eval('.tshop-price', els => els.filter(el => el.textContent).every(el => el.textContent === '1 奖杯')));
+      assert.ok(await c.page.$$eval('.tshop-price', els => els.length === 8 && els.every(el => /^\d+ 奖杯$/.test(el.textContent))));
       await c.shot('desktop');
       await c.page.setViewport({ width: 1024, height: 768 });
       const bounds = await c.page.$eval('.tshop-modal', el => {
@@ -73,7 +73,8 @@ test('奖杯商店真实浏览器：浏览、滚轮、购买、共享档案、�
       await c.page.waitForFunction(() => document.querySelector('.tshop-heading .num')?.textContent === '23');
       assert.equal(profiles.wallet(initial.profileId).lifetimeEarned, 24);
       await twin.page.waitForFunction(async () => (await import('/js/ui/profile.js')).profileStore.get().profile.balance === 23, { polling: 100 });
-      assert.ok(await c.page.$$eval('.tshop-buy button', els => els.filter(el => el.textContent === '尚未定价').every(el => el.disabled)));
+      await c.page.waitForFunction(() => [...document.querySelectorAll('.tshop-buy button')].every(el => !el.disabled));
+      assert.equal(await c.page.$$eval('.tshop-buy button', els => els.filter(el => el.textContent === '尚未定价').length), 0);
       await c.shot('purchased');
       await c.click('.tshop-close');
       await c.click('.brief__foot .btn--primary', '准备就绪');

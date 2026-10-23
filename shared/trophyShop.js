@@ -1,6 +1,6 @@
-/** Trophy prices are intentionally unset until the owner supplies them. */
+/** Personal shop catalogue; prices are in trophies. */
 const product = (id, group, name, value = null, extra = {}) => ({ id, group, name, value, price: null, limit: 1, ...extra });
-export const TROPHY_EQUIPMENT_PRICES = Object.freeze({ basic: null, phone: null, material: null, special: null, hr: null });
+export const TROPHY_EQUIPMENT_PRICES = Object.freeze({ basic: 1, phone: 3, material: 8, special: 10, hr: 15 });
 const equipment = [
   ['basic', '基础装备', [
     ['chess_item_1_01_e_a', '维式重锤'], ['chess_item_3_04_e_a', '炎国短刀'], ['chess_item_5_02_e_a', '谢拉格不融冰'],
@@ -18,15 +18,17 @@ const equipment = [
 ];
 
 export const TROPHY_SHOP_PRODUCTS = Object.freeze([
-  ...[5, 7, 9, 11, null].map(rounds => product(`slow_${rounds ?? 'all'}`, 'slow', rounds ? `前 ${rounds} 回合` : '所有回合', rounds)),
-  ...[10, 20, 30].map(percent => product(`attack_${percent}`, 'attack', `${percent}%`, percent / 100)),
+  ...[[5, 3], [7, 4], [9, 5], [11, 6], [null, 7]].map(([rounds, price]) =>
+    product(`slow_${rounds ?? 'all'}`, 'slow', rounds ? `前 ${rounds} 回合` : '所有回合', rounds, { price })),
+  ...[[10, 2], [20, 4], [30, 6]].map(([percent, price]) =>
+    product(`attack_${percent}`, 'attack', `${percent}%`, percent / 100, { price })),
   ...equipment.flatMap(([tier, tierName, entries], order) => entries.map(([id, name]) =>
     product(`equip_${id}`, 'equipment', name, id, { tier, tierName, order, price: TROPHY_EQUIPMENT_PRICES[tier] }))),
-  product('funds', 'funds', '本局随机一休整期开始时，资金额外 +10'),
-  product('last_stand', 'last_stand', '本局生命值降至 0 时保留 1 点生命继续模拟，每局触发一次'),
-  product('strategy', 'strategy', '开局获得一个随机策略效果'),
+  product('funds', 'funds', '本局随机一休整期开始时，资金额外 +10', null, { price: 10 }),
+  product('last_stand', 'last_stand', '本局生命值降至 0 时保留 1 点生命继续模拟，每局触发一次', null, { price: 8 }),
+  product('strategy', 'strategy', '开局获得一个随机策略效果', null, { price: 10 }),
   product('round12', 'round12', '存活通过第 12 回合后，获得奖杯 +2；否则不额外获得奖杯', null, { price: 1, limit: 10 }),
-  product('mystery', 'mystery', '？？？'),
+  product('mystery', 'mystery', '？？？', null, { price: 20 }),
 ]);
 
 export const TROPHY_SHOP_GROUPS = Object.freeze([

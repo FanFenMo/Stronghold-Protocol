@@ -21,9 +21,9 @@ test('真实连接共享档案余额、按服务器价格扣款、同一请求�
     assert.equal(snapshot.profile.balance, 5);
     const hidden = snapshot.products.find(product => product.id === 'mystery');
     assert.equal(hidden.name, '？？？');
-    assert.equal(hidden.price, null);
+    assert.equal(hidden.price, 20);
     assert.ok(!('kind' in hidden) && !('round' in hidden));
-    assert.equal((await first.request({ t: 'shop.buy', productId: 'mystery', requestId: '0'.repeat(32), price: 0 })).code, 'BAD_TARGET');
+    assert.equal((await first.request({ t: 'shop.buy', productId: 'mystery', requestId: '0'.repeat(32), price: 0 })).code, 'NO_FUNDS');
     const purchase = { t: 'shop.buy', productId: 'round12', requestId: '1'.repeat(32), price: 0 };
     const bought = await first.request(purchase);
     assert.equal(bought.profile.balance, 4);

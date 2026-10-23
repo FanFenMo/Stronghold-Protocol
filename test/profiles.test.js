@@ -65,11 +65,11 @@ test('装备共享一次购买限制，未定价商品拒绝扣款', () => {
     store.settleMatch(result(profileId, 'earned', 20));
     const equipment = TROPHY_SHOP_PRODUCTS.filter(product => product.group === 'equipment');
     const purchase = { profileId, matchId: 'm', playerId: 'p1', product: equipment[0], requestId: 'a' };
-    assert.throws(() => store.purchase(purchase), error => error.code === 'BAD_TARGET');
-    store.purchase({ ...purchase, product: { ...equipment[0], price: 3 } });
-    assert.throws(() => store.purchase({ ...purchase, requestId: 'b', product: { ...equipment[1], price: 3 } }),
+    assert.throws(() => store.purchase({ ...purchase, product: { ...equipment[0], price: null } }), error => error.code === 'BAD_TARGET');
+    store.purchase(purchase);
+    assert.throws(() => store.purchase({ ...purchase, requestId: 'b', product: equipment[1] }),
       error => error.code === 'BAD_TARGET');
-    assert.equal(store.wallet(profileId).balance, 17);
+    assert.equal(store.wallet(profileId).balance, 19);
     assert.equal(store.wallet(profileId).lifetimeEarned, 20);
   } finally { store.close(); }
 });

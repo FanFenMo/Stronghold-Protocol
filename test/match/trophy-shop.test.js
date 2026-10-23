@@ -5,8 +5,15 @@ import { makeBattle } from '../helpers/battleHarness.js';
 import { trophyProduct, TROPHY_SHOP_PRODUCTS } from '../../shared/trophyShop.js';
 import { planTrophyPurchase } from '../../server/match/trophyShop.js';
 
-test('商品目录仅第12回合奖励定价，信标只在博士投影档且装备共用一局一次限制', () => {
-  assert.deepEqual(TROPHY_SHOP_PRODUCTS.filter(product => product.price !== null).map(product => [product.id, product.price]), [['round12', 1]]);
+test('商品按确认价格全部启用，信标只在博士投影档且装备共用一局一次限制', () => {
+  const prices = group => TROPHY_SHOP_PRODUCTS.filter(product => product.group === group).map(product => product.price);
+  assert.ok(TROPHY_SHOP_PRODUCTS.every(product => Number.isSafeInteger(product.price) && product.price >= 0));
+  assert.deepEqual(prices('slow'), [3, 4, 5, 6, 7]);
+  assert.deepEqual(prices('attack'), [2, 4, 6]);
+  const equipmentPrices = { basic: 1, phone: 3, material: 8, special: 10, hr: 15 };
+  assert.ok(TROPHY_SHOP_PRODUCTS.filter(product => product.group === 'equipment')
+    .every(product => product.price === equipmentPrices[product.tier]));
+  assert.deepEqual(['funds', 'last_stand', 'strategy', 'round12', 'mystery'].map(id => trophyProduct(id).price), [10, 8, 10, 1, 20]);
   const beacons = TROPHY_SHOP_PRODUCTS.filter(product => product.value === 'chess_item_5_04_e_a');
   assert.equal(beacons.length, 1);
   assert.equal(beacons[0].tier, 'special');
