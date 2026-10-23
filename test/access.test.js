@@ -4,6 +4,7 @@ import http from 'node:http';
 import { PassThrough } from 'node:stream';
 import { startServer } from './helpers/server.js';
 import { promptAccess } from '../server/access-prompt.js';
+import { createAccess } from '../server/access.js';
 import { installAccessGuard } from '../public/js/ui/accessGuard.js';
 
 async function boot(t, access) {
@@ -80,6 +81,18 @@ test('each field may be empty; both empty bypass the login page', async (t) => {
   assert.equal((await get(srv, '/?room=ABCD')).status, 200);
   assert.equal(await upgrade(srv), 101);
   assert.deepEqual(await (await get(srv, '/auth/status')).json(), { required: false, authenticated: true });
+});
+
+test('免登录服务器在停服清理期间保持普通访问，已清理的凭据不能授予管理权限', () => {
+  const request = { headers: {} };
+  const open = createAccess({ admin: { username: 'manager', password: 'secret' } });
+  assert.equal(open.authenticated(request), true);
+  open.clear();
+  assert.equal(open.authenticated(request), true, '资源请求不能触发不必要的重新登录');
+  assert.equal(open.isAdmin(request), false);
+  const protectedGate = createAccess({ username: 'player', password: 'secret' });
+  protectedGate.clear();
+  assert.equal(protectedGate.authenticated(request), false);
 });
 
 test('closing and reopening on the same port invalidates cookies even with the same credentials', async (t) => {

@@ -31,7 +31,7 @@ export function createAccess({ username = '', password = '', admin = null } = {}
   let adminToken = randomBytes(32).toString('base64url');
 
   function role(req) {
-    if (!token) return null;
+    if (!token) return required ? null : 'player';
     const cookie = String(req.headers.cookie || '').split(';').map((s) => s.trim()).find((s) => s.startsWith(`${COOKIE}=`));
     const value = cookie?.slice(COOKIE.length + 1) || '';
     const candidate = Buffer.from(value);
