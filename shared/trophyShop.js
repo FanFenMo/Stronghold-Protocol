@@ -25,7 +25,7 @@ export const TROPHY_SHOP_PRODUCTS = Object.freeze([
   ...equipment.flatMap(([tier, tierName, entries], order) => entries.map(([id, name]) =>
     product(`equip_${id}`, 'equipment', name, id, { tier, tierName, order, price: TROPHY_EQUIPMENT_PRICES[tier] }))),
   product('funds', 'funds', '本局随机一休整期开始时，资金额外 +10', null, { price: 10 }),
-  product('last_stand', 'last_stand', '本局生命值降至 0 时保留 1 点生命继续模拟，每局触发一次', null, { price: 8 }),
+  product('last_stand', 'last_stand', '生命值降至 0 时保留 1 点，每局一次；中间 BOSS 直接跳过，最终 BOSS 与隐藏核心不触发', null, { price: 8 }),
   product('strategy', 'strategy', '开局获得一个随机策略效果', null, { price: 10 }),
   product('round12', 'round12', '存活通过第 12 回合后，获得奖杯 +2；否则不额外获得奖杯', null, { price: 1, limit: 10 }),
   product('mystery', 'mystery', '？？？', null, { price: 20 }),

@@ -3136,11 +3136,16 @@ export class Match {
 
   _teamLpLoss(amount) {
     const n = Number(amount);
-    if (this.teamLp == null || !Number.isFinite(n) || !(n > 0)) return;
+    if (this._finalEnding || this.teamLp == null || !Number.isFinite(n) || !(n > 0)) return;
     this.teamLp = Math.max(0, this.teamLp - n);
-    if (this.teamLp === 0) {
+    if (this.teamLp === 0 && this.round === this.gd.middleBossRound) {
       const saved = this.alivePlayers().find(ps => saveWithTrophy(ps));
-      if (saved) this.teamLp = 1;
+      if (saved) {
+        this.teamLp = 1;
+        this.bossPool.hp = 0;
+        this.toast(saved, 'info', '名刀触发，跳过当前中间 BOSS');
+        this._endFinal('cleared');
+      }
     }
     if (this._bossLazyPublic()) { this._bossPublic(); return; }
     this._syncTeamLp();
@@ -3204,7 +3209,10 @@ export class Match {
 
   _bossTick(runner) {
     this._applyOvertime(runner.time);
-    if (this.teamLp <= 0 && this.bossPool.hp > 0) runner.forceAll('forced');
+    if (this._finalEnding || (this.teamLp <= 0 && this.bossPool.hp > 0)) {
+      runner.forceAll('forced');
+      return;
+    }
     // client-side combat with every boss field on the server: humans that reconnect / watch run display replicas
     // whose LocalBossPool follows b.pool
     if (this.fields.some((f) => f.cc)) { this._broadcastPool(false); this._bossPublic(); }
