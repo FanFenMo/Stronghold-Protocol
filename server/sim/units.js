@@ -111,7 +111,10 @@ export class Unit {
     this.cultMul = null;
   }
 
-  markDirty() { this._dirty = true; }
+  markDirty() {
+    this._dirty = true;
+    if (this.trophyUnity) this.trophyUnity.attackDirty = true;
+  }
 
   /** Horizontal sign of the direction (LEFT ⇒ −1, else +1): sprite flip only — geometry uses `dir` / `fwd`. */
   get facing() { return this.dir === 'LEFT' ? -1 : 1; }

@@ -4,6 +4,7 @@ export class TrophyUnity {
     this.battle = battle;
     this.ownerId = ownerId;
     this.ratio = 1;
+    this.attackDirty = true;
     this.readingAttack = false;
     this.dying = false;
   }
@@ -11,13 +12,14 @@ export class TrophyUnity {
   members() { return this.battle.allyUnits.filter(u => u.trophyUnity === this && u.alive && u.deployed); }
 
   join(unit) {
+    this.attackDirty = true;
     const others = this.members().filter(u => u !== unit);
     if (!others.length) this.ratio = unit.hp / unit.s.maxHp;
     unit.hp = unit.s.maxHp * this.ratio;
   }
 
   syncAttack() {
-    if (this.readingAttack) return;
+    if (this.readingAttack || !this.attackDirty) return;
     this.readingAttack = true;
     const units = this.members();
     let highest = 0;
@@ -27,6 +29,7 @@ export class TrophyUnity {
       highest = Math.max(highest, unit._nativeAtk);
     }
     for (const unit of units) unit._s.atk = highest;
+    this.attackDirty = false;
     this.readingAttack = false;
   }
 

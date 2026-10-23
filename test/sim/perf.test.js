@@ -12,10 +12,10 @@ const LINEUP = [
   ['chess_char_5_12_a', 11, 5], ['chess_char_6_13_a', 9, 8],
 ];
 
-function build(spawns, routes, timeLimit, seed = 7) {
+function build(spawns, routes, timeLimit, seed = 7, trophyUnity = false) {
   return new Battle({
     seed, kind: 'normal', stageId: 'act2autochess_m01', routes, spawns, timeLimit, logger: quiet, quiet: true,
-    players: [{ playerId: 'p', units: LINEUP.map(([chessId, row, col], i) => ({ uid: i + 1, kind: 'chess', chessId, row, col, abs: true })) }],
+    players: [{ playerId: 'p', trophyUnity, units: LINEUP.map(([chessId, row, col], i) => ({ uid: i + 1, kind: 'chess', chessId, row, col, abs: true })) }],
   });
 }
 
@@ -37,6 +37,22 @@ test('benchmark: 70-enemy wave (h05) + 10 operators < 0.5 ms/tick average', () =
   // eslint-disable-next-line no-console
   console.log(`bench wave: ${n} ticks, total ${b.total} enemies, peak ${maxAlive} alive, avg ${(avg * 1000).toFixed(1)} µs/tick, reason ${b.reason}`);
   assert.ok(b.total >= 60);
+  assert.ok(avg < 0.5, `avg ${avg} ms/tick`);
+});
+
+test('benchmark: 同心协议共享生命与实时攻击 + 70 enemies + 10 operators < 0.5 ms/tick', () => {
+  const tpl = ds.getWave('act1autochess_h05');
+  const { routes } = spawnsFromTemplate(tpl);
+  const keys = ['enemy_1422_lrsldr', 'enemy_1427_lrnazg', 'enemy_1005_yokai', 'enemy_1042_frostd', 'enemy_1425_lrcmra', 'enemy_1040_bombd'];
+  const spawns = Array.from({ length: 70 }, (_, i) => ({ time: (i % 10) * 0.2, enemyKey: keys[i % keys.length], route: i % routes.length, mods: { hpMul: 10 } }));
+  for (let i = 0; i < 2; i++) { const warm = build(spawns, routes, 20, 500 + i, true); while (!warm.finished) warm.step(); }
+  const battle = build(spawns, routes, 60, 501, true);
+  const start = performance.now();
+  let ticks = 0;
+  while (!battle.finished && battle.time < 40) { battle.step(); ticks++; if (ticks % 3 === 0) { battle.snapshot(); battle.drainEvents(); } }
+  const avg = (performance.now() - start) / ticks;
+  console.log(`bench unity: ${ticks} ticks, avg ${(avg * 1000).toFixed(1)} µs/tick`);
+  assert.deepEqual(battle.errors, []);
   assert.ok(avg < 0.5, `avg ${avg} ms/tick`);
 });
 
