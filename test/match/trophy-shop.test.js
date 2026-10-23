@@ -86,10 +86,26 @@ test('特殊干员在实际战斗输入中保持指定属性，购买者的攻�
       fixedStats: { atk: 79999, def: 799, aspd: 325 } }, { chessId: 'chess_char_1_01_a', uid: 3, row: 9, col: 4 }] },
     { playerId: 'p2', units: [{ chessId: 'chess_char_1_01_a', uid: 2, row: 11, col: 6 }] },
   ] });
+  h.b.start();
   const special = h.unit(1), normal = h.unit(2);
   assert.equal(special.s.atk, 79999);
   assert.equal(special.s.def, 799);
   assert.equal(special.s.aspd, 325);
   assert.equal(normal.s.atk, normal.base.atk);
   assert.equal(h.unit(3).s.atk, h.unit(3).base.atk * 1.3);
+  assert.deepEqual(h.b.errors, []);
+});
+
+test('怪物减速只作用于购买者所属怪物，序列化战斗输入后仍生效', () => {
+  const players = JSON.parse(JSON.stringify([
+    { playerId: 'p1', trophySlow: true, units: [] },
+    { playerId: 'p2', units: [] },
+  ]));
+  const h = makeBattle({ content: 'none', players });
+  h.b.start();
+  const own = h.spawn('enemy_1422_lrsldr', { ownerPlayerId: 'p1' });
+  const mate = h.spawn('enemy_1422_lrsldr', { ownerPlayerId: 'p2' });
+  assert.equal(own.s.moveSpeed, own.base.moveSpeed * 0.8);
+  assert.equal(mate.s.moveSpeed, mate.base.moveSpeed);
+  assert.deepEqual(h.b.errors, []);
 });
