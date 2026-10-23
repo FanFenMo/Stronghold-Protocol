@@ -27,7 +27,7 @@ export class Unit {
    */
   constructor(init) {
     // Heavy references are non-enumerable so assertion diffs / logs never walk the whole battle graph.
-    for (const k of ['def', 'player', 'ownerUnit', 'kit', 'profile', 'skill', 'route', 'bossPool', 'blockedBy', 'blocking', 'carry', 'mem', 'trait']) {
+    for (const k of ['def', 'player', 'ownerUnit', 'kit', 'profile', 'skill', 'route', 'bossPool', 'blockedBy', 'blocking', 'carry', 'mem', 'trait', 'trophyUnity']) {
       Object.defineProperty(this, k, { value: null, writable: true, enumerable: false, configurable: true });
     }
     this.id = init.id;
@@ -123,6 +123,10 @@ export class Unit {
   /** Aggregated stats (lazy). */
   get s() {
     if (this._dirty) this._recalc();
+    if (this.trophyUnity && this.alive && this.deployed) {
+      if (this.trophyUnity.readingAttack) this._s.atk = this._nativeAtk;
+      else this.trophyUnity.syncAttack();
+    }
     return this._s;
   }
 
@@ -193,6 +197,7 @@ export class Unit {
       s.aspd = this.fixedStats.aspd;
       s.interval = (s.bat * 100) / s.aspd;
     }
+    this._nativeAtk = s.atk;
     this._s = s;
     this._dirty = false;
     if (this.alive && prevMax > 0 && Math.abs(prevMax - maxHp) > 1e-9) {

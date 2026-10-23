@@ -276,6 +276,7 @@ export function dealDamage(battle, source, target, dmgIn) {
   // 限伤: a leader's hit of ≥ BOSS_HIT_LIMIT in a boss / hidden battle is cancelled before it reaches shields / HP — what
   // ran before it (the attack, its SP, `hit` hook effects, separate element 损伤) stays; nothing after it happens
   if (final > 0 && leaderHitCancelled(battle, target, final)) return 0;
+  if (target.trophyUnity) final *= 0.7;
   final = absorbShields(battle, target, final, type);
   // 伤判效果 after the barriers (header): a handler may lower what reaches the HP — never raise it (a 流失 skips this)
   if (final > 0 && battle._hooks.hpDamage) {
@@ -291,6 +292,14 @@ export function dealDamage(battle, source, target, dmgIn) {
  */
 export function applyHpLoss(battle, source, target, amount, dmg) {
   if (!target.alive) return 0;
+  if (target.trophyUnity && target.deployed && amount > 0) {
+    const group = target.trophyUnity;
+    const shares = group.damage(amount);
+    let dealt = 0;
+    for (const share of shares) dealt += recordHpLoss(battle, source, share.unit, share.amount, dmg, share.dealt, false);
+    if (group.ratio <= 0) group.kill(source);
+    return dealt;
+  }
   let dealt = 0;
   const hs = dmg && dmg.sourceless ? null : source; // the source hooks see (无来源: none; `credit` keeps it)
   if (target.bossPool) {
@@ -317,6 +326,11 @@ export function applyHpLoss(battle, source, target, amount, dmg) {
     }
     dealt = Math.max(0, before - Math.max(0, target.hp));
   }
+  return recordHpLoss(battle, source, target, amount, dmg, dealt);
+}
+
+function recordHpLoss(battle, source, target, amount, dmg, dealt, kill = true) {
+  const hs = dmg && dmg.sourceless ? null : source;
   // damage dealt (unit stats, the results screen's 造成伤害) never counts a unit's own side — its own drain or 流失 (源石溶剂,
   // 史尔特尔 S3 …), friendly damage; `taken` and the kill credit do
   if (source && source.side !== target.side) {
@@ -332,7 +346,7 @@ export function applyHpLoss(battle, source, target, amount, dmg) {
   if (battle._hooks.damaged) battle.emit('damaged', { source: hs, target, amount, dealt, type: dmg ? dmg.type : 'true', dmg, credit: source });
   if (target.side === 'ally' && target.skill && dmg && !dmg.noSp && dmg.type !== 'element') battle._skills.onDamaged(target);
   const dead = target.bossPool ? target.bossPool.hp <= 0 : target.hp <= 0;
-  if (dead && target.alive) battle.kill(target, source);
+  if (kill && dead && target.alive) battle.kill(target, source);
   return dealt;
 }
 
@@ -555,8 +569,8 @@ export function heal(battle, source, target, amount, opts = {}) {
     if (!target.alive || !target.deployed) return 0;
   }
   const max = target.s.maxHp;
-  const actual = Math.max(0, Math.min(amt, max - target.hp));
-  target.hp = Math.min(max, target.hp + actual);
+  const actual = target.trophyUnity ? target.trophyUnity.heal(amt) : Math.max(0, Math.min(amt, max - target.hp));
+  if (!target.trophyUnity) target.hp = Math.min(max, target.hp + actual);
   if (opts.overheal && amt > actual) {
     // overheal becomes a shield (capped at max HP) so hp stays within [0, maxHp]
     const cur = target.findBuff('overheal');

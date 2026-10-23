@@ -1,8 +1,9 @@
 import { ROLLING_BAND } from '../../shared/strategies.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
+import { COMMAND_ARCHIVE, TROPHY_UNITY_NAME } from '../../shared/trophyMystery.js';
 
 export const newTrophyShopState = () => ({ counts: {}, slowThrough: undefined, attack: 0, equipment: null,
-  fundsRound: null, extraStrategy: false, mystery: null, lastStandUsed: false });
+  fundsRound: null, extraStrategy: false, mystery: null, unity: false, lastStandUsed: false });
 
 /** Resolve hidden outcomes once when purchased, using a stream independent of waves and shop rolls. */
 export function planTrophyPurchase(match, ps, product) {
@@ -10,10 +11,11 @@ export function planTrophyPurchase(match, ps, product) {
   const rounds = Array.from({ length: match.gd.lastRound }, (_, i) => i + 1);
   if (product.group === 'funds') return { round: rng.pick(rounds) };
   if (product.group !== 'mystery') return null;
-  const roll = rng.int(100);
-  const kind = roll >= 95 ? 6 : Math.floor(roll / 19) + 1;
-  const mysteryRounds = rounds.filter(r => r > 4 && (kind !== 3 || !match.gd.isBossRound(r)));
-  const round = rng.pick(mysteryRounds);
+  const roll = rng();
+  const kinds = [1, 2, 3, 4, 5, 7, 8];
+  const kind = roll >= 0.95 ? 6 : kinds[Math.floor(roll / 0.95 * kinds.length)];
+  const mysteryRounds = rounds.filter(r => kind === 7 ? r >= 3 && r <= 10 : r > 4 && (kind !== 3 || !match.gd.isBossRound(r)));
+  const round = kind === 8 ? 1 : rng.pick(mysteryRounds);
   const plan = { kind, round };
   if (kind === 1) plan.chessId = rng.pick(match.gd.visibleChess.filter(id => ps.canUseChess(id)));
   if (kind === 2) {
@@ -40,6 +42,11 @@ export function applyTrophyPurchase(ps, product, plan) {
 
 export function prepareTrophyRound(ps, round) {
   const state = ps.trophyShop;
+  if (round === 1 && state.mystery?.kind === 8 && !state.unity) {
+    state.unity = true;
+    ps.m.toast(ps, 'info', `${TROPHY_UNITY_NAME}已生效`);
+    ps.dirty();
+  }
   if (round === 1 && state.extraStrategy) {
     const rng = createRng(deriveSeed(ps.m.seed, `trophy:strategy:${ps.playerId}`));
     const id = rng.pick(ps.gd.bandIds().filter(id => id !== ROLLING_BAND && id !== ps.bandId));
@@ -67,6 +74,7 @@ export function grantTrophyRound(ps, round) {
     ps.addLayers(mystery.bondId, bond.isCore ? 200 : 100, { reason: 'trophy-shop' });
   }
   if (mystery.kind === 4) ps.shop.freeRefreshes += 99;
+  if (mystery.kind === 7) ps.acquireItem(COMMAND_ARCHIVE, { source: 'trophy-shop' });
   ps.dirty();
 }
 
