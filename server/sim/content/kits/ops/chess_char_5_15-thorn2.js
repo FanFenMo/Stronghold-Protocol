@@ -107,7 +107,7 @@ export default {
             const key = `thorn2:guard:${unit.id}:${unit.mem.zoneSeq = (unit.mem.zoneSeq ?? 0) + 1}`;   // its regen buff ("效果均可叠加")
             const z = { type: 'guard', r: t.tileR, c: t.tileC, x: t.x, y: t.y, t: 0, acc: 0, dur: num(bb.projectile_delay_time, 6) + extend(battle, unit), key };
             (unit.mem.zones ??= []).push(z);
-            battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: RING1, duration: z.dur });
+            battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: RING1, duration: z.dur, visual: 'alchemy' });
           },
         }),
         skchr_thorn2_3: () => ({
@@ -119,7 +119,7 @@ export default {
             const dur = num(bb.projectile_delay_time, 19) + extend(battle, unit);
             for (const a of ops) {
               (unit.mem.zones ??= []).push({ type: 'sea', anchor: a, x: a.x, y: a.y, t: 0, acc: Math.max(0.1, num(bb.interval, 1)) - AURA_IV, dur });
-              battle.fx('zone', { x: a.x, y: a.y, id: unit.id, r: RING1, duration: dur });
+              battle.fx('zone', { x: a.x, y: a.y, id: unit.id, r: RING1, duration: dur, visual: 'alchemy', anchor: a.id });
             }
           },
         }),
@@ -154,7 +154,7 @@ export default {
           const key = `thorn2:${unit.id}:${unit.mem.zoneSeq = (unit.mem.zoneSeq ?? 0) + 1}`;
           const z = { x: t.x, y: t.y, vx: (dx / len) * speed, vy: (dy / len) * speed, t: 0, acc: 0, dur: baseDur + extra, key };
           (unit.mem.zones ??= []).push(z);
-          battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: r0, duration: z.dur, key });
+          battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r: r0, duration: z.dur, key, visual: 'alchemy', motion: { vx: z.vx, vy: z.vy, grow } });
         },
       },
       talents: [
@@ -207,7 +207,7 @@ export default {
                   if (battle.allySelectable(a, unit)) battle.addBuff(a, { key: `${z.key}:regen`, duration: 1 + 2 * battle.dt, source: unit, mods: { hpRegen: regen } });
                 }
               }
-              battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r, duration: Math.max(0, z.dur - z.t), key: z.key });
+              battle.fx('zone', { x: z.x, y: z.y, id: unit.id, r, duration: Math.max(0, z.dur - z.t), key: z.key, visual: 'alchemy', motion: { vx: z.vx, vy: z.vy, grow } });
             }
           }
           for (const [e, steps] of seaHits) { // S3 debuff: 不叠加 — the strongest zone wins

@@ -30,7 +30,7 @@ export default {
             const n = Math.max(1, Math.round(dur / STEP)), per = Math.max(1, Math.round(1 / STEP));
             let i = 0;
             unit.mem.tinZones = (unit.mem.tinZones ?? 0) + 1;
-            battle.fx('zone', { x, y, radius, dur, id: unit.id, skill: 'tinman1' });
+            battle.fx('zone', { x, y, radius, dur, id: unit.id, skill: 'tinman1', visual: 'alchemy' });
             battle.every(STEP, (b, sc) => {
               const pulse = i % per === 0;
               for (const e of b.foesInRadius(x, y, radius)) {

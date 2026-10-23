@@ -167,16 +167,20 @@ describe('shots', () => {
     const pr = fx.projs[0];
     const dist = Math.hypot(b.x - a.x, b.y - a.y);
     assert.ok(Math.abs(pr.dur - dist / PROJ.arrow.speed / 2) < 1e-9, `dur ${pr.dur}`);
-    assert.equal(pr.trail.texture, fx.tex.tracer);
-    assert.equal(liveTex(fx, 'muzzle').length, 1, 'muzzle flash at the shooter');
+    assert.equal(pr.trail.texture, fx.tex.meteor);
+    assert.equal(liveTex(fx, 'meteor').length, 1, 'small directional muzzle flash');
+    let arrivals = 0;
+    const impact = fx._impact;
+    fx._impact = function (...args) { arrivals++; return impact.apply(this, args); };
     b.x = 9.5;                                     // the target moves: the shot follows it
     let t = 0;
     while (!pr.hit && t < 1) { fx.update(DT); t += DT; }
     assert.ok(Math.abs(t - pr.dur) <= DT + 1e-9, `arrived after ${t} (dur ${pr.dur})`);
     assert.equal(pr.tx, 9.5);
-    const flares = liveTex(fx, 'flare').length;
-    assert.ok(flares >= 1, 'arrival flare');
+    assert.equal(arrivals, 1, 'one arrival cue');
+    assert.equal(liveTex(fx, 'flare').length, 0, 'no circular arrival flare on a meteor');
     run(fx, 0.2);
+    assert.equal(arrivals, 1, 'the fade does not repeat the impact');
     assert.equal(fx.projs.length, 0, 'released after its short fade');
     assert.equal(pr.trail.visible || pr.halo.visible || pr.core.visible, false);
   });
@@ -424,7 +428,7 @@ describe('fx placement, quality, melee, skill', () => {
       fx.attack(a, b, 'arrow');
       run(fx, 0.05);
       assert.equal(fx.projs.length, 2);
-      const extras = liveTex(fx, 'dot').length + liveTex(fx, 'muzzle').length;
+      const extras = fx.parts.length;
       assert.equal(extras > 0, cosmetic, JSON.stringify(opts));
     }
   });

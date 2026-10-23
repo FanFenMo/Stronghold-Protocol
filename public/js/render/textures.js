@@ -697,7 +697,7 @@ let _fx = null;
  * icons at its foot) and each drawing stays off its cell's outer pixel (mipmapped sampling of a small sprite must not
  * pull in a neighbour). Frame sizes are part of the API — sprites are scaled by them: glow / soft / ring / hex / shock /
  * reticle / smoke / flare 128², spark / plus / orb / chevron / boomerang / muzzle 64², coin 48², dot / shard / square
- * 32², streak / tracer / bolt 128×32 (head at the right), slash 128×64 (arc bulging up), pillar 64×256 (foot at the
+ * 32², streak / tracer / bolt 128×32 and meteor 256×32 (head at the right), slash 128×64 (arc bulging up), pillar 64×256 (foot at the
  * bottom).
  */
 const FX_DRAW = {
@@ -868,6 +868,26 @@ const FX_DRAW = {
     const g = c.createLinearGradient(0, y, 0, y + h);
     g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
     c.fillStyle = g; c.fillRect(x + 1, y, w - 2, h);
+  }],
+  // A pointed head and a long, tapering tail. No radial glow is baked into this frame.
+  meteor: [64, 192, 256, 32, (c, x, y, w, h) => {
+    const cy = y + h / 2;
+    const g = c.createLinearGradient(x, 0, x + w - 2, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.3, 'rgba(255,255,255,0.1)');
+    g.addColorStop(0.7, 'rgba(255,255,255,0.42)');
+    g.addColorStop(0.92, 'rgba(255,255,255,0.8)');
+    g.addColorStop(1, 'rgba(255,255,255,0.55)');
+    c.fillStyle = g;
+    c.beginPath(); c.moveTo(x + 2, cy);
+    c.quadraticCurveTo(x + w * 0.58, cy - h * 0.05, x + w * 0.91, cy - h * 0.35);
+    c.lineTo(x + w - 2, cy);
+    c.lineTo(x + w * 0.91, cy + h * 0.35);
+    c.quadraticCurveTo(x + w * 0.58, cy + h * 0.05, x + 2, cy);
+    c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(x + w * 0.2, cy);
+    c.lineTo(x + w * 0.94, cy - h * 0.09); c.lineTo(x + w - 2, cy);
+    c.lineTo(x + w * 0.94, cy + h * 0.09); c.closePath(); c.fill();
   }],
 };
 

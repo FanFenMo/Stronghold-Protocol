@@ -2,8 +2,9 @@
 // Installed on FxSystem.prototype by ./system.js (a method container: never instantiated; `this` is the effect system).
 
 import { NO_OPTS, clamp, easeOut } from './limits.js';
+import { createAlchemyZone, refreshAlchemyZone, advanceAlchemyZone, drawAlchemyZone } from './alchemy.js';
 
-/** A zone lasting longer than this (real s) is a persistent area (炼金单元, fields): drawn dimmer than a skill's short burst. */
+/** Generic fields lasting longer than this (real s) are drawn dimmer than a skill's short burst. */
 export const ZONE_PERSIST = 3;
 /** Disc / edge alpha: a short zone, a persistent one (before the overlap damping), a telegraph. */
 export const ZONE_ALPHA = Object.freeze({ short: [0.28, 0.75], persist: [0.16, 0.5], warn: [0.35, 0.75] });
@@ -19,7 +20,7 @@ export function zoneAlpha(zn, zones) {
   if (!(zn.dur > ZONE_PERSIST)) return ZONE_ALPHA.short;
   let n = 1;
   for (const o of zones) {
-    if (o === zn || o.warn || !(o.dur > ZONE_PERSIST)) continue;
+    if (o === zn || o.look === 'alchemy' || o.warn || !(o.dur > ZONE_PERSIST)) continue;
     if (Math.hypot(o.x - zn.x, o.y - zn.y) < 0.75 * (o.r + zn.r)) n++;
   }
   const k = 1 / Math.sqrt(n);
@@ -93,15 +94,22 @@ export class FxZones {
    * sim fx's `key`): a zone already up under that key is updated in place — moved, resized, its end `dur` from now —
    * instead of a second one stacked on it (引星棘刺 S2's drifting alchemy unit is re-sent every second: twelve layers of the
    * same zone used to pile up, community report of 2026-10-06 「炼金单元等范围持续性技能特效太亮（尤其是多层叠加以后）」).
+   * Alchemy's `visual` selects its own normal-blend contour and game-clock lifetime instead of the generic glow.
    */
-  zone(x, y, z, r, tint, dur, tex = 'soft', warn = false, key = null) {
+  zone(x, y, z, r, tint, dur, tex = 'soft', warn = false, key = null, visual = null) {
     if (key != null) {
-      const zn = this.zones.find((q) => q.key === key && q.t < q.dur);
+      const zn = this.zones.find((q) => q.key === key && (q.look === 'alchemy' ? q.remaining > 0 : q.t < q.dur));
       if (zn) {
         zn.x = x; zn.y = y; zn.z = z; zn.r = r; zn.tint = tint; zn.dur = zn.t + dur;
+        if (zn.look === 'alchemy') refreshAlchemyZone(this, zn, visual, dur);
         this._onGround(zn.disc, y, z); this._onGround(zn.edge, y, z);
         return;
       }
+    }
+    if (visual?.style === 'alchemy') {
+      this.zones.push(createAlchemyZone(this, x, y, z, r, dur, key, visual));
+      if (this.zones.length > 24) this._freeZone(this.zones.shift());
+      return;
     }
     const P = this.P;
     const disc = new P.Sprite(this.tex[tex === 'ring' ? 'soft' : tex] || this.tex.soft);
@@ -113,7 +121,7 @@ export class FxZones {
     if (this.zones.length > 24) this._freeZone(this.zones.shift());
   }
 
-  _freeZone(zn) { zn.disc.destroy(); zn.edge.destroy(); }
+  _freeZone(zn) { zn.disc.destroy(); zn.edge.destroy(); zn.detail?.destroy(); }
 
   _updateZones(dt) {
     const cam = this.ctx.cam();
@@ -121,11 +129,14 @@ export class FxZones {
     let w = 0;
     for (const zn of this.zones) {
       zn.t += dt;
-      if (zn.t >= zn.dur) { this._freeZone(zn); continue; }
+      if (zn.look === 'alchemy') zn.remaining -= dt * this._ts();
+      if (zn.look === 'alchemy' ? zn.remaining <= 0 : zn.t >= zn.dur) { this._freeZone(zn); continue; }
+      if (zn.look === 'alchemy') advanceAlchemyZone(this, zn, dt);
       this.zones[w++] = zn;
     }
     this.zones.length = w;
     for (const zn of this.zones) {
+      if (zn.look === 'alchemy') { drawAlchemyZone(this, zn); continue; }
       const k = zn.t / zn.dur;
       const grow = Math.min(1, zn.t / 0.25);
       const rad = zn.r * (0.35 + 0.65 * easeOut(grow));

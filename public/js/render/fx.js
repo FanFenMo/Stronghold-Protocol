@@ -1,7 +1,7 @@
 // render/fx.js — battle visual effects with pooling and hard caps (DESIGN §9).
 //
-//   projectiles  b.ev 'atk' by projKind (render/style.js PROJ): sniper tracers with a muzzle flash; arts / heal / enemy
-//                orbs with a particle trail; bombs and lobs as shells on an arc with a ground shadow, a smoke trail and
+//   projectiles  b.ev 'atk' by projKind (render/style.js PROJ): physical / arts meteors with fine tapered tails and
+//                small directional flashes; heal / enemy orbs; bombs and lobs as shells on an arc with a ground shadow, a smoke trail and
 //                an explosion; drone darts; 回环射手 boomerangs that spin out to the target and back to the thrower's
 //                current position, gone when caught. Flight times from the sim's projectile speeds (/sim/constants.js
 //                PROJECTILE_SPEEDS — the visual lands with the sim's hit), homing on the interpolated target; a burst

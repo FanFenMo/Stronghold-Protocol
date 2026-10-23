@@ -127,22 +127,23 @@ export const HIT_TINT = Object.freeze({ phys: 0xffd9a0, arts: 0xc77dff, true: 0x
 /**
  * Projectile visuals per b.ev 'atk' projKind (sim: none | arrow | bolt | bomb | lob | orb | drone | enemy | boomerang | droneBomb;
  * chain / chainHeal / beam are beams). Drawn by render/fx.js:
- *   look   tracer (bullet streak + muzzle flash) | orb (glowing ball, particle trail) | shell (lobbed on an arc with a
+ *   look   meteor (fine tapered tail, small elongated head) | tracer (bullet streak) | orb (glowing ball) | shell (lobbed on an arc with a
  *          ground shadow, smoke trail) | dart (small fast bolt) | boomerang (spins to the target and back to the thrower)
  *   speed  tiles per game second — a copy of the sim's PROJECTILE_SPEEDS (server/sim/constants.js; `back` of the
  *          boomerang = BOOMERANG_RETURN_SPEED, PRTS 跃跃: out 15, back 3.75). fx.js prefers the sim's own values, loaded
  *          from /sim/constants.js, so the visual flight ends with the sim's hit; this copy stands in until then (and in
  *          Node). test/render/fxproj.test.js keeps the two equal.
  *   sizes  in tiles (× the camera's px per tile at the shot): `len` trail length, `width` trail thickness, `head` glow
- *          diameter; `arc` peak height of a lob over a 3-tile throw (scales with the range)
+ *          diameter (meteor: head length); `arc` peak height of a lob over a 3-tile throw (scales with the range).
+ *          Meteor thickness is clamped in screen pixels to stay fine and readable at distant views.
  *   colours `tint` hot core, `glow` halo, `trail` trail particles, `muzzle` flash at the shooter
  *   hit    arrival burst (fx.js _impact): spark | arts | heal | boom | splash | zap | enemy
  *   once   a one-off cast, not an attack rhythm: the shooter's attack clip plays once at its own speed (render/spine.js
  *          SpineActor.attack / windUp) — 暴鸰's bomb drop
  */
 export const PROJ = Object.freeze({
-  arrow: { look: 'tracer', speed: 14, tint: 0xfff6dc, glow: 0xffc45a, len: 1.05, width: 0.2, head: 0.36, muzzle: 0xffd27a, hit: 'spark' },
-  bolt: { look: 'orb', speed: 11, tint: 0xf4e2ff, glow: 0xb36bff, len: 0.6, width: 0.34, head: 0.52, trail: 0xa35cff, muzzle: 0xc77dff, hit: 'arts' },
+  arrow: { look: 'meteor', speed: 14, tint: 0xd5b574, glow: 0x8c6a38, trail: 0xb88a43, len: 2.4, width: 0.042, head: 0.13, muzzle: 0xa48145, hit: 'spark' },
+  bolt: { look: 'meteor', speed: 11, tint: 0xa88ac9, glow: 0x644887, trail: 0x8661ad, len: 2.1, width: 0.046, head: 0.14, muzzle: 0x785698, hit: 'arts' },
   orb: { look: 'orb', speed: 10, tint: 0xeafff0, glow: 0x3fe07a, len: 0.55, width: 0.3, head: 0.48, trail: 0x62f08a, muzzle: 0x62f08a, hit: 'heal' },
   bomb: { look: 'shell', speed: 8, tint: 0xffeed0, glow: 0xff8a3d, len: 0.85, width: 0.3, head: 0.56, trail: 0xff9c4a, arc: 1.1, smoke: 0x2e2824, muzzle: 0xffb35c, hit: 'boom' },
   lob: { look: 'shell', speed: 8, tint: 0xfff4dc, glow: 0xffb04a, len: 0.7, width: 0.26, head: 0.5, trail: 0xffc27a, arc: 1.4, smoke: 0x3a322c, muzzle: 0xffc27a, hit: 'splash' },

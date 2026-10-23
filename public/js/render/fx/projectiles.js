@@ -83,7 +83,7 @@ export class FxProjectiles {
     if (this.rich) this._muzzle(pr);
   }
 
-  /** A pooled projectile record: trail + halo + core sprites (additive, above units) and a ground shadow. */
+  /** A pooled projectile record: trail + halo + core sprites and a ground shadow. Meteors use normal blending. */
   _takeProj() {
     if (this.projs.length >= MAX_PROJ) this._releaseProj(this.projs.shift());
     let pr = this.projFree.pop();
@@ -112,14 +112,18 @@ export class FxProjectiles {
   _dressProj(pr) {
     const spec = pr.spec, look = spec.look;
     const thin = look === 'tracer' || look === 'dart';
+    const meteor = look === 'meteor';
     const { trail, halo, core, shadow } = pr;
-    trail.texture = this.tex[thin ? 'tracer' : 'streak'];
+    trail.blendMode = halo.blendMode = core.blendMode = this.P.BLEND_MODES[meteor ? 'NORMAL' : 'ADD'];
+    trail.texture = this.tex[meteor ? 'meteor' : thin ? 'tracer' : 'streak'];
     trail.tint = thin ? spec.tint : pr.trailTint;
     trail.visible = look !== 'boomerang';
-    halo.texture = this.tex.glow;
+    halo.texture = this.tex[meteor ? 'meteor' : 'glow'];
+    halo.anchor.set(meteor ? 1 : 0.5, 0.5);
     halo.tint = pr.glow;
     halo.visible = true;
-    core.texture = this.tex[look === 'boomerang' ? 'boomerang' : thin ? 'dot' : 'orb'];
+    core.texture = this.tex[meteor ? 'meteor' : look === 'boomerang' ? 'boomerang' : thin ? 'dot' : 'orb'];
+    core.anchor.set(meteor ? 1 : 0.5, 0.5);
     core.tint = spec.tint;
     core.rotation = 0;
     core.visible = true;
@@ -157,7 +161,7 @@ export class FxProjectiles {
   }
 
   /**
-   * One frame of a tracer / orb / shell / dart: placed by flight time (homing on the target), trail behind the head
+   * One frame of a meteor / tracer / orb / shell / dart: placed by flight time (homing on the target), trail behind the head
    * along the path (never longer than the part flown), an arrival burst, then a SHOT_FADE linger in the target.
    */
   _stepShot(pr, dt, cam, rich) {
@@ -178,6 +182,20 @@ export class FxProjectiles {
     const thin = look === 'tracer' || look === 'dart';
     const flown = k > kb ? seg * (k / (k - kb)) : 0;
     const L = Math.min(spec.len * s, flown) * (1 - fk);
+    if (look === 'meteor') {
+      const width = clamp(spec.width * s, 1.5, 2.8);
+      const head = Math.min(L, clamp(spec.head * s, 4, 10));
+      pr.trail.position.set(px, py); pr.trail.rotation = pr.ang;
+      pr.trail.scale.set(Math.max(0.001, L / 256), width / 32);
+      pr.trail.alpha = 0.82 * (1 - fk);
+      pr.halo.position.set(px, py); pr.halo.rotation = pr.ang;
+      pr.halo.scale.set(Math.max(0.001, L / 256), width * 1.8 / 32);
+      pr.halo.alpha = 0.1 * (1 - fk);
+      pr.core.position.set(px, py); pr.core.rotation = pr.ang;
+      pr.core.scale.set(Math.max(0.001, head / 256), width * 0.9 / 32);
+      pr.core.alpha = 0.9 * (1 - fk);
+      return true;
+    }
     const tr = pr.trail;
     tr.position.set(px, py);
     tr.rotation = pr.ang;
@@ -356,6 +374,16 @@ export class FxProjectiles {
     const cam = this.ctx.cam();
     const p = cam.project(pr.x0, pr.y0, pr.z0, this._g);
     const px = p.x, py = p.y, s = p.s;
+    if (look === 'meteor') {
+      const q = cam.project(pr.tx, pr.ty, pr.tz, this._q);
+      const width = clamp(s * 0.025, 1.2, 2);
+      this.particle('meteor', px, py, {
+        add: false, tint: spec.muzzle, life: 0.055, s0: width / 32, s1: 0,
+        sx: clamp(s * 0.18, 5, 12) / (width * 8), a0: 0.5, a1: 0,
+        rot: Math.atan2(q.y - py, q.x - px), anchorX: 0,
+      });
+      return;
+    }
     if (look === 'tracer') {
       const q = cam.project(pr.tx, pr.ty, pr.tz, this._q);
       this.particle('muzzle', px, py, { tint: spec.muzzle, life: 0.09, s0: (s / 64) * 0.55, s1: (s / 64) * 0.72, a0: 1, a1: 0, rot: Math.atan2(q.y - py, q.x - px), anchorX: 0.19 });
@@ -372,6 +400,15 @@ export class FxProjectiles {
     const p = cam.project(pr.tx, pr.ty, pr.tz, this._g);
     const x = p.x, y = p.y, s = p.s;
     const rich = this.rich;
+    if (spec.look === 'meteor') {
+      const width = clamp(s * 0.026, 1.2, 2);
+      this.particle('meteor', x, y, {
+        add: false, tint: spec.tint, life: 0.09, s0: width / 32, s1: 0,
+        sx: clamp(s * 0.16, 4, 10) / (width * 8), a0: 0.6, a1: 0,
+        rot: pr.ang, anchorX: 1,
+      });
+      return;
+    }
     switch (spec.hit) {
       case 'arts':
         this.particle('glow', x, y, { tint: pr.glow, life: 0.24, s0: (s / 128) * 0.7, s1: (s / 128) * 1.2, a0: 0.95, a1: 0 });

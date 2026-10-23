@@ -57,7 +57,7 @@ export class FxSim {
     const ex = extra && typeof extra === 'object' ? extra : {};
     const spec = fxSpec(kind, ex);
     if (spec.a === 'none') return; // an event the screen does not show (hitCap)
-    const at = spec.pt ? this._point(Number(x), Number(y)) : this._where(Number(x), Number(y), ex);
+    const at = spec.pt || ex.visual === 'alchemy' ? this._point(Number(x), Number(y)) : this._where(Number(x), Number(y), ex);
     if (!Number.isFinite(at.x) || !Number.isFinite(at.y)) return;
     // 蕾缪安 S2: the aimed snipe ('crit' on the locked enemy, from her) ends that aim lock
     if (kind === 'crit' && ex.src != null && ex.id != null) {
@@ -94,7 +94,11 @@ export class FxSim {
         break;
       }
       // `key`: one zone the sim re-sends as it moves / grows (an update in place, never a second layer — zones.js)
-      case 'zone': this.zone(at.x, at.y, at.z, r, col, Math.max(0.6, dur || 1.5), spec.tex, false, ex.key != null ? String(ex.key) : null); break;
+      case 'zone': {
+        const visual = ex.visual === 'alchemy' ? { style: 'alchemy', motion: ex.motion, anchor: ex.anchor } : null;
+        this.zone(at.x, at.y, at.z, r, col, visual ? dur : Math.max(0.6, dur || 1.5), spec.tex, false, ex.key != null ? String(ex.key) : null, visual);
+        break;
+      }
       case 'poisonTile': this.tileFlash([[Math.round(at.y), Math.round(at.x)]], col, dur, true, ex.key); break;
       case 'wall': {
         // a line of burning tiles through the anchor tile along `axis` ('col' | 'row', from the sim event)
