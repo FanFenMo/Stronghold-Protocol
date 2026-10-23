@@ -145,6 +145,9 @@ test('奖杯商店真实浏览器：浏览、滚轮、购买、共享档案、�
       assert.equal(profiles.wallet(initial.profileId).lifetimeEarned, 26);
 
       const port = srv.port;
+      // Complete result/lobby resource loads before the deliberate shutdown interval.
+      await Promise.all([c.page.waitForNetworkIdle({ idleTime: 300, timeout: 15000 }),
+        twin.page.waitForNetworkIdle({ idleTime: 300, timeout: 15000 })]);
       await srv.close();
       profiles = new ProfileStore(database);
       srv = await startServer({ host: '127.0.0.1', port, quiet: true, profiles });
