@@ -86,6 +86,15 @@ describe('landscape phone and tablet layout', { skip: !ENABLED && 'set SP_E2E=1 
         for (const phase of PHASES) {
           await loaded(page, `/dev/game-mock.html?shot=1&render=engine&phase=${phase}${phase === 'SP_DRAFT' ? '&variant=bounty' : ''}`, '.screen:not(.gload)');
           assert.deepEqual(await clipped(page), [], phase);
+          if (phase === 'RESULT') {
+            const back = await page.$eval('.result__foot .btn', el => {
+              el.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+              const r = el.getBoundingClientRect();
+              return { top: r.top, bottom: r.bottom, h: visualViewport.height };
+            });
+            assert.ok(back.top >= 0 && back.bottom <= back.h + 1, `结算返回按钮可见 ${JSON.stringify(back)}`);
+            if (w === 568) await page.screenshot({ path: path.join(OUT, 'mobile-568x320-result.png') });
+          }
           if (phase === 'PREP' || phase === 'COMBAT') {
             await page.waitForFunction(() => globalThis.__SP_VIEW__?.kind === 'engine');
             const size = await page.$eval('.gm__field canvas', el => ({ w: el.clientWidth, h: el.clientHeight }));

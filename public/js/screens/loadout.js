@@ -573,7 +573,7 @@ function LoadoutScreen({ st }) {
   return html`<${Fragment}>
   <div class="lo" role="dialog" aria-modal="true" aria-label="干员调配">
     <div class="lo__bg" aria-hidden="true"></div>
-    <header class="lo-top"><div class="lo-top__left"><${Button} variant="ghost" icon="chevronLeft" onClick=${closeLoadout}>返回<//><h1>干员调配</h1></div>
+    <header class="lo-top"><div class="lo-top__left"><${Button} variant="ghost" class="lo-back" icon="chevronLeft" onClick=${closeLoadout}>返回<//><h1>干员调配</h1></div>
       <div class="lo-top__right"><span>已调整 <b>${nChanged}</b></span><span class=${cx("lo-sync", syncCls)}>${t(syncText)}</span><${Button} data-testid="loadout-export" onClick=${openExport}>导出<//><${Button} data-testid="loadout-import" onClick=${openImport}>导入<//><${Button} onClick=${resetAll}>恢复默认<//></div></header>
     <nav class="lo-support__tabs"><${Button} data-testid="loadout-open" onClick=${() => setTab('loadout')}>干员调配<//><${Button} data-testid="support-open" onClick=${() => setTab('supports')}>外援干员<//></nav>
     <p class="lo-note">${locked ? '本局配置已锁定，修改将在下一局生效' : fromText}</p>

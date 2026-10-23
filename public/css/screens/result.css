@@ -76,3 +76,8 @@
 .rstat.is-best b { color: var(--gold); }
 .result__foot { margin-top: auto; padding-top: .2rem; display: flex; }
 .result__foot .btn { min-width: 3.4rem; }
+
+@media (max-height: 360px) and (orientation: landscape) {
+  .result__hero { gap: .08rem; padding-top: 0; overflow-y: auto; }
+  .result__foot { padding-top: .08rem; }
+}

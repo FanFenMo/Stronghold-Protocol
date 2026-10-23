@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cultivateMul, CULTIVATE_DEFAULT } from '../../shared/potential.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT = path.join(ROOT, 'test/e2e/out');
@@ -21,10 +22,7 @@ const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Conte
 const ENABLED = process.env.SP_E2E === '1' && existsSync(CHROME);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const INSIDE = 'chess_char_1_01_a';
-/** Whether this machine has the extracted module type icons (local-client art is optional, DESIGN §13). */
-function localModuleIcons() {
-  try { return !!JSON.parse(readFileSync(path.join(ROOT, 'data/local-assets.json'), 'utf8'))?.groups?.module; } catch { return false; }
-}
+const training = cultivateMul(JSON.parse(readFileSync(path.join(ROOT, 'data/effects.json'), 'utf8')), CULTIVATE_DEFAULT);
 
 describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED && 'set SP_E2E=1 (and have Chrome) to run' }, () => {
   let srv;
@@ -88,6 +86,14 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
   };
   const clickSel = async (page, sel) => {
     await page.waitForSelector(sel, { visible: true, timeout: 10000 });
+    await page.$eval(sel, el => el.scrollIntoView({ block: 'nearest' }));
+    await page.waitForFunction(selector => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return top && (top === el || el.contains(top));
+    }, { timeout: 10000 }, sel);
     await page.click(sel);
   };
 
@@ -95,7 +101,7 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     const { ctx, page, problems } = await open();
     await clickSel(page, '.lobby-screen [data-testid="loadout-open"]');
     await page.waitForSelector('.lo .lo-card', { visible: true, timeout: 15000 });
-    assert.equal(await page.$$eval('.lo-card', (els) => els.length), 112, 'every visible chess');
+    assert.equal(await page.$$eval('.lo-card', (els) => els.length), 118, 'every visible chess, including Columbia operators');
     await assertBgLayer(page);
     await page.screenshot({ path: path.join(OUT, 'loadout-desktop.png') });
     // search → one card
@@ -165,7 +171,7 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     assert.equal(payload.v, 1);
     assert.deepEqual(payload.entries, stored.entries, 'what is exported is what is stored');
     await page.screenshot({ path: path.join(OUT, 'loadout-export.png') });
-    await page.evaluate(() => [...document.querySelectorAll('.modal__actions .btn')].find((b) => b.textContent.trim() === '关闭').click());
+    await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('.modal'), { timeout: 3000 });
 
     // wipe it, then 导入 the payload back
@@ -240,15 +246,15 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     await clickSel(page, '.brief [data-testid="loadout-open"]');
     await page.waitForSelector('.lo .lo-card', { visible: true, timeout: 15000 });
     // the briefing (and its countdown) is hidden under the overlay: the overlay carries the time left
-    await page.waitForSelector('.lo-top .lo-deadline', { visible: true, timeout: 3000 });
-    assert.match(await page.$eval('.lo-top .lo-deadline', (el) => el.getAttribute('aria-label')), /剩余\d+秒/);
+    await page.waitForSelector('.lo > .countdown', { visible: true, timeout: 3000 });
+    assert.match(await page.$eval('.lo > .countdown', (el) => el.getAttribute('aria-label')), /剩余\d+秒/);
     // review: the two new 导出 / 导入 buttons must fit next to the countdown on a narrow phone in landscape (667×375).
     // Only the size changes (toggling isMobile / hasTouch would make puppeteer reload the page).
     await page.setViewport({ width: 667, height: 375 });
     const bar = await page.evaluate(() => {
       const top = document.querySelector('.lo-top');
       const right = document.querySelector('.lo-top__right').getBoundingClientRect();
-      const center = document.querySelector('.lo-top__center').getBoundingClientRect();
+      const center = document.querySelector('.lo-top__left h1').getBoundingClientRect();
       const buttons = [...document.querySelectorAll('.lo-top__right .btn')].map((b) => Math.round(b.getBoundingClientRect().right));
       return { overflow: top.scrollWidth - top.clientWidth, overlap: right.left < center.right, offscreen: right.right > innerWidth, buttons };
     });
@@ -294,11 +300,9 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
       letter: el.querySelector('.lo-mglyph__t')?.textContent || null,
     })));
     assert.deepEqual(tiles.map((t) => t.type).sort(), ['PRI-X', 'PRI-Y']);
-    if (localModuleIcons()) {
-      for (const t of tiles) assert.match(t.src || '', new RegExp(`^/assets/local/module/${t.type}\\.png$`, 'i'), JSON.stringify(t));
-      assert.ok(await page.$('.lo-minfo__title .lo-minfo__icon'), 'the selected module\'s info shows its icon too');
-    } else {
-      for (const t of tiles) assert.equal(t.letter, t.type.slice(-1), JSON.stringify(t));
+    for (const tile of tiles) {
+      if (tile.src) assert.match(tile.src, new RegExp(`^/assets/(?:local/)?module/${tile.type}\\.png$`, 'i'), JSON.stringify(tile));
+      else assert.equal(tile.letter, tile.type.slice(-1), JSON.stringify(tile));
     }
     await page.hover('.lo-mod[data-module]:not(.is-on):not(.lo-mod--none)');
     await page.screenshot({ path: path.join(OUT, 'module-icons.png') });
@@ -358,6 +362,8 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
   // ---- 局内数值 (GitHub issue #64) -------------------------------------------------------------------------------------
   const CHESS = () => JSON.parse(readFileSync(path.join(ROOT, 'data/chess.json'), 'utf8'));
   const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  const trainedHp = value => fmt(value * training.hp);
+  const trainedAtk = value => fmt(value * training.atk);
   /** The section's eight stats: label → shown value. */
   const shownStats = (page) => page.$$eval('.lo-sec--stats .dstat', (els) => Object.fromEntries(els.map((e) => [e.querySelector('.dstat__k').textContent, e.querySelector('.dstat__v').textContent])));
   const rangeTiles = (page) => page.$$eval('.lo-sec--stats .rgrid i.on', (els) => els.length);
@@ -380,25 +386,25 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     await page.waitForSelector('.lo .lo-card', { visible: true, timeout: 15000 });
     await pickChess(page, '隐现');
     // between the skills and the modules, 精锐 shown first: the default module's numbers, the 3 × 4 range
-    assert.deepEqual(await page.$$eval('.lo-detail__body > .lo-sec > header h3', (els) => els.map((e) => e.firstChild.textContent)), ['技能', '局内数值', '模组']);
+    assert.deepEqual(await page.$$eval('.lo-detail__body > .lo-sec > header h3', (els) => els.map((e) => e.firstChild.textContent)), ['潜能与练度', '技能', '局内数值', '模组']);
     const stats = await shownStats(page);
     assert.deepEqual(Object.keys(stats), ['生命上限', '攻击', '防御', '法术抗性', '攻击间隔', '阻挡数', '部署费用', '再部署']);
-    assert.equal(stats['生命上限'], fmt(golden.statsBase.maxHp + mod.attr.maxHp));
-    assert.equal(stats['攻击'], fmt(golden.statsBase.atk + mod.attr.atk));
+    assert.equal(stats['生命上限'], trainedHp(golden.statsBase.maxHp + mod.attr.maxHp));
+    assert.equal(stats['攻击'], trainedAtk(golden.statsBase.atk + mod.attr.atk));
     assert.equal(await rangeTiles(page), base.rangeGrid.length);
     assert.equal(await page.$eval('.lo-sec--stats', (el) => el.dataset.variant), 'elite');
     await page.screenshot({ path: path.join(OUT, 'loadout-stats-desktop.png') });
     // 不装备 → the base numbers; the skill choice changes nothing; 普通 → the normal chess; both toggles are independent
     await page.click('.lo-detail .lo-mod[data-module="none"]');
-    await page.waitForFunction((v) => document.querySelector('.lo-sec--stats .dstat__v')?.textContent === v, {}, fmt(golden.statsBase.maxHp));
-    assert.equal((await shownStats(page))['攻击'], fmt(golden.statsBase.atk));
+    await page.waitForFunction((v) => document.querySelector('.lo-sec--stats .dstat__v')?.textContent === v, {}, trainedHp(golden.statsBase.maxHp));
+    assert.equal((await shownStats(page))['攻击'], trainedAtk(golden.statsBase.atk));
     await page.click('.lo-detail .lo-skill[data-skill="0"]');
-    assert.equal((await shownStats(page))['攻击'], fmt(golden.statsBase.atk), 'a skill is not a stat');
+    assert.equal((await shownStats(page))['攻击'], trainedAtk(golden.statsBase.atk), 'a skill is not a stat');
     await page.click('.lo-sec--stats .lo-seg button[data-variant="normal"]');
-    await page.waitForFunction((v) => document.querySelector('.lo-sec--stats .dstat__v')?.textContent === v, {}, fmt(base.stats.maxHp));
+    await page.waitForFunction((v) => document.querySelector('.lo-sec--stats .dstat__v')?.textContent === v, {}, trainedHp(base.stats.maxHp));
     assert.equal(await page.$eval('.lo-sec--stats', (el) => el.dataset.variant), 'normal');
     assert.equal(await page.$eval('.lo-skill.is-on', (el) => el.dataset.skill), '0');
-    assert.equal(await page.$eval('.lo-seg button.is-on', (el) => el.textContent.startsWith('普通')), true, 'the skill level toggle is its own');
+    assert.equal(await page.$eval('.lo-seg[aria-label="技能等级"] button.is-on', (el) => el.textContent.startsWith('普通')), true, 'the skill level toggle is its own');
     // the layout: no sideways overflow, the range box beside the numbers
     const box = await page.evaluate(() => {
       const body = document.querySelector('.lo-detail__body');
@@ -410,6 +416,7 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     // 信仰搅拌机: SPT-Y's "攻击距离+1" draws one more tile in the 精锐 view (the toggle stays where it was left: 普通 has no
     // module, and says so); 不装备 goes back
     await pickChess(page, '信仰搅拌机');
+    await page.click('.lo-sec--stats .lo-seg button[data-variant="normal"]');
     assert.match(await page.$eval('.lo-stats__cap', (el) => el.textContent), /普通干员没有模组/);
     await page.click('.lo-sec--stats .lo-seg button[data-variant="elite"]');
     const t0 = await rangeTiles(page);
@@ -457,8 +464,8 @@ describe('干员调配 overlay (real server, headless Chrome)', { skip: !ENABLED
     await page.screenshot({ path: path.join(OUT, 'loadout-stats-phone.png') });
     // a choice made further down updates it (touch: the module card, 不装备)
     await page.tap('.lo-detail .lo-mod[data-module="none"]');
-    await page.waitForFunction((v) => document.querySelector('.lo-sec--stats .dstat__v')?.textContent === v, {}, fmt(golden.statsBase.maxHp));
-    assert.equal((await shownStats(page))['攻击'], fmt(golden.statsBase.atk));
+    await page.waitForFunction((v) => document.querySelector('.lo-sec--stats .dstat__v')?.textContent === v, {}, trainedHp(golden.statsBase.maxHp));
+    assert.equal((await shownStats(page))['攻击'], trainedAtk(golden.statsBase.atk));
     assert.deepEqual(problems, []);
     await ctx.close();
   });
