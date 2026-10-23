@@ -512,6 +512,7 @@ describe('websocket lobby', () => {
 
   test('rate limit: bursts beyond 40 msg/s get RATE, connection survives, bucket refills', async () => {
     const c = await pool.player('Spammer');
+    await delay(100); // replenish the hello + anonymous-profile handshake before measuring the burst
     const N = 100;
     const rids = [];
     for (let i = 0; i < N; i++) rids.push(c.send({ t: 'ping', c: i }));
@@ -520,7 +521,7 @@ describe('websocket lobby', () => {
     const pongs = replies.filter((m) => m.t === 'pong').length;
     const limited = replies.filter((m) => m.t === 'error' && m.code === ERR.RATE).length;
     assert.equal(pongs + limited, N);
-    assert.ok(pongs >= 39 && pongs <= 45, `pongs ${pongs}`); // hello used one token
+    assert.ok(pongs >= 39 && pongs <= 45, `pongs ${pongs}`);
     assert.ok(limited >= 55, `limited ${limited}`);
     assert.ok(c.isOpen);
     await delay(1100);
@@ -1546,7 +1547,8 @@ describe('match result replay', () => {
   }
 
   /** Frames of a resumed socket in arrival order (types + phase), after welcome. */
-  const order = (c) => c.log.filter((m) => m.t !== 'welcome' && m.t !== 'pong').map((m) => m.t + (m.t === 'm.public' ? `:${m.phase}` : ''));
+  const order = (c) => c.log.filter((m) => m.t !== 'welcome' && m.t !== 'pong' && !(m.t === 'ok' && m.profile))
+    .map((m) => m.t + (m.t === 'm.public' ? `:${m.phase}` : ''));
 
   for (const unicast of [true, false]) {
     test(`a human disconnected when the match ends gets room.state, the final m.public and m.result on resume (${unicast ? 'per-player' : 'broadcast'} result)`, async () => {
