@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import P from 'puppeteer-core';
 import { startServer } from '../helpers/server.js';
 import { TestClient } from '../helpers/wsClient.js';
-import { Client, hasChrome, OUT } from '../e2e/client.mjs';
+import { Client, hasChrome, CHROME, OUT } from '../e2e/client.mjs';
 
 const access = { username: 'player', password: 'player-secret', admin: { username: 'manager', password: 'admin-secret' } };
 async function fill(page, selector, value) {
@@ -31,7 +31,10 @@ test('管理员真实浏览器：正常游玩、独立管理窗口、自己和�
   const room = srv.lobby.roomOf(srv.registry.byId(hostWelcome.playerId));
   const c = new Client(P, srv.url, '管理博士', { prefix: 'admin' });
   t.after(async () => { await c.close(); await host.close(); await srv.close(); });
-  await c.open();
+  c.browser = await P.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--no-first-run'], protocolTimeout: 90000 });
+  c.page = await c.browser.newPage();
+  await c.page.setViewport({ width: 1920, height: 1080 });
+  await c.page.goto(srv.url, { waitUntil: 'domcontentloaded' });
   const errors = [];
   c.page.on('pageerror', error => errors.push(error.message));
   await c.page.waitForSelector('#access-form');
