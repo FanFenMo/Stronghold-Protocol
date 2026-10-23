@@ -98,6 +98,7 @@ test('管理员真实浏览器：游戏内名册、历史昵称搜索、在线�
   assert.equal(srv.lobby.profiles.store.wallet(host.profile.profileId).balance, 55);
   assert.equal(srv.lobby.profiles.store.wallet(host.profile.profileId).lifetimeEarned, 61);
   await panel.click('#copy-profile');
+  await panel.waitForFunction(() => document.getElementById('notice').textContent === '档案 ID 已复制。');
   assert.equal(await panel.evaluate(() => navigator.clipboard.readText()), host.profile.profileId);
   assert.equal(await panel.$eval('#wallet-id', el => getComputedStyle(el).userSelect), 'text');
   await panel.click('#self-profile');
@@ -114,6 +115,7 @@ test('管理员真实浏览器：游戏内名册、历史昵称搜索、在线�
   assert.equal(await c.page.evaluate(() => __SP__.store.get().me.playerId), mainId);
   await c.click('[data-testid="trophy-shop-open"]');
   await c.click('[data-testid="profile-copy"]');
+  await c.page.waitForFunction(() => document.body.textContent.includes('档案 ID 已复制'));
   assert.equal(await c.page.evaluate(() => navigator.clipboard.readText()), own.profileId);
   assert.equal(await c.page.$eval('[data-testid="profile-id"]', el => getComputedStyle(el).userSelect), 'text');
   await c.click('.tshop-close');
@@ -151,7 +153,8 @@ test('管理员真实浏览器：游戏内名册、历史昵称搜索、在线�
   await watch.close();
   assert.equal(await c.page.evaluate(() => __SP__.store.get().room.code), ownCode);
   await c.page.bringToFront();
-  await host.close();
+  const disconnected = new Promise(resolve => srv.registry.byId(hostWelcome.playerId).ws.once('close', resolve));
+  await host.close(); await disconnected;
   await search(panel, '常用旧昵称');
   await panel.waitForFunction(() => document.querySelector('#accounts .account')?.textContent.includes('离线'));
   await panel.click('#accounts .account');

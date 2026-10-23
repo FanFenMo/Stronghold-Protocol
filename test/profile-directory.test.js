@@ -85,7 +85,9 @@ test('真实连接绑定、改名和恢复档案均留存昵称，管理员可�
   assert.equal('token_hash' in online.profiles[0], false);
   assert.equal((await fetch(srv.url + '/api/admin/profiles')).status, 403);
   for (const query of ['?page=0', '?page=1.5', '?page=bad', '?q=' + 'a'.repeat(81)]) assert.equal((await list(query)).status, 400);
+  const disconnected = new Promise(resolve => srv.registry.byId(welcome.playerId).ws.once('close', resolve));
   await client.close();
+  await disconnected;
   const offline = await (await list('?q=' + encodeURIComponent('最初的昵称'))).json();
   assert.equal(offline.profiles[0].online, false);
   const profile = offline.profiles[0];
