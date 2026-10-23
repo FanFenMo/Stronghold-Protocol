@@ -77,11 +77,12 @@ export class BattleDeploy {
   /** Mark `unit` dead (hp reached 0). Fires `kill` then `death`. */
   kill(unit, killer = null) {
     if (!unit || !unit.alive) return;
+    if (unit.trophyUnity && unit.deployed && !unit.trophyUnity.dying) { unit.trophyUnity.kill(killer); return; }
     unit.hp = 0;
     if (this._hooks.kill) this.emit('kill', { killer, victim: unit });
     // a nested kill/retreat inside the handlers already removed it: a later handler's hp write must not stick
     if (!unit.alive) { if (!unit.bossPool) unit.hp = 0; return; }
-    if (unit.hp > 0 && !unit.bossPool) { // revived by a kill handler (clamped: a handler may write any number)
+    if (unit.hp > 0 && !unit.bossPool && !unit.trophyUnity?.dying) { // revived by a kill handler (clamped: a handler may write any number)
       unit.hp = Math.min(unit.hp, unit.s.maxHp);
       return;
     }

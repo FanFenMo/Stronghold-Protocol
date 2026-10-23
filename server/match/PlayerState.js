@@ -84,6 +84,7 @@ import { itemKey } from './gamedata.js';
 import { bountyText } from './choices.js';
 import { createRng, deriveSeed } from '../sim/rng.js';
 import { newTrophyShopState, prepareTrophyRound, grantTrophyRound, trophySixShop } from './trophyShop.js';
+import { TROPHY_UNITY_NAME, TROPHY_UNITY_DESC } from '../../shared/trophyMystery.js';
 import { COLUMBIA_BOND, COLUMBIA_TECH_LAYERS, COLUMBIA_TECH_ITEMS, columbiaTechCount, columbiaTechItemId } from '../../shared/columbia.js';
 
 const HAND_SIZE = GEO.HAND_SIZE;
@@ -1679,6 +1680,7 @@ export class PlayerState {
       bandId: this.bandId,
       ...(this.extraBands.length ? { extraBands: [...this.extraBands] } : {}),
       ...(this.trophyShop.attack ? { trophyAttack: this.trophyShop.attack } : {}),
+      ...(this.trophyShop.unity ? { trophyUnity: true } : {}),
       ...(this.trophyShop.slowThrough !== undefined && (this.trophyShop.slowThrough === null || this.m.round <= this.trophyShop.slowThrough)
         ? { trophySlow: true } : {}),
       playerEffects: this.effects.filter((e) => e.battle !== false).map((e) => ({
@@ -1710,6 +1712,8 @@ export class PlayerState {
 
   effectsView() {
     const out = [];
+    if (this.trophyShop.unity) out.push({ id: 'trophy:unity', name: TROPHY_UNITY_NAME, desc: TROPHY_UNITY_DESC,
+      iconKind: 'item', iconId: 'trap_1070_acarm070' });
     for (const id of [this.bandId, ...this.extraBands]) {
       const band = id ? this.gd.band(id) : null;
       if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId });

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { makeMatch } from './harness.js';
 import { makeBattle } from '../helpers/battleHarness.js';
 import { trophyProduct, TROPHY_SHOP_PRODUCTS } from '../../shared/trophyShop.js';
-import { planTrophyPurchase, grantTrophyRound } from '../../server/match/trophyShop.js';
+import { planTrophyPurchase, grantTrophyRound, prepareTrophyRound } from '../../server/match/trophyShop.js';
+import { COMMAND_ARCHIVE } from '../../shared/trophyMystery.js';
 import { buildBattleSpec, createBattleFromSpec } from '../../server/sim/spec.js';
 
 test('商品按确认价格全部启用，信标只在博士投影档且装备共用一局一次限制', () => {
@@ -21,8 +22,8 @@ test('商品按确认价格全部启用，信标只在博士投影档且装备�
   assert.ok(TROPHY_SHOP_PRODUCTS.filter(product => product.group === 'equipment').every(product => product.limit === 1));
 });
 
-test('隐藏事件最早在第5回合，前五种各约19%，无效果约5%，替换怪物不选Boss回合', () => {
-  const counts = new Array(6).fill(0);
+test('七种正向隐藏事件均分95%，空事件5%；档案在3至10回合，同心在开局，旧事件仍从第5回合开始', () => {
+  const counts = new Array(8).fill(0);
   const ps = { playerId: 'p1', canUseChess: () => true };
   const match = { seed: 1, disabledBonds: [], gd: { lastRound: 14, visibleChess: ['op'], bondIds: ['b'],
     modeInactiveBonds: new Set(), bond: () => ({ noStack: false }), isBossRound: round => round === 14 } };
@@ -31,11 +32,48 @@ test('隐藏事件最早在第5回合，前五种各约19%，无效果约5%，�
     const plan = planTrophyPurchase(match, ps, trophyProduct('mystery'));
     assert.deepEqual(plan, planTrophyPurchase(match, ps, trophyProduct('mystery')));
     counts[plan.kind - 1]++;
-    assert.ok(plan.round >= 5 && plan.round <= 14);
+    if (plan.kind === 7) assert.ok(plan.round >= 3 && plan.round <= 10);
+    else if (plan.kind === 8) assert.equal(plan.round, 1);
+    else assert.ok(plan.round >= 5 && plan.round <= 14);
     if (plan.kind === 3) assert.notEqual(plan.round, 14);
   }
-  for (const count of counts.slice(0, 5)) assert.ok(count > 1700 && count < 2100);
+  for (const kind of [1, 2, 3, 4, 5, 7, 8]) assert.ok(counts[kind - 1] > 1150 && counts[kind - 1] < 1550);
   assert.ok(counts[5] > 350 && counts[5] < 650);
+});
+
+test('指挥部档案到期发放，复用人事部图标，装备消耗后部署上限为12且不进入普通商店', () => {
+  const h = makeMatch({ fake: true, humans: 1, seed: 305 }).start();
+  try {
+    h.toPrep(3);
+    const ps = h.ps('p_0');
+    ps.trophyShop.mystery = { kind: 7, round: 4 };
+    const all = () => [...ps.hand, ...ps.temp, ...ps.board.values()].filter(Boolean);
+    grantTrophyRound(ps, 3);
+    assert.ok(!all().some(piece => piece.id === COMMAND_ARCHIVE));
+    grantTrophyRound(ps, 4);
+    const item = all().find(piece => piece.id === COMMAND_ARCHIVE);
+    const target = ps.acquireChess('chess_char_1_01_a', { fromPool: false });
+    const record = ps.gd.item(COMMAND_ARCHIVE);
+    assert.equal(record.iconId, ps.gd.item('chess_item_6_08_e_a').iconId);
+    assert.equal(record.shopExcluded, true);
+    assert.equal(ps.equip(item.uid, target.uid).ok, true);
+    assert.equal(ps.deployCap, 12);
+    assert.equal(ps.find(item.uid), null);
+  } finally { h.m.dispose(); }
+});
+
+test('同心协议仅在开局激活，战斗输入和生效列表携带效果，购买前不泄露隐藏结果', () => {
+  const h = makeMatch({ fake: true, humans: 1, seed: 307 }).start();
+  try {
+    h.toPrep(1);
+    const ps = h.ps('p_0');
+    ps.trophyShop.mystery = { kind: 8, round: 1 };
+    assert.ok(!ps.privateView().effects.some(effect => effect.id === 'trophy:unity'));
+    prepareTrophyRound(ps, 1);
+    assert.equal(ps.trophyShop.unity, true);
+    assert.ok(ps.privateView().effects.some(effect => effect.id === 'trophy:unity'));
+    assert.equal(ps.battleInput().trophyUnity, true);
+  } finally { h.m.dispose(); }
 });
 
 test('强化干员在指定回合发放9999生命与每秒2000自愈，普通资金商品仍可在前4回合触发', () => {
