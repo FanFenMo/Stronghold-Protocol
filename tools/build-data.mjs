@@ -3729,6 +3729,30 @@ function buildConfig(ctx, waves, stages, bands) {
         { maxRound: 14, FUNNY: 3, NORMAL: 4, HARD: 5, ABYSS: 6 },
       ],
       hiddenCore: { FUNNY: null, NORMAL: 5, HARD: 7, ABYSS: 8 },
+      ultimateTiers: [
+        { minLevel: 1, maxLevel: 5, byRoundsPassed: [
+          { maxRound: 4, count: 0 }, { maxRound: 8, count: 1 }, { maxRound: 11, count: 2 },
+          { maxRound: 13, count: 4 }, { maxRound: 14, count: 7 },
+        ], hiddenCore: 9 },
+        { minLevel: 6, maxLevel: 7, byRoundsPassed: [
+          { maxRound: 4, count: 0 }, { maxRound: 8, count: 1 }, { maxRound: 11, count: 3 },
+          { maxRound: 13, count: 5 }, { maxRound: 16, count: 8 }, { maxRound: 17, count: 10 },
+        ], hiddenCore: 11 },
+        { minLevel: 8, maxLevel: 11, byRoundsPassed: [
+          { maxRound: 4, count: 0 }, { maxRound: 8, count: 2 }, { maxRound: 11, count: 4 },
+          { maxRound: 13, count: 6 }, { maxRound: 16, count: 9 }, { maxRound: 17, count: 11 },
+        ], hiddenCore: 12 },
+        { minLevel: 12, maxLevel: 15, byRoundsPassed: [
+          { maxRound: 4, count: 0 }, { maxRound: 8, count: 2 }, { maxRound: 11, count: 4 },
+          { maxRound: 13, count: 7 }, { maxRound: 16, count: 10 }, { maxRound: 19, count: 12 },
+          { maxRound: 20, count: 14 },
+        ], hiddenCore: 15 },
+        { minLevel: 16, maxLevel: 16, byRoundsPassed: [
+          { maxRound: 4, count: 0 }, { maxRound: 8, count: 3 }, { maxRound: 11, count: 5 },
+          { maxRound: 13, count: 8 }, { maxRound: 16, count: 12 }, { maxRound: 19, count: 15 },
+          { maxRound: 20, count: 18 },
+        ], hiddenCore: 20 },
+      ],
       multiOnly: true, source: trophies ? 'research 01-core-data trophiesPerClear' : 'built-in',
       medals: (Array.isArray(ac.medalDataList) ? ac.medalDataList : Object.values(ac.medalDataList || {})).map((m) => ({ count: m.medalCount, iconId: m.medalIconId })),
     },

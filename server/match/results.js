@@ -63,6 +63,13 @@ export function assignTitles(gd, players, victory) {
 function trophiesFor(gd, roundsPassed, hiddenCleared) {
   const tr = gd.config.trophies;
   if (!tr || gd.isSolo) return 0;
+  const ultimate = gd.difficulty === 'ABYSS'
+    ? tr.ultimateTiers?.find((tier) => gd.ultimateLevel >= tier.minLevel && gd.ultimateLevel <= tier.maxLevel)
+    : null;
+  if (ultimate) {
+    if (hiddenCleared) return ultimate.hiddenCore;
+    return ultimate.byRoundsPassed.find((row) => roundsPassed <= row.maxRound)?.count ?? 0;
+  }
   let n = 0;
   if (Array.isArray(tr.byRoundsPassed)) {
     for (const row of tr.byRoundsPassed) {
