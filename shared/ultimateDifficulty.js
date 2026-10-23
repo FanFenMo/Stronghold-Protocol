@@ -18,7 +18,7 @@ export const ULTIMATE_EFFECTS = [
   '我方干员攻击力降低 10%',
   '我方干员防御力降低 10%',
   '从第 13 回合开始，每回合添加的普通怪物变更为随机精英悬赏怪物，且该怪物生命值提升 10%',
-  '前 19 回合所有怪物获得 5% 固定反伤；中间 BOSS、最终 BOSS、隐藏核心 BOSS 生命值提升 100%，攻击力提升 50%，物理、法术防御提升 80%；BOSS 获得真伤次数盾，30 次真伤击破，每 60 秒重新获得',
+  '中间 BOSS、最终 BOSS、隐藏核心 BOSS 生命值提升 100%，攻击力提升 50%，受到的任何伤害降低 30%；BOSS 获得真伤次数盾，30 次真伤击破，每 60 秒重新获得',
 ];
 
 export const isUltimateLevel = (n) => Number.isInteger(n) && n >= 0 && n <= ULTIMATE_MAX_LEVEL;
@@ -43,8 +43,7 @@ export function ultimateRules(n) {
     bossHp: n >= 7 ? 1.2 : 1,
     bossHpFinal: n >= 16 ? 2 : 1,
     bossAtk: n >= 16 ? 1.5 : 1,
-    bossDef: n >= 16 ? 1.8 : 1,
-    reflect: n >= 16 ? 0.05 : 0,
+    bossDamageTaken: n >= 16 ? 0.7 : 1,
     trueShield: n >= 16,
     incomePenalty: n >= 8 ? 1 : 0,
   };
