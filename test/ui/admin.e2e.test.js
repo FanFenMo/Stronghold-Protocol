@@ -85,6 +85,8 @@ test('管理员真实浏览器：正常游玩、独立管理窗口、自己和�
   await c.page.bringToFront();
   await c.click('.mode-card', '独立模拟');
   await c.click('.create-box button');
+  await c.page.waitForSelector('.room-screen');
+  await c.click('.room-screen button', '开始模拟');
   await c.page.waitForFunction(() => __SP__.store.get().room?.inMatch === true);
   const ownCode = await c.page.evaluate(() => __SP__.store.get().room.code);
   await panel.bringToFront(); await panel.click('#refresh-matches');
