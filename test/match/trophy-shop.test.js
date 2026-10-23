@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { makeMatch } from './harness.js';
 import { makeBattle } from '../helpers/battleHarness.js';
 import { trophyProduct, TROPHY_SHOP_PRODUCTS } from '../../shared/trophyShop.js';
-import { planTrophyPurchase } from '../../server/match/trophyShop.js';
+import { planTrophyPurchase, grantTrophyRound } from '../../server/match/trophyShop.js';
+import { buildBattleSpec, createBattleFromSpec } from '../../server/sim/spec.js';
 
 test('商品按确认价格全部启用，信标只在博士投影档且装备共用一局一次限制', () => {
   const prices = group => TROPHY_SHOP_PRODUCTS.filter(product => product.group === group).map(product => product.price);
@@ -20,7 +21,7 @@ test('商品按确认价格全部启用，信标只在博士投影档且装备�
   assert.ok(TROPHY_SHOP_PRODUCTS.filter(product => product.group === 'equipment').every(product => product.limit === 1));
 });
 
-test('隐藏事件固定在购买时选择的回合，前五种各约19%，无效果约5%，替换怪物不选Boss回合', () => {
+test('隐藏事件最早在第5回合，前五种各约19%，无效果约5%，替换怪物不选Boss回合', () => {
   const counts = new Array(6).fill(0);
   const ps = { playerId: 'p1', canUseChess: () => true };
   const match = { seed: 1, disabledBonds: [], gd: { lastRound: 14, visibleChess: ['op'], bondIds: ['b'],
@@ -30,11 +31,33 @@ test('隐藏事件固定在购买时选择的回合，前五种各约19%，无�
     const plan = planTrophyPurchase(match, ps, trophyProduct('mystery'));
     assert.deepEqual(plan, planTrophyPurchase(match, ps, trophyProduct('mystery')));
     counts[plan.kind - 1]++;
-    assert.ok(plan.round >= 1 && plan.round <= 14);
+    assert.ok(plan.round >= 5 && plan.round <= 14);
     if (plan.kind === 3) assert.notEqual(plan.round, 14);
   }
   for (const count of counts.slice(0, 5)) assert.ok(count > 1700 && count < 2100);
   assert.ok(counts[5] > 350 && counts[5] < 650);
+});
+
+test('强化干员在指定回合发放9999生命与每秒2000自愈，普通资金商品仍可在前4回合触发', () => {
+  const h = makeMatch({ fake: true, seed: 305 }).start();
+  try {
+    h.toPrep(1);
+    const ps = h.ps('p_0');
+    ps.trophyShop.mystery = { kind: 1, round: 5, chessId: 'chess_char_1_01_a' };
+    grantTrophyRound(ps, 4);
+    const all = () => [...ps.hand, ...ps.temp, ...ps.board.values()].filter(Boolean);
+    assert.ok(!all().some(piece => piece.fixedStats));
+    grantTrophyRound(ps, 5);
+    const piece = all().find(piece => piece.fixedStats);
+    assert.deepEqual(piece.fixedStats, { maxHp: 9999, hpRegen: 2000, atk: 79999, aspd: 325, def: 799 });
+    let earlyFunds = false;
+    for (let seed = 1; seed <= 100; seed++) {
+      const match = { ...h.m, seed };
+      const plan = planTrophyPurchase(match, ps, trophyProduct('funds'));
+      if (plan.round <= 4) earlyFunds = true;
+    }
+    assert.equal(earlyFunds, true);
+  } finally { h.m.dispose(); }
 });
 
 test('保命只触发一次；第二次致命漏怪照常淘汰', () => {
@@ -55,13 +78,14 @@ test('保命只触发一次；第二次致命漏怪照常淘汰', () => {
   } finally { h.m.dispose(); }
 });
 
-test('怪物替换仅作用于购买者，并将本回合漏怪转为最多30点治疗', () => {
+test('怪物替换仅作用于购买者，漏怪转为最多30点治疗并获得等量资金', () => {
   const h = makeMatch({ mode: 'coop', difficulty: 'HARD', fake: true, humans: 2, seed: 302 }).start();
   try {
     h.toPrep(1);
     const ps = h.ps('p_0'), mate = h.ps('p_1');
     ps.trophyShop.mystery = { kind: 3, round: 1 };
     ps.lp = mate.lp = 5;
+    const ownFunds = ps.funds, mateFunds = mate.funds, gained = ps.stats.fundsGained;
     assert.ok(h.m.normalSpawnsFor(ps).every(spawn => spawn.enemyKey === 'enemy_1207_sfji_2' && spawn.mods.trophyFragments));
     assert.ok(h.m.normalSpawnsFor(mate).every(spawn => !spawn.mods?.trophyFragments));
     h.m.lastResults.set(ps.playerId, { leaked: new Array(40).fill({ enemyKey: 'enemy_1208_msfji_2' }), layerGains: {} });
@@ -69,6 +93,9 @@ test('怪物替换仅作用于购买者，并将本回合漏怪转为最多30点
     h.m.settle(null, null);
     assert.equal(ps.lp, 35);
     assert.equal(mate.lp, 3);
+    assert.equal(ps.funds, ownFunds + 30);
+    assert.equal(ps.stats.fundsGained, gained + 30);
+    assert.equal(mate.funds, mateFunds);
   } finally { h.m.dispose(); }
 });
 
@@ -90,7 +117,7 @@ test('特殊调度站只刷新六阶干员且价格恒为2，下一回合恢复�
 test('特殊干员在实际战斗输入中保持指定属性，购买者的攻击增益不会影响队友', () => {
   const h = makeBattle({ content: 'none', players: [
     { playerId: 'p1', trophyAttack: 0.3, units: [{ chessId: 'chess_char_1_01_a', uid: 1, row: 10, col: 5,
-      fixedStats: { atk: 79999, def: 799, aspd: 325 } }, { chessId: 'chess_char_1_01_a', uid: 3, row: 9, col: 4 }] },
+      fixedStats: { maxHp: 9999, hpRegen: 2000, atk: 79999, def: 799, aspd: 325 } }, { chessId: 'chess_char_1_01_a', uid: 3, row: 9, col: 4 }] },
     { playerId: 'p2', units: [{ chessId: 'chess_char_1_01_a', uid: 2, row: 11, col: 6 }] },
   ] });
   h.b.start();
@@ -98,6 +125,22 @@ test('特殊干员在实际战斗输入中保持指定属性，购买者的攻�
   assert.equal(special.s.atk, 79999);
   assert.equal(special.s.def, 799);
   assert.equal(special.s.aspd, 325);
+  assert.equal(special.s.maxHp, 9999);
+  assert.equal(special.hp, 9999);
+  assert.equal(special.s.hpRegen, 2000);
+  h.b.addBuff(special, { key: 'test:stats', persist: true, mods: { hpPct: 1, hpRegen: 100, atkPct: 1 } });
+  assert.equal(special.s.maxHp, 9999);
+  assert.equal(special.s.hpRegen, 2000);
+  special.hp = 4000;
+  h.run(1);
+  assert.ok(Math.abs(special.hp - 6000) < 1e-8);
+  const spec = buildBattleSpec({ ...h.b.opts, stageId: null, battleId: 'test.trophy', fieldId: 'test' });
+  const replay = createBattleFromSpec(JSON.parse(JSON.stringify(spec)), h.b.data, { content: 'none' });
+  replay.start();
+  const replica = replay.allyUnits.find(unit => unit.uid === 1);
+  assert.equal(replica.s.maxHp, 9999);
+  assert.equal(replica.s.hpRegen, 2000);
+  assert.equal(replica.hp, 9999);
   assert.equal(normal.s.atk, normal.base.atk);
   assert.equal(h.unit(3).s.atk, h.unit(3).base.atk * 1.3);
   assert.deepEqual(h.b.errors, []);

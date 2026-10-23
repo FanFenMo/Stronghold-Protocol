@@ -2938,7 +2938,11 @@ export class Match {
       const counted = (r.leaked || []).filter((l) => l && l.counted !== false).length;
       const loss = trophyFragmentRound(ps) ? 0 : uniteRan && plan.leakers.includes(ps) ? Math.min(cap, survivors.get(ps.playerId) || 0) : Math.min(cap, counted);
       ps.lp -= loss;
-      if (trophyFragmentRound(ps)) ps.lp += Math.min(30, counted);
+      if (trophyFragmentRound(ps)) {
+        const reward = Math.min(30, counted);
+        ps.lp += reward;
+        ps.addFunds(reward, { reason: 'trophy-shop' });
+      }
       ps.stats.lpLost += loss;
       ps.stats.leaks += counted;
       ps.stats.kills += Number(r.killed) || 0;
