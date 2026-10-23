@@ -16,7 +16,7 @@ export class ProfileStore {
     this.db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     try { this.transaction(() => {
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 2) throw new Error('玩家档案数据库版本高于当前程序支持的版本');
+      if (version > 3) throw new Error('玩家档案数据库版本高于当前程序支持的版本');
       if (version === 0) this.db.exec(`
         CREATE TABLE profiles (
           id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
@@ -58,6 +58,14 @@ export class ProfileStore {
         }
         this.db.exec('PRAGMA user_version=2;');
       }
+      if (version < 3) this.db.exec(`
+        CREATE TABLE admin_adjustments (
+          id TEXT PRIMARY KEY, profile_id TEXT NOT NULL REFERENCES profiles(id),
+          balance INTEGER NOT NULL, earned INTEGER NOT NULL, reason TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        ) STRICT;
+        PRAGMA user_version=3;
+      `);
     }); } catch (error) { this.db.close(); throw error; }
   }
 
@@ -98,11 +106,32 @@ export class ProfileStore {
   }
 
   ledger(profileId, before = null, limit = 50) {
-    const rows = this.db.prepare(`SELECT id, source, source_id AS sourceId, delta, earned_delta AS earnedDelta,
-      balance_after AS balanceAfter, earned_after AS earnedAfter, created_at AS createdAt
-      FROM trophy_ledger WHERE profile_id=? AND (? IS NULL OR id<?) ORDER BY id DESC LIMIT ?`)
+    const rows = this.db.prepare(`SELECT l.id, source, source_id AS sourceId, delta, earned_delta AS earnedDelta,
+      balance_after AS balanceAfter, earned_after AS earnedAfter, l.created_at AS createdAt, a.reason
+      FROM trophy_ledger l LEFT JOIN admin_adjustments a ON l.source='admin' AND a.id=l.source_id
+      WHERE l.profile_id=? AND (? IS NULL OR l.id<?) ORDER BY l.id DESC LIMIT ?`)
       .all(profileId, before, before, limit);
     return { rows, next: rows.length === limit ? rows.at(-1).id : null };
+  }
+
+  setWallet({ profileId, balance, lifetimeEarned, revision, requestId, reason }) {
+    return this.transaction(() => {
+      const old = this.db.prepare('SELECT * FROM admin_adjustments WHERE id=?').get(requestId);
+      if (old) {
+        if (old.profile_id !== profileId || old.balance !== balance || old.earned !== lifetimeEarned || old.reason !== reason) {
+          throw Object.assign(new Error('修改编号已用于其他操作'), { status: 409 });
+        }
+        return this.wallet(profileId);
+      }
+      const wallet = this.wallet(profileId);
+      if (!wallet) throw Object.assign(new Error('匿名档案不存在'), { status: 404 });
+      if (wallet.revision !== revision) throw Object.assign(new Error('奖杯已发生变化，请重新查询后核对修改'), { status: 409 });
+      this.change(profileId, { source: 'admin', sourceId: requestId,
+        delta: balance - wallet.balance, earnedDelta: lifetimeEarned - wallet.lifetimeEarned });
+      this.db.prepare('INSERT INTO admin_adjustments VALUES (?,?,?,?,?,?)')
+        .run(requestId, profileId, balance, lifetimeEarned, reason, this.now());
+      return this.wallet(profileId);
+    });
   }
 
   change(profileId, { source, sourceId, delta, earnedDelta = 0 }) {

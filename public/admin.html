@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>管理窗口 · 卫戍协议：盟约</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <script type="module" src="/js/admin.js"></script>
+</head>
+<body>
+  <header><div><p class="eyebrow">STRONGHOLD PROTOCOL</p><h1>管理窗口</h1></div>
+    <a href="/" target="_blank" rel="noopener">打开游戏</a><a href="/login?switch=1&next=%2Fadmin.html">切换账号</a></header>
+  <main>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section aria-labelledby="matches-title">
+      <div class="section-head"><h2 id="matches-title">进行中的对局 <span id="match-count">0</span></h2><button id="refresh-matches" type="button">刷新对局</button></div>
+      <p class="hint">每 5 秒更新。观战会打开独立游戏窗口，可同时保留自己的对局。</p>
+      <div id="matches"></div>
+    </section>
+    <section aria-labelledby="wallet-title">
+      <div class="section-head"><h2 id="wallet-title">奖杯管理</h2><button id="self-profile" type="button">我的档案</button></div>
+      <form id="lookup-form"><label for="profile-id">匿名档案 ID</label><div class="lookup"><input id="profile-id" required autocomplete="off" placeholder="输入完整档案 ID"><button>查询档案</button></div></form>
+      <p class="hint">玩家可在商店中查看档案 ID；也可点击对局中的玩家进行查询。</p>
+      <form id="wallet-form" hidden>
+        <p id="wallet-id" class="mono"></p>
+        <div class="wallet-fields"><label>可用奖杯<input id="balance" type="number" min="0" max="9007199254740991" step="1" required></label>
+          <label>历史累计奖杯<input id="earned" type="number" min="0" max="9007199254740991" step="1" required></label></div>
+        <label for="reason">修改原因</label><input id="reason" maxlength="200" required placeholder="例如：活动奖励、奖杯补偿或数据更正">
+        <p class="hint">两项奖杯可分别调高、调低或归零。历史累计会影响解锁条件。</p>
+        <button id="save-wallet">保存奖杯修改</button>
+      </form>
+      <div id="ledger"></div>
+    </section>
+  </main>
+</body>
+</html>

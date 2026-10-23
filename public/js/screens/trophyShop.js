@@ -153,6 +153,7 @@ export function ShopHost() {
       title=${html`<span class="tshop-heading"><strong>商店</strong><span>可用奖杯 <b class="num">${profile.profile?.balance ?? '—'}</b></span>
         <button type="button" class="tshop-close" onClick=${() => shopStore.set({ open: false })} aria-label="关闭商店">×</button></span>`}>
       <div class="tshop-toolbar"><span>历史累计获得：${profile.profile?.lifetimeEarned ?? '—'} 奖杯</span>
+        <span title="定向发放奖杯时提供此 ID">档案 ID：<code data-testid="profile-id">${profile.profile?.profileId ?? '—'}</code></span>
         <${Button} size="sm" variant="ghost" disabled=${profile.status !== 'ready'} onClick=${downloadBackup}>备份档案凭证<//>
         <${Button} size="sm" variant="ghost" disabled=${inMatch || net.status !== 'online'} onClick=${() => file.current.click()}>恢复档案<//>
         <input ref=${file} type="file" accept="application/json,.json" hidden onChange=${async event => {

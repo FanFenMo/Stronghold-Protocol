@@ -654,8 +654,10 @@ export class Network {
     session.lastSeen = now;
     session.addr = conn.ip;
     session.limitKey = conn.key;
+    session.isAdmin = conn.ws.isAdmin === true;
 
     const welcome = { t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed };
+    if (session.isAdmin) welcome.isAdmin = true;
     if (this.handler.profiles) welcome.profileRequired = true;
     if (validRid(rid)) welcome.rid = rid;
     this.reply(conn, welcome);

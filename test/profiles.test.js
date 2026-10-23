@@ -36,7 +36,7 @@ test('旧档案升级补发十奖杯，保留消费与累计记录，多次重�
       product: trophyProduct('round12'), requestId: 'old-buy' });
     // A version-one wallet had the match reward and purchase, without any initial grant.
     store.db.prepare("DELETE FROM trophy_ledger WHERE source='initial'").run();
-    store.db.exec('UPDATE wallets SET balance=balance-10, revision=revision-1; UPDATE trophy_ledger SET balance_after=balance_after-10; PRAGMA user_version=1;');
+    store.db.exec('UPDATE wallets SET balance=balance-10, revision=revision-1; UPDATE trophy_ledger SET balance_after=balance_after-10; DROP TABLE admin_adjustments; PRAGMA user_version=1;');
     store.close();
     for (let restart = 0; restart < 2; restart++) {
       store = new ProfileStore(filename);

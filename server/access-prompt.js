@@ -23,7 +23,7 @@ export async function promptAccess({ input = process.stdin, output = process.std
     const line = await lines.next();
     hidden = false;
     if (password && terminal) output.write('\n');
-    if (line.done) throw new Error('开服账号密码输入未完成，请在终端重新启动并输入；两项均留空可直接开服。');
+    if (line.done) throw new Error('开服账号密码输入未完成，请在终端重新启动，依次完成普通玩家和管理员账密输入；管理员两项均留空可关闭管理功能。');
     return line.value;
   }
 
@@ -32,7 +32,22 @@ export async function promptAccess({ input = process.stdin, output = process.std
     const username = await read('账号（可留空）：');
     const password = await read('密码（可留空，输入不回显）：', true);
     output.write(username || password ? '\n已启用本次开服的账号密码验证。\n' : '\n账号密码均为空，访客可直接进入游戏。\n');
-    return { username, password };
+    output.write('\n本次开服的管理员账号密码（两项均留空则关闭管理员功能）\n');
+    for (;;) {
+      const adminUsername = await read('管理员账号（可留空）：');
+      const adminPassword = await read('管理员密码（可留空，输入不回显）：', true);
+      if (!adminUsername && !adminPassword) return { username, password };
+      if (!adminUsername || !adminPassword) {
+        output.write('管理员账号和密码必须同时填写，请重新输入。\n');
+        continue;
+      }
+      if (adminUsername === username && adminPassword === password) {
+        output.write('管理员账密必须与普通玩家账密不同，请重新输入。\n');
+        continue;
+      }
+      output.write('\n已启用本次开服的管理员账号。\n');
+      return { username, password, admin: { username: adminUsername, password: adminPassword } };
+    }
   } finally {
     rl.close();
   }

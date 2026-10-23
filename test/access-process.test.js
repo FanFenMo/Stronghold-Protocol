@@ -40,20 +40,32 @@ test('the real process waits for both fields before listening and prompts again 
   await first.wait(/密码（可留空，输入不回显）/);
   assert.doesNotMatch(first.text(), /Local:/);
   first.child.stdin.write('process-test-password\n');
+  await first.wait(/管理员账号（可留空）/);
+  assert.doesNotMatch(first.text(), /Local:/);
+  first.child.stdin.write('manager\n');
+  await first.wait(/管理员密码（可留空，输入不回显）/);
+  assert.doesNotMatch(first.text(), /Local:/);
+  first.child.stdin.write('admin-process-password\n');
   const [, base] = await first.wait(/Local:\s+(http:\/\/127\.0\.0\.1:\d+)/);
   assert.ok(!first.text().includes('process-test-password'));
+  assert.ok(!first.text().includes('admin-process-password'));
   const res = await fetch(base + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: 'host', password: 'process-test-password' }) });
   assert.equal(res.status, 200);
   const cookie = res.headers.get('set-cookie').split(';')[0];
+  const admin = await fetch(base + '/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'manager', password: 'admin-process-password' }) });
+  assert.equal((await admin.json()).role, 'admin');
+  const adminCookie = admin.headers.get('set-cookie').split(';')[0];
   await first.stop();
 
   const next = launch(t, Number(new URL(base).port));
   await next.wait(/账号（可留空）/);
   assert.doesNotMatch(next.text(), /Local:/);
-  next.child.stdin.write('host\nprocess-test-password\n');
+  next.child.stdin.write('host\nprocess-test-password\nmanager\nadmin-process-password\n');
   await next.wait(/Local:/);
   assert.equal((await fetch(base + '/auth/status', { headers: { Cookie: cookie } })).status, 401);
+  assert.equal((await fetch(base + '/api/admin/matches', { headers: { Cookie: adminCookie } })).status, 401);
 });
 
 test('a process with no supplied terminal input exits without serving an unprotected game', async (t) => {

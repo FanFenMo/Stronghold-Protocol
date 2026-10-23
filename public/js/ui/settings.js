@@ -11,6 +11,7 @@ const cx = (...p) => p.flat().filter(Boolean).join(' ');
 import { audio } from '../audio.js';
 import { openGuide } from './guide.js';
 import { detectFeatures } from './device.js';
+import { AdminButton } from './adminButton.js';
 
 /** Settings store: { bgm, sfx, voice, muted, damageNumbers, quality }. */
 export const settingsStore = createStore(sanitizeSettings(loadPref('settings', null)));
@@ -155,6 +156,8 @@ export function SettingsModal({ open, onClose }) {
     actions=${html`<${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>玩法说明<//>
       <${Button} variant="primary" icon="check" onClick=${onClose}>完成<//>`}>
     <div class="set-list">
+      <div class="set-row"><span class="set-row__label">账号管理</span><${AdminButton} />
+        <a href="/login?switch=1">切换登录账号</a></div>
       <${Slider} label="背景音乐" micro="BGM" icon="play" value=${s.bgm} onInput=${(v) => updateSettings({ bgm: v })} />
       <${Slider} label="干员语音" micro="VOICE" icon="mic" value=${s.voice} onInput=${(v) => updateSettings({ voice: v })} />
       <${Slider} label="音效" micro="SFX" icon="signal" value=${s.sfx}

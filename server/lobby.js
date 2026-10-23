@@ -424,10 +424,11 @@ export class Lobby {
       return OK;
     }
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
-    if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo room');
-    if (room.spectators.length >= MAX_SPECTATORS) return fail(ERR.ROOM_FULL, 'no free spectator seat');
+    if (room.mode === 'solo' && !session.isAdmin) return fail(ERR.ROOM_FULL, 'solo room');
+    const publicSpectators = room.spectators.filter(s => !s.isAdmin).length;
+    if (!session.isAdmin && publicSpectators >= MAX_SPECTATORS) return fail(ERR.ROOM_FULL, 'no free spectator seat');
     if (cur) this.removeMember(cur, session.playerId);
-    room.spectators.push({ playerId: session.playerId, name: session.name, connected: session.connected });
+    room.spectators.push({ playerId: session.playerId, name: session.name, connected: session.connected, ...(session.isAdmin ? { isAdmin: true } : {}) });
     session.roomCode = room.code;
     session.notice = null;
     session.pendingResult = null;

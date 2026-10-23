@@ -120,7 +120,7 @@ test('login accepts only bounded JSON; method, HEAD and proxy HTTPS behavior', a
 });
 
 test('terminal input preserves empty fields and whitespace, and does not print the password', async () => {
-  for (const [lines, expected] of [['\n\n', { username: '', password: '' }], ['主机\n 密码 \n', { username: '主机', password: ' 密码 ' }]]) {
+  for (const [lines, expected] of [['\n\n\n\n', { username: '', password: '' }], ['主机\n 密码 \n\n\n', { username: '主机', password: ' 密码 ' }]]) {
     const input = new PassThrough();
     const output = new PassThrough();
     let text = '';
@@ -146,7 +146,7 @@ test('pasting both lines in a terminal never echoes the password', async () => {
   let text = '';
   output.on('data', (chunk) => { text += chunk; });
   const result = promptAccess({ input, output });
-  input.end('host\nprivate-password\n');
+  input.end('host\nprivate-password\n\n\n');
   assert.deepEqual(await result, { username: 'host', password: 'private-password' });
   assert.ok(!text.includes('private-password'), 'pasted password stays hidden');
 });

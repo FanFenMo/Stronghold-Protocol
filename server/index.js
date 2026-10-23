@@ -41,6 +41,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { Network, SessionRegistry, NET_DEFAULTS } from './net.js';
 import { Lobby } from './lobby.js';
+import { createAdminHandler } from './admin.js';
 import { getData, loadData } from './data.js';
 import { PROTOCOL_VERSION, APP_VERSION } from '../shared/constants.js';
 import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
@@ -616,7 +617,7 @@ function makeLogger(quiet) {
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
- *   access?: { username: string, password: string },
+ *   access?: { username: string, password: string, admin?: { username: string, password: string } },
  *   profiles?: import('./profiles.js').ProfileStore | false, profilePath?: string,
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: WebSocketServer,
@@ -650,6 +651,7 @@ export async function startServer(opts = {}) {
   const network = new Network({ registry, handler: lobby, log, options: netOptions });
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, log });
   const access = createAccess(opts.access);
+  const serveAdmin = createAdminHandler({ access, lobby, log });
   const startedAt = Date.now();
   // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
   resetBuildTag();
@@ -670,6 +672,12 @@ export async function startServer(opts = {}) {
     const parts = splitUrl(url);
     if (!parts) { sendError(req, res, 400, '请求地址无效 · Bad request'); return; }
     if (await access.handle(req, res, parts.rawPath)) return;
+    if (await serveAdmin(req, res, parts.rawPath)) return;
+    if (parts.rawPath === '/admin.html' && !access.isAdmin(req)) {
+      res.writeHead(302, { Location: '/login?switch=1&next=%2Fadmin.html', 'Cache-Control': 'no-store' });
+      res.end();
+      return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD');
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
@@ -697,7 +705,7 @@ export async function startServer(opts = {}) {
   });
 
   const wss = new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD, perMessageDeflate: false, clientTracking: false });
-  wss.on('connection', (ws, req) => network.handleConnection(ws, req));
+  wss.on('connection', (ws, req) => { ws.isAdmin = access.isAdmin(req); network.handleConnection(ws, req); });
   wss.on('error', (e) => log.error('[ws] server error', e));
 
   server.on('upgrade', (req, socket, head) => {
@@ -782,6 +790,7 @@ async function main() {
     srv = await startServer({ access });
     access.username = '';
     access.password = '';
+    if (access.admin) { access.admin.username = ''; access.admin.password = ''; }
   } catch (e) {
     if (e && e.code === 'EADDRINUSE') console.error(`端口已被占用 / port in use: ${e.port ?? process.env.PORT ?? 3000}. Try PORT=3001 npm start`);
     else console.error('[boot] failed to start', e);

@@ -13,24 +13,34 @@ function json(req, res, status, value) {
 }
 
 /** One shared access gate per server instance. Only salted digests and an opaque cookie stay in memory. */
-export function createAccess({ username = '', password = '' } = {}) {
+export function createAccess({ username = '', password = '', admin = null } = {}) {
+  if (admin && (typeof admin.username !== 'string' || !admin.username || typeof admin.password !== 'string' || !admin.password)) {
+    throw new Error('管理员账号和密码必须同时填写');
+  }
+  if (admin && admin.username === username && admin.password === password) throw new Error('管理员账密必须与普通玩家账密不同');
   const required = username !== '' || password !== '';
   let salt = randomBytes(32);
   const digest = (user, pass) => createHash('sha256').update(salt).update(JSON.stringify([user, pass])).digest();
   let credentials = digest(username, password);
+  const adminEnabled = !!admin;
+  let adminCredentials = admin ? digest(admin.username, admin.password) : null;
+  admin = null;
   username = '';
   password = '';
   let token = randomBytes(32).toString('base64url');
+  let adminToken = randomBytes(32).toString('base64url');
 
-  function authenticated(req) {
-    if (!required) return true;
-    if (!token) return false;
+  function role(req) {
+    if (!token) return null;
     const cookie = String(req.headers.cookie || '').split(';').map((s) => s.trim()).find((s) => s.startsWith(`${COOKIE}=`));
     const value = cookie?.slice(COOKIE.length + 1) || '';
     const candidate = Buffer.from(value);
-    const expected = Buffer.from(token);
-    return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+    const matches = expected => candidate.length === Buffer.byteLength(expected) && timingSafeEqual(candidate, Buffer.from(expected));
+    if (adminEnabled && matches(adminToken)) return 'admin';
+    return !required || matches(token) ? 'player' : null;
   }
+  const authenticated = req => role(req) !== null;
+  const isAdmin = req => role(req) === 'admin';
 
   async function handle(req, res, rawPath) {
     if (rawPath === '/auth/login') {
@@ -60,15 +70,17 @@ export function createAccess({ username = '', password = '' } = {}) {
         json(req, res, 400, { message: '请填写账号密码，留空项也需提交' });
         return true;
       }
-      if (required && (!credentials || !timingSafeEqual(digest(body.username, body.password), credentials))) {
+      const submitted = digest(body.username, body.password);
+      const administrator = adminCredentials && timingSafeEqual(submitted, adminCredentials);
+      if (!administrator && required && (!credentials || !timingSafeEqual(submitted, credentials))) {
         json(req, res, 401, { message: '账号或密码不正确' });
         return true;
       }
-      if (required) {
+      if (required || adminEnabled) {
         const secure = req.socket.encrypted || String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https';
-        res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
+        res.setHeader('Set-Cookie', `${COOKIE}=${administrator ? adminToken : token}; Path=/; HttpOnly; SameSite=Lax${secure ? '; Secure' : ''}`);
       }
-      json(req, res, 200, { ok: true });
+      json(req, res, 200, { ok: true, ...(adminEnabled ? { role: administrator ? 'admin' : 'player' } : {}) });
       return true;
     }
 
@@ -80,8 +92,8 @@ export function createAccess({ username = '', password = '' } = {}) {
       }
       const allowed = authenticated(req);
       if (rawPath === '/auth/status') {
-        json(req, res, allowed ? 200 : 401, { required, authenticated: allowed });
-      } else if (allowed) {
+        json(req, res, allowed ? 200 : 401, { required, authenticated: allowed, ...(adminEnabled ? { role: role(req) } : {}) });
+      } else if (allowed && !new URL(req.url, 'http://localhost').searchParams.has('switch')) {
         res.writeHead(302, { Location: '/', 'Cache-Control': 'no-store', 'Content-Length': 0 });
         res.end();
       } else {
@@ -103,7 +115,8 @@ export function createAccess({ username = '', password = '' } = {}) {
 
   return {
     authenticated,
+    isAdmin,
     handle,
-    clear() { credentials.fill(0); salt.fill(0); credentials = null; salt = null; token = null; },
+    clear() { credentials.fill(0); adminCredentials?.fill(0); salt.fill(0); credentials = null; adminCredentials = null; salt = null; token = null; adminToken = null; },
   };
 }

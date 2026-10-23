@@ -68,8 +68,9 @@ function payload(msg) {
 function clearRoomParam() {
   try {
     const url = new URL(location.href);
-    if (!url.searchParams.has('room')) return;
+    if (!url.searchParams.has('room') && !url.searchParams.has('watch')) return;
     url.searchParams.delete('room');
+    url.searchParams.delete('watch');
     history.replaceState(history.state, '', url.pathname + (url.search || '') + url.hash);
   } catch { /* ignore */ }
 }
@@ -85,7 +86,7 @@ let joinTimer = null;
 let joinInFlight = false;
 
 function clearPendingJoin() {
-  store.patch('ui', { pendingJoin: null });
+  store.patch('ui', { pendingJoin: null, pendingSpectate: false });
   clearRoomParam();
 }
 
@@ -103,7 +104,7 @@ function schedulePendingJoin() {
     }
     joinInFlight = true;
     try {
-      await net.request('room.join', { code });
+      await net.request(s.ui.pendingSpectate ? 'room.spectate' : 'room.join', { code });
     } catch (err) {
       toastError(err);
     } finally {
@@ -145,7 +146,7 @@ function onWelcome(msg) {
   const prev = store.get();
   const prevId = prev.me.playerId;
   const name = typeof msg.name === 'string' && msg.name ? msg.name : prev.me.name;
-  store.set({ me: { playerId: msg.playerId ?? null, name, token: typeof msg.token === 'string' ? msg.token : null } });
+  store.set({ me: { playerId: msg.playerId ?? null, name, token: typeof msg.token === 'string' ? msg.token : null, isAdmin: msg.isAdmin === true } });
   welcomeAt = Date.now();
 
   if (prevId != null && prevId !== msg.playerId) {
@@ -336,13 +337,15 @@ async function boot() {
   // Pick this tab's reconnect token (asks other live tabs; ≤150 ms) while fonts load.
   const identityReady = identity.init();
 
-  const pendingJoin = parseRoomParam(location.search);
-  const savedName = sanitizeName(identity.loadName());
-  const entered = identity.wasEntered() && !!savedName;
+  const watchCode = new URLSearchParams(location.search).get('watch');
+  const pendingJoin = parseRoomParam(watchCode ? `?room=${encodeURIComponent(watchCode)}` : location.search);
+  const savedName = sanitizeName(identity.loadName()) || (watchCode ? '管理员观战' : '');
+  const entered = (identity.wasEntered() || !!watchCode) && !!savedName;
+  if (watchCode && entered) { identity.setEntered(true); identity.saveName(savedName); }
   store.set((s) => ({
     me: { ...s.me, name: savedName },
     session: { entered },
-    ui: { ...s.ui, pendingJoin },
+    ui: { ...s.ui, pendingJoin, pendingSpectate: !!watchCode },
   }));
 
   wireNet();
