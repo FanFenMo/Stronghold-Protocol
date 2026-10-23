@@ -5,6 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 export const isProfileToken = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const digest = token => createHash('sha256').update(token).digest('hex');
+const INITIAL_TROPHIES = { source: 'initial', sourceId: 'anonymous-v1', delta: 10 };
 
 /** Durable anonymous profiles and their trophy ledger. One instance belongs to a server. */
 export class ProfileStore {
@@ -15,7 +16,7 @@ export class ProfileStore {
     this.db.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
     try { this.transaction(() => {
       const version = this.db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 1) throw new Error('玩家档案数据库版本高于当前程序支持的版本');
+      if (version > 2) throw new Error('玩家档案数据库版本高于当前程序支持的版本');
       if (version === 0) this.db.exec(`
         CREATE TABLE profiles (
           id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
@@ -51,6 +52,12 @@ export class ProfileStore {
         CREATE INDEX purchases_match_player ON purchases(match_id, player_id, purchase_group);
         PRAGMA user_version=1;
       `);
+      if (version < 2) {
+        for (const { profile_id } of this.db.prepare('SELECT profile_id FROM wallets').all()) {
+          this.change(profile_id, INITIAL_TROPHIES);
+        }
+        this.db.exec('PRAGMA user_version=2;');
+      }
     }); } catch (error) { this.db.close(); throw error; }
   }
 
@@ -67,6 +74,7 @@ export class ProfileStore {
     this.transaction(() => {
       this.db.prepare('INSERT INTO profiles VALUES (?, ?, ?, ?)').run(id, digest(token), t, t);
       this.db.prepare('INSERT INTO wallets(profile_id) VALUES (?)').run(id);
+      this.change(id, INITIAL_TROPHIES);
     });
     return { token, ...this.wallet(id) };
   }

@@ -47,6 +47,7 @@ import { MEDIA_PREFIX, AUDIO_EXTS } from '../shared/media.js';
 import { createAccess } from './access.js';
 import { promptAccess } from './access-prompt.js';
 import { ProfileStore } from './profiles.js';
+import { createAppDocument, serveAppDocument } from './appDocument.js';
 
 /** Repository root. */
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -368,6 +369,7 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
   const shimBody = Buffer.from(DATA_SHIM_JS);
   const shimTag = `"shim-${shimBody.length.toString(16)}"`;
   const gzipCache = new GzipCache();
+  const appDocument = createAppDocument(publicDir);
 
   return async function serveStatic(req, res, rawPath, query) {
     let decoded;
@@ -444,6 +446,10 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
         sendError(req, res, 500, '服务器内部错误 · Internal error');
       }
       return;
+    }
+    if (mount.name === 'public' && segments.length === 1 && segments[0] === 'index.html') {
+      const document = await appDocument();
+      if (document) { serveAppDocument(req, res, document, acceptsGzip(req.headers['accept-encoding'])); return; }
     }
     await serveFile(req, res, absPath, stat, mount.name, segments, query, gzipCache, log);
   };

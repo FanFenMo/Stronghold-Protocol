@@ -125,14 +125,14 @@ test('N16 新奖杯含商店加成写入钱包，消费不扣历史累计，重�
     for (let i = 0; i < 3; i++) {
       store.purchase({ profileId, requestId: `buy-${i}`, matchId: 'n16', playerId: 'p_0', product: trophyProduct('round12') });
     }
-    assert.equal(store.wallet(profileId).balance, 7);
+    assert.equal(store.wallet(profileId).balance, 17);
     assert.equal(store.wallet(profileId).lifetimeEarned, 10);
     h.ps('p_0').trophyShop.counts.round12 = 3;
     const summary = resultAfter(h.m, 21, true);
     assert.equal(summary.players[0].trophies, 26);
     const settlement = { matchId: 'n16', startedAt: 2, participants, summary };
     store.settleMatch(settlement);
-    assert.equal(store.wallet(profileId).balance, 33);
+    assert.equal(store.wallet(profileId).balance, 43);
     assert.equal(store.wallet(profileId).lifetimeEarned, 36);
     const wallet = store.wallet(profileId);
     assert.deepEqual(store.settleMatch(settlement), []);
