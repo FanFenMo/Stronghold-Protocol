@@ -53,6 +53,7 @@ import { availableParallelism } from 'node:os';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { getData } from '../server/data.js';
 import { DataSource } from '../server/sim/simdata.js';
+import { COMMAND_ARCHIVE } from '../shared/trophyMystery.js';
 import { buildBattleSpec, createBattleFromSpec } from '../server/sim/spec.js';
 import { createRng, deriveSeed } from '../server/sim/rng.js';
 import { GameData } from '../server/match/gamedata.js';
@@ -232,7 +233,9 @@ const CHESS = Object.values(data.chess).sort((a, b) => byId(a.chessId, b.chessId
 const VISIBLE = CHESS.filter((c) => c.visible);
 const STAGES = Object.keys(data.stages).sort(byId);
 const BANDS = Object.keys(data.bands).sort(byId);
-const EQUIPS = Object.values(data.items).filter((i) => i.itemType === 'EQUIP').map((i) => i.id).sort(byId);
+// The mystery archive is consumed in the match, never equipped in a battle. Its deployment effect is exercised by
+// test/content/items.test.js and test/match/trophy-shop.test.js; keep the existing combat loadout corpus stable.
+const EQUIPS = Object.values(data.items).filter((i) => i.itemType === 'EQUIP' && i.id !== COMMAND_ARCHIVE).map((i) => i.id).sort(byId);
 const BOSSES = Object.keys(data.bosses).sort((a, b) => Number(a.replace(/\D/g, '')) - Number(b.replace(/\D/g, '')));
 const LEADER_KEYS = new Set();
 for (const bo of Object.values(data.bosses)) { LEADER_KEYS.add(bo.enemyKey); for (const p of bo.parts || []) LEADER_KEYS.add(typeof p === 'string' ? p : p.enemyKey ?? p.key); }

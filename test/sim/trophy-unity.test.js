@@ -51,6 +51,8 @@ test('攻击力实时跟随技能装备增益，也随增益结束下降，不�
   b.removeBuff(a, 'equipment'); near(a.s.atk, 2000);
   b.removeBuff(c, 'skill'); near(a.s.atk, 1000);
   near(other.s.atk, 1000);
+  b.addBuff(other, { key: 'teammate', mods: { atkFlat: 9000 } });
+  near(other.s.atk, 10000); near(a.s.atk, 1000); near(c.s.atk, 1000);
 });
 
 test('共享生命归零时全员同帧倒下，个人致死拦截和击杀回满不能把一人独立留下', () => {

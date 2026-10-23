@@ -41,6 +41,7 @@ import { statusKey, composeUnitRecord, standInRecord, unitForm } from '../shared
 import { extendedGrid } from '../shared/loadoutRecord.js';
 import { FULL_RANK, atRank, stripPotential } from '../shared/potential.js';
 import { applyCustomData } from './custom-data.mjs';
+import { applyTrophyShopData } from './trophy-shop-data.mjs';
 import { applyColumbiaData } from './columbia-data.mjs';
 import { COLUMBIA_NORMAL_OPERATORS, applyColumbiaRoster } from './columbia-roster-data.mjs';
 import { applyExpandedRoster } from './expanded-roster-data.mjs';
@@ -4121,6 +4122,7 @@ async function main() {
   applyExpandedRoster(files, custom, (ranks, id) => withPotentialData(ranks, id, errors));
   applyColumbiaRoster(files, (ranks, id) => withPotentialData(ranks, id, errors));
   applyColumbiaData(files);
+  applyTrophyShopData(files);
   let total = 0;
   const sizes = {};
   const texts = {};

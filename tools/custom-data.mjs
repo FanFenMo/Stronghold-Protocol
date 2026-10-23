@@ -5,7 +5,6 @@ import { applyAegirBandData } from './aegir-band-data.mjs';
 import { applyProsperityData } from './prosperity-data.mjs';
 import { applyColumbiaData } from './columbia-data.mjs';
 import { applyStrategyData } from './strategy-data.mjs';
-import { applyTrophyShopData } from './trophy-shop-data.mjs';
 
 export function applyCustomData(files, custom) {
   applyAegirCovenantData(files.bonds.egirShip, files.effects.bondeffect_egir);
@@ -47,5 +46,4 @@ export function applyCustomData(files, custom) {
   applyProsperityData(files);
   applyColumbiaData(files);
   applyStrategyData(files);
-  applyTrophyShopData(files);
 }

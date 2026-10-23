@@ -759,7 +759,7 @@ const targetWithCandidates = (m, tier, maxTier, need, skip = 0) => plain((c) => 
 
 test('consume-on-equip items resolve once, are destroyed and never take a slot', () => {
   const consume = Object.values(DATA.items).filter((r) => typeof r.kind === 'string' && r.kind.startsWith('consume_on_equip') && r.id !== A('5_06'));
-  assert.equal(consume.length, 23, '11 consume items ×2 + golden 博士投影');
+  assert.equal(consume.length, 24, '11 consume items ×2 + golden 博士投影 + 指挥部档案');
   const { m, ps, equip } = setup({ seed: 11 });
   const pool = plain((c) => c.tier === 1 && c.bonds.length);
   for (const [k, rec] of consume.entries()) {
@@ -1041,6 +1041,18 @@ test('人事部文档: deploy cap becomes 9 (a second copy adds nothing)', () =>
   cover(A('6_08'), B('6_08'));
 });
 
+test('指挥部档案将部署上限设为12，之后使用人事部文档不会降低上限', () => {
+  const { m, ps, equip } = setup();
+  const target = give(m, ps, plain(c => c.tier === 1)[0], 'hand');
+  const id = 'chess_item_custom_command_archive_a';
+  assert.deepEqual(equip(giveItem(m, ps, id), target), OK);
+  assert.equal(ps.deployCap, 12);
+  assert.deepEqual(equip(giveItem(m, ps, A('6_08')), target), OK);
+  assert.equal(ps.deployCap, 12);
+  assert.equal(target.items.length, 0);
+  cover(id);
+});
+
 test('天师古鼎 + 炎国短刀 (炎 carrier): +2 funds per operator gained, at most 3 times per round', () => {
   const fodder = plain((c) => c.tier <= 2 && !c.bonds.includes('yanShip'));
   const { h, m, ps, equip } = setup({ seed: 44 });
@@ -1163,5 +1175,5 @@ test('coverage: every equipment (normal + golden) and every Art is exercised by 
   // items whose numbers are asserted in the stat table, the proc tests or the meta tests
   const missing = Object.keys(DATA.items).filter((id) => !COVER.has(id)).sort();
   assert.deepEqual(missing, []);
-  assert.equal(Object.keys(DATA.items).length, 121);
+  assert.equal(Object.keys(DATA.items).length, 122);
 });
