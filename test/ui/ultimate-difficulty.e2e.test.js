@@ -34,10 +34,10 @@ test('n16 picker, two announced bosses and Node/browser combat parity on desktop
     const raw = { chess: { op_test: chessRec({ id: 'op_test', stats: { maxHp: 10000, atk: 500 }, skill: null }) },
       enemies: { enemy_test: enemyRec({ hp: 1e6, atk: 200, def: 100, res: 20, speed: 0 }) }, stages: { flat: flatStage() } };
     const expected = combatCheck({ DataSource, buildBattleSpec, createBattleFromSpec }, raw);
-    assert.deepEqual(expected.hits, [...new Array(30).fill(0), 10]);
-    assert.equal(expected.shield, 30); assert.equal(expected.reflected, 0.5);
+    assert.deepEqual(expected.hits, [...new Array(30).fill(0), 7]);
+    assert.equal(expected.shield, 30); assert.equal(expected.reflected, 0);
     assert.equal(expected.atk, 405); assert.equal(expected.def, 180);
-    assert.ok(Math.abs(expected.enemyDef - 198) < 1e-8); assert.equal(expected.enemyRes, 39.6);
+    assert.ok(Math.abs(expected.enemyDef - 110) < 1e-8); assert.equal(expected.enemyRes, 22);
     const P = (await import('puppeteer-core')).default;
     const srv = await startServer({ host: '127.0.0.1', port: 0, quiet: true });
     const browser = await P.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--no-proxy-server'] });
@@ -76,7 +76,8 @@ test('n16 picker, two announced bosses and Node/browser combat parity on desktop
         assert.equal(await page.$$eval('.udepth__effects li', els => els.length), 16);
         assert.equal(await page.$$eval('.is-locked', els => els.length), 0);
         const effects = await page.$eval('.udepth__brief', el => el.textContent);
-        assert.match(effects, /30 次真伤击破/); assert.doesNotMatch(effects, /未完待续|次数怪|联机时|悬赏金额/);
+        assert.match(effects, /受到的任何伤害降低 30%/);
+        assert.match(effects, /30 次真伤击破/); assert.doesNotMatch(effects, /反伤|防御提升 80%|未完待续|次数怪|联机时|悬赏金额/);
         await page.screenshot({ path: `${OUT}/ultimate-n16-picker-${width}.png` });
         assert.deepEqual(errors, []); await page.close();
       }

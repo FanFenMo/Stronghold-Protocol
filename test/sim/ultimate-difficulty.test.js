@@ -109,17 +109,39 @@ test('middle boss and escorts reuse R14 stats at half HP and 80% ATK; n16 buffs 
   }
 });
 
-test('n16 reflects exactly 5% of actual HP loss through shields and stops after R19', () => {
+test('n16 enemies and bosses no longer reflect damage in any round', () => {
   for (const round of [12, 19, 20, 21]) {
     const h = field(16, { round }); h.b.start(); const u = h.unit(1);
     h.b.addBuff(u, { key: 'shield', shield: 1e6 });
     const e = h.spawn('enemy_test', { pos: [10, 5] });
     const dealt = h.b.dealDamage(u, e, { amount: 1e5, type: 'phys', canDodge: false });
-    assert.equal(u.hp, 10000 - (round <= 19 ? dealt * 0.05 : 0), 'overkill uses HP actually lost, not requested damage');
+    assert.ok(dealt > 0);
+    assert.equal(u.hp, 10000);
+    h.b.dealDamage(u, h.spawn('enemy_test', { tag: 'boss' }), { amount: 100, type: 'arts', canDodge: false });
+    assert.equal(u.hp, 10000, 'bosses do not reflect either');
     const before = u.hp;
     h.b.loseHp(h.spawn('enemy_test'), 100, { source: u });
     assert.equal(u.hp, before, 'HP drain cannot trigger reflection');
     assert.equal(h.b.errorCount, 0);
+  }
+});
+
+test('n16 leaders keep n10 defense and take 30% less physical, arts, true and elemental damage', () => {
+  for (const round of [12, 20, 21]) {
+    for (const level of [15, 16]) {
+      const h = field(level, { round, defs: { enemies: { enemy_test: enemyRec({ hp: 1e6, def: 100, res: 20 }) } } });
+      h.b.start();
+      const boss = h.spawn('enemy_test', { tag: 'boss' }), escort = h.spawn('enemy_test');
+      assert.equal(boss.base.def, escort.base.def);
+      assert.equal(boss.base.res, escort.base.res);
+      h.b.removeBuff(boss, 'ultimate:trueShield');
+      for (const type of ['phys', 'arts', 'true', 'elemental']) {
+        const ordinary = h.b.dealDamage(h.unit(1), escort, { amount: 1000, type, canDodge: false });
+        const reduced = h.b.dealDamage(h.unit(1), boss, { amount: 1000, type, canDodge: false });
+        assert.ok(Math.abs(reduced - ordinary * (level === 16 ? 0.7 : 1)) < 1e-8, `${round}: ${type}`);
+      }
+      assert.equal(h.b.errorCount, 0);
+    }
   }
 });
 
@@ -132,8 +154,8 @@ test('n16 bosses have 30-hit true-only shields, restored every 60 game seconds',
   const hit = type => h.b.dealDamage(u, e, { amount: 10, type, canDodge: false });
   assert.ok(hit('phys') > 0); assert.ok(hit('arts') > 0); assert.ok(hit('elemental') > 0);
   for (let i = 0; i < 30; i++) assert.equal(hit('true'), 0);
-  assert.equal(hit('true'), 10);
-  h.run(59.9); assert.equal(hit('true'), 10);
+  assert.equal(hit('true'), 7);
+  h.run(59.9); assert.equal(hit('true'), 7);
   h.run(0.2); assert.equal(e.findBuff('ultimate:trueShield').shieldHits, 30);
   assert.equal(hit('true'), 0);
   h.run(60); assert.equal(e.findBuff('ultimate:trueShield').shieldHits, 30, 'refresh replaces remaining charges');
