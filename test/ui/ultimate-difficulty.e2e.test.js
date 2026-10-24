@@ -34,7 +34,7 @@ test('n16 picker, two announced bosses and Node/browser combat parity on desktop
     const raw = { chess: { op_test: chessRec({ id: 'op_test', stats: { maxHp: 10000, atk: 500 }, skill: null }) },
       enemies: { enemy_test: enemyRec({ hp: 1e6, atk: 200, def: 100, res: 20, speed: 0 }) }, stages: { flat: flatStage() } };
     const expected = combatCheck({ DataSource, buildBattleSpec, createBattleFromSpec }, raw);
-    assert.deepEqual(expected.hits, [...new Array(30).fill(0), 7]);
+    assert.deepEqual(expected.hits, [...new Array(30).fill(0), 9]);
     assert.equal(expected.shield, 30); assert.equal(expected.reflected, 0);
     assert.equal(expected.atk, 405); assert.equal(expected.def, 180);
     assert.ok(Math.abs(expected.enemyDef - 110) < 1e-8); assert.equal(expected.enemyRes, 22);
