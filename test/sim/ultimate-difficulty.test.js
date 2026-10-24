@@ -126,7 +126,7 @@ test('n16 enemies and bosses no longer reflect damage in any round', () => {
   }
 });
 
-test('n16 leaders keep n10 defense and take 30% less physical, arts, true and elemental damage', () => {
+test('n16 leaders keep n10 defense and take 10% less physical, arts, true and elemental damage', () => {
   for (const round of [12, 20, 21]) {
     for (const level of [15, 16]) {
       const h = field(level, { round, defs: { enemies: { enemy_test: enemyRec({ hp: 1e6, def: 100, res: 20 }) } } });
@@ -138,7 +138,7 @@ test('n16 leaders keep n10 defense and take 30% less physical, arts, true and el
       for (const type of ['phys', 'arts', 'true', 'elemental']) {
         const ordinary = h.b.dealDamage(h.unit(1), escort, { amount: 1000, type, canDodge: false });
         const reduced = h.b.dealDamage(h.unit(1), boss, { amount: 1000, type, canDodge: false });
-        assert.ok(Math.abs(reduced - ordinary * (level === 16 ? 0.7 : 1)) < 1e-8, `${round}: ${type}`);
+        assert.ok(Math.abs(reduced - ordinary * (level === 16 ? 0.9 : 1)) < 1e-8, `${round}: ${type}`);
       }
       assert.equal(h.b.errorCount, 0);
     }
@@ -154,8 +154,8 @@ test('n16 bosses have 30-hit true-only shields, restored every 60 game seconds',
   const hit = type => h.b.dealDamage(u, e, { amount: 10, type, canDodge: false });
   assert.ok(hit('phys') > 0); assert.ok(hit('arts') > 0); assert.ok(hit('elemental') > 0);
   for (let i = 0; i < 30; i++) assert.equal(hit('true'), 0);
-  assert.equal(hit('true'), 7);
-  h.run(59.9); assert.equal(hit('true'), 7);
+  assert.equal(hit('true'), 9);
+  h.run(59.9); assert.equal(hit('true'), 9);
   h.run(0.2); assert.equal(e.findBuff('ultimate:trueShield').shieldHits, 30);
   assert.equal(hit('true'), 0);
   h.run(60); assert.equal(e.findBuff('ultimate:trueShield').shieldHits, 30, 'refresh replaces remaining charges');

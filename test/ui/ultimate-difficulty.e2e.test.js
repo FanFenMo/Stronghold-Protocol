@@ -76,7 +76,7 @@ test('n16 picker, two announced bosses and Node/browser combat parity on desktop
         assert.equal(await page.$$eval('.udepth__effects li', els => els.length), 16);
         assert.equal(await page.$$eval('.is-locked', els => els.length), 0);
         const effects = await page.$eval('.udepth__brief', el => el.textContent);
-        assert.match(effects, /受到的任何伤害降低 30%/);
+        assert.match(effects, /受到的任何伤害降低 10%/);
         assert.match(effects, /30 次真伤击破/); assert.doesNotMatch(effects, /反伤|防御提升 80%|未完待续|次数怪|联机时|悬赏金额/);
         await page.screenshot({ path: `${OUT}/ultimate-n16-picker-${width}.png` });
         assert.deepEqual(errors, []); await page.close();
